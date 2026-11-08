@@ -1,0 +1,20 @@
+name: CI
+on:
+  push:
+    branches: [main, "t1-*"]
+  pull_request:
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.x
+          cache: npm
+      - uses: actions/setup-python@v5 # a few tests read the report docx and run kb/clean.py
+        with:
+          python-version: "3.12"
+      - run: npm ci
+      - run: npm test
+      # The KB retrieval evaluation (C1-7) is added here when kb/eval exists.

@@ -1,0 +1,57 @@
+# Demo video script (max 7:00)
+
+ITU AI for Good (UAE) hackathon. All entities and data are fictitious. Everything below is built; nothing here shows a feature that does not exist. The app has one admin area, **Federal** (`/admin/federal`); login lands there.
+
+## Pre-flight checklist
+
+- [ ] New Supabase project (not main's). In its SQL editor run, in order: `supabase/schema.sql`, then `supabase/un-federal.sql`.
+- [ ] `cp .env.example .env.local` and set `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `ADMIN_EMAILS` (your email), `OPENROUTER_API_KEY`, `NEXT_PUBLIC_SITE_URL=http://localhost:3000`. Leave `SIJIL_BASE_URL` unset unless a node is running (see variant below).
+- [ ] `npm ci`, then `npm run dev` (http://localhost:3000). `npm test` passes.
+- [ ] Sign in at `/login` with the `ADMIN_EMAILS` address; it lands on `/admin/federal`. Confirm the admin controls show (Policy, Import use cases, Reset runs).
+- [ ] KB built: `kb/chunks.json` exists (22 sources, 331 chunks). If missing: `python kb/build.py` (needs `../ITUAIReadiness` cloned, `pip install -r kb/requirements.txt`). Open a second tab on `/api/admin/un/kb?q=human+approval&k=5` (logged in) and check it returns hits.
+- [ ] Reset the Sijil pilot: on each use case you rehearsed (at least UC02), press **Reset runs**. Clear stale pilot reports: in the Supabase SQL editor run `delete from un_pilot_reports;` so "Latest report" starts empty.
+- [ ] Put all 20 use cases at intake before starting: import `data/un-use-cases.csv` (re-importing keeps stage and verdict, so use **Reset runs** and a clean database for a true reset). Dashboard must read 0 deployed, 20 use cases, UC01-UC20 listed. Have `data/un-use-cases.csv` ready in a Finder window for the drop-zone shot.
+- [ ] Do one full dry run of S1, S2 and S3 first, then reset as above so the video starts clean. Note the run page URLs and keep S2 pre-run for the closing section.
+- [ ] Browser zoom 110-125%, notifications off, screen recorder at 1080p.
+
+## Timed script
+
+| Time | Screen | What to click | Narration |
+|---|---|---|---|
+| 0:00-0:25 | `/admin/federal` dashboard | Scroll once: progress toward target, verdict mix (stacked bar), by-entity bars, quadrant by verdict matrix. All 20 are at intake. | "Prism governs the path from an AI use case to a deployed, attested agent in government. Policy sets the target, role agents examine each case against a knowledge base, a deterministic engine decides, and every step goes into a hash-chained trace. This is the federal dashboard: twenty fictitious use cases, all still at intake." |
+| 0:25-0:50 | Federal > Policy | Policy details are open by default: name, jurisdiction, source URL, Target % = 50, Deadline = 2028-04-30 (our assumption). Show **What counts as deployed** (the verdict ticks). Click **Save policy**. | "The policy is the UAE Federal Agentic AI framework: 50 percent of government sectors and operations by about April 2028, which is two years from the Cabinet's 23 April 2026 announcement; the exact date is our assumption. The counting rule says which verdicts count toward the target. It is configuration, not code." |
+| 0:50-1:25 | Federal > Import use cases | Drop `data/un-use-cases.csv` on the drop zone. Show the preview of the first rows and the columns list. Then use the use-case table: type `UC02` in search, set an entity filter, **Clear filters**. | "Import shows a preview and any per-line errors before anything is saved. Unrecognised yes/no values are rejected, not read as no. Each use case has an entity, a quadrant, a client-facing flag and a human-in-the-loop rule. Re-importing updates descriptions and keeps stage and verdict. The table searches by ID, title or entity and filters by entity, stage and verdict." |
+| 1:25-1:50 | Tab: `/api/admin/un/kb?q=human+approval&k=5` | Show JSON hits: chunk id, source, url, sha256, quote. | "The knowledge base has 22 sources and 331 chunks, built with ITU's reference pipeline. Each hit carries its source URL, a SHA-256 of the source, and a quote. Retrieval is lexical BM25, so relevance is uneven." |
+| 1:50-2:10 | `/admin/federal/scenarios` | Point at the S1, S2, S3 cards under **Choose a scenario**. Click **Start** on S1. | "Three staged scenarios. Events are released one step at a time, each to only some agents. Start with S1, the trade licence pre-check, UC02." |
+| 2:10-3:20 | Run page for S1 | Click **Release first step**, then **Release next step** through T0-T4. At each step point at the step stepper, the outcome, and the "matches expected" tick. | "T0: autonomy requested for a client-facing case. Verdict ESCALATE: gates still lack evidence. T1: hosting is not on certified infrastructure, so NO_GO. T2: the agent sends messages without an officer, still NO_GO. T3: fixes declared but not yet re-tested, so ASSISTANT_ONLY. T4: both re-tests pass and the case lands at GO_SUPERVISED. Client-facing cases are capped at supervised; failed gates are never averaged away." |
+| 3:20-4:00 | Same run page: gate status after each step, then the audit trail | Show the **Gate status after each step** matrix (gate x step). Scroll to the audit trail: point at the banner "Trace log verified: N records, hash chain intact". Filter by agent (**Filter by agent**). Show a record with a citation. | "Each agent only sees the events routed to it. The matrix shows each gate's status after every step. Every agent message, citation and disposition is a record in a hash chain. The banner re-verifies the chain on load; if any record is altered, it reports the first broken record and release is disabled." |
+| 4:00-4:55 | Federal > UC02 use-case page (Sijil panel) | Point at the **SIMULATED** chip and the provenance line. Choose profile **Hallucinating**, count 30, click **Run pilot**. Show the accuracy, hallucination and alignment charts with dashed threshold lines, the 30-cell run strip, rejects per criterion (hard criteria must be 0), then the auto-filed pilot report (**View**, **Download latest (Markdown)**). | "This is the Sijil panel. The chip reads SIMULATED: every metric here is synthetic and labelled so. Each chart plots runs against a threshold line; breaching runs are marked. Rejects are counted per Prism criterion, and hard criteria must be zero. At the target run count the pilot report is filed automatically and the result is written to the dashboard." |
+| 4:55-5:20 | `/admin/federal` dashboard | Point at the progress tiles: Deployed, Compliant & aligned, Gap, and the Deployed, not compliant count. | "Deployed and compliant are reported side by side and never merged. A use case can be live and still not compliant. That gap is what the dashboard is for." |
+| 5:20-6:00 | Scenarios > S3 run | Start S3, release T0-T3. Dashboard line shown at each step: T1 deployed 6/20 (30%); T2 compliant 4/20 (20%) after two attestation failures; T3 transport category added, UC13-UC16 flagged for re-score. | "S3 is the federal cascade on a sandbox copy of the data. Entities report six deployments, compliance attests four of the six, then a policy update adds a transport category and four use cases need re-scoring. Target 10, gap 4." |
+| 6:00-6:20 | Federal > Human oversight rules by entity | On one entity's card tick or untick a rule; the Unsaved badge appears. Click **Save**. | "Human-in-the-loop rules are set per entity in an editor, and the engine reads them. A breach is a hard-gate failure." |
+| 6:20-6:50 | Scenarios > S2 run (pre-run) | Show the step stepper and verdict sequence. | "S2 is a live voice contact centre pilot, UC01. Its path is GO_SUPERVISED, then NO_GO on a hallucination alert, then ASSISTANT_ONLY after the owner pulls it back to drafting, then GO_SUPERVISED after the re-test passes. The hallucination gate stays permanent." |
+| 6:50-7:00 | Dashboard or README | Say the honest-limits line. | See below. |
+
+**Total: 7:00** (25 + 25 + 35 + 25 + 20 + 70 + 40 + 55 + 25 + 40 + 20 + 30 + 10 = 420 s).
+
+If time runs over, shorten the KB view and the S3 stepping first; keep S1, trace verification and Sijil.
+
+### If a Sijil node is running (swap into 4:00-4:55)
+
+Set `SIJIL_BASE_URL` before starting. The chip reads **LIVE: Sijil node ..., chain verified** after you press **Pull from Sijil** instead of **Run pilot**; say: "This is a live Sijil node. The chain is verified before anything imports. Approval and disclosure rejects come from its records; accuracy, hallucination and goal alignment are still simulated." Timing is unchanged. Note the live adapter has only been tested with a mocked `fetch`, so rehearse it first.
+
+## Honest-limits line (say aloud)
+
+"Limits: Sijil is simulated unless a node is configured, and even then accuracy, hallucination and alignment stay simulated. The agents were evaluated in deterministic mode; model-driven mode is built but not scored. Retrieval is lexical, so citations are uneven. All data is synthetic."
+
+## Fallback plan
+
+- **Supabase or login fails:** switch to the pre-recorded dry-run clip of the same section; narrate over it. Do not debug live.
+- **Dashboard or table looks wrong after setup:** re-check that schema.sql then un-federal.sql ran in the new project, then re-import the CSV. Do not fix live.
+- **Run page stalls on a step:** reload the run page (state is stored; steps already released stay). If still stuck, open a run from **Past runs** and walk through it.
+- **Model/OpenRouter errors:** leave "Agents use the model" unticked. The scenarios run in deterministic mode, which is what the limits line says we evaluated.
+- **KB endpoint empty:** show `kb/chunks.json` and `kb/sources.json` in an editor instead; run `python kb/build.py` before recording, not during.
+- **Sijil run or report does not file:** click **Run pilot** again until the target run count is reached, press **File report now**, or open a pre-filed report from a rehearsal use case.
+- **Live Sijil node unreachable or shows `chain NOT verified`:** nothing is imported. Unset `SIJIL_BASE_URL`, restart, and use the simulated panel.
+- **Total failure:** show the PDF `docs/report/prism-technical-report.pdf` and the repo test run (`npm test`) over the narration.
+- Keep one rehearsed, fully recorded take of every section as backup footage.

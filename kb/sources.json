@@ -1,0 +1,863 @@
+[
+ {
+  "id": "uae-cabinet-agentic-50",
+  "title": "UAE Cabinet meeting, 23 April 2026: agentic AI across 50% of government within two years",
+  "url": "https://mediaoffice.ae/en/news/2026/april/23-04/mohammed-bin-rashid-chairs-uae-cabinet-meeting",
+  "issuer": "UAE Cabinet (Government Media Office)",
+  "jurisdiction": "UAE-federal",
+  "instrument_type": "press-release",
+  "binding": false,
+  "date": "2026-04-23",
+  "topics": [
+   "targets",
+   "governance"
+  ],
+  "source_sha256": "105a47930ccea981a6d993a267b3ac76476d632f3bade39889d2b4f0f224a4da",
+  "excerpts": [
+   {
+    "text": "Mohammed bin Rashid unveils framework to deploy agentic AI across 50% of government sectors within 2 years",
+    "where": "UAE Cabinet release, Government Media Office, 23 April 2026, headline"
+   },
+   {
+    "text": "this transformation’s defined timeline is two years. During that period, the performance of ministers, directors general, and entities will be assessed based on their ability to adopt this transformation",
+    "where": "UAE Cabinet release, Government Media Office, 23 April 2026, timeline and assessment"
+   },
+   {
+    "text": "This project aims to transform 50% of government sectors, services, and operations to implement autonomous Agentic AI models within two years",
+    "where": "UAE Cabinet release, Government Media Office, 23 April 2026, project aim"
+   },
+   {
+    "text": "Sheikh Mansour bin Zayed will oversee the implementation of the UAE President’s vision of this major governmental transformation. We have formed a dedicated taskforce, chaired by Mohammad Al Gergawi, to drive execution.",
+    "where": "UAE Cabinet release, Government Media Office, 23 April 2026, oversight and taskforce"
+   },
+   {
+    "text": "The Cabinet further approved a “government services data sharing policy” based on the principle of collecting data once and using it securely across entities",
+    "where": "UAE Cabinet release, Government Media Office, 23 April 2026, data sharing policy"
+   },
+   {
+    "text": "The project includes a phased implementation across ministries and federal entities, based on continuous performance and impact assessment.",
+    "where": "UAE Cabinet release, Government Media Office, 23 April 2026, phased implementation"
+   },
+   {
+    "text": "People come first.",
+    "where": "UAE Cabinet release, Government Media Office, 23 April 2026, principle"
+   }
+  ]
+ },
+ {
+  "id": "uae-cabinet-2026-05-18",
+  "title": "UAE Cabinet meeting, 18 May 2026",
+  "url": "https://mediaoffice.ae/en/news/2026/may/18-05/mohammed-bin-rashid-chairs-uae-cabinet-meeting",
+  "issuer": "UAE Cabinet",
+  "jurisdiction": "UAE-federal",
+  "instrument_type": "press-release",
+  "binding": false,
+  "date": "2026-05-18",
+  "topics": [
+   "targets",
+   "governance",
+   "phase-one-services"
+  ],
+  "source_sha256": "bd76b6b644709fedaed9b4efe2bde6373383c5e156517fa5410266d6bc3e428a",
+  "excerpts": [
+   {
+    "text": "UAE Cabinet, chaired by Mohammed bin Rashid, approves federal framework for Agentic AI Project implementation",
+    "where": "UAE Cabinet release, Government Media Office, 18 May 2026, headline"
+   },
+   {
+    "text": "the UAE Cabinet approved the list of federal government services to be transitioned under Phase One of the Agentic AI Project, covering 4 principal categories: Citizens' Services, Residents' Services, Business Sector Services, and General Public Services.",
+    "where": "UAE Cabinet release, Government Media Office, 18 May 2026, Phase One"
+   },
+   {
+    "text": "launched the largest training programme in the history of the UAE Government, training 80,000 employees in Agentic AI tools and technologies",
+    "where": "UAE Cabinet release, Government Media Office, 18 May 2026, training"
+   },
+   {
+    "text": "The Cabinet adopted a framework defining the roles of each ministry and federal entity in implementing the Agentic AI project.",
+    "where": "UAE Cabinet release, Government Media Office, 18 May 2026, entity framework"
+   },
+   {
+    "text": "set targets and establish assessment indicators to evaluate the transformation",
+    "where": "UAE Cabinet release, Government Media Office, 18 May 2026, targets"
+   },
+   {
+    "text": "The Cabinet approved the reconstitution of the UAE Council for Digital Wellbeing, to be chaired by H.H. Lieutenant General Sheikh Saif bin Zayed Al Nahyan, Deputy Prime Minister and Minister of Interior",
+    "where": "UAE Cabinet release, Government Media Office, 18 May 2026, Digital Wellbeing council"
+   }
+  ]
+ },
+ {
+  "id": "ani-agentic-workshop",
+  "title": "UAE advances integration of agentic AI across federal government (ANI/WAM)",
+  "url": "https://aninews.in/news/world/middle-east/uae-advances-integration-of-agentic-ai-across-federal-government20260810032412/",
+  "issuer": "National Committee for the Agentic AI Project (reported by ANI)",
+  "jurisdiction": "UAE-federal",
+  "instrument_type": "press-release",
+  "binding": false,
+  "date": "2026-08-10",
+  "topics": [
+   "governance",
+   "human-oversight"
+  ]
+ },
+ {
+  "id": "dubai-ai-matrix-launch",
+  "title": "Digital Dubai launches the AI Integration Matrix Framework",
+  "url": "https://mediaoffice.ae/en/news/2026/april/28-04/digital-dubai-launches-ai-integration-matrix-framework-to-accelerate-ai-adoption-across-government",
+  "issuer": "Digital Dubai",
+  "jurisdiction": "Dubai",
+  "instrument_type": "press-release",
+  "binding": false,
+  "date": "2026-04-28",
+  "topics": [
+   "matrix",
+   "prioritisation"
+  ],
+  "matrix_quadrants": [
+   "Internal Agents",
+   "Internal RAG",
+   "External Agents",
+   "External RAG"
+  ],
+  "source_sha256": "00b62fc54f956be84fef817eae7a8bab5deb1fcd331aff6282764127b94beca5",
+  "excerpts": [
+   {
+    "text": "Digital Dubai launches AI Integration Matrix Framework to accelerate AI adoption across government",
+    "where": "Digital Dubai launch release, Government Media Office, 28 April 2026, headline"
+   },
+   {
+    "text": "successful AI implementation depends not only on developing models and applications, but fundamentally on data quality and governance",
+    "where": "Digital Dubai launch release, Government Media Office, 28 April 2026, data quality"
+   },
+   {
+    "text": "classifies AI use cases into four strategic quadrants that collectively form an integrated ecosystem",
+    "where": "Digital Dubai launch release, Government Media Office, 28 April 2026, four quadrants"
+   },
+   {
+    "text": "internal agents that support operational processes and enhance efficiency, internal Retrieval-Augmented Generation (RAG) systems that enable access to institutional knowledge and support informed decision-making",
+    "where": "Digital Dubai launch release, Government Media Office, 28 April 2026, internal quadrants"
+   },
+   {
+    "text": "external agents that deliver intelligent and interactive services to customers and external RAG systems that provide information and knowledge services to the public",
+    "where": "Digital Dubai launch release, Government Media Office, 28 April 2026, external quadrants"
+   },
+   {
+    "text": "guiding the deployment of more than 100 AI systems across multiple sectors",
+    "where": "Digital Dubai launch release, Government Media Office, 28 April 2026, internal evaluation"
+   },
+   {
+    "text": "clear classification of use cases, structured prioritisation methodologies, and an integrated vision linking initiatives together",
+    "where": "Digital Dubai launch release, Government Media Office, 28 April 2026, prioritisation"
+   }
+  ]
+ },
+ {
+  "id": "uae-ai-charter",
+  "title": "UAE Charter for the Development and Use of Artificial Intelligence",
+  "url": "https://ai.gov.ae/wp-content/uploads/2024/07/UAEAI-Methaq-EN2-3.pdf",
+  "issuer": "UAE AI Office",
+  "jurisdiction": "UAE-federal",
+  "instrument_type": "framework",
+  "binding": false,
+  "date": "2024-07",
+  "topics": [
+   "human-oversight",
+   "transparency",
+   "accountability",
+   "privacy",
+   "safety",
+   "algorithmic-bias",
+   "inclusion",
+   "treaties-and-law"
+  ],
+  "source_sha256": "2f1de5776449748a91964cd5b061f88b36265ba0be8a5d7a91120e27a6908c1c",
+  "excerpts": [
+   {
+    "text": "The UAE places great importance on safety, ensuring that all AI systems comply with the highest safety standards.",
+    "where": "UAE Charter for the Development and Use of AI, July 2024, principle 2, Safety"
+   },
+   {
+    "text": "5. Transparency: The UAE seeks to create a clear understanding of AI and how systems operate and make decisions",
+    "where": "UAE Charter for the Development and Use of AI, July 2024, principle 5, Transparency"
+   },
+   {
+    "text": "6. Human Oversight: The Charter emphasizes the irreplaceable value of human judgment and human oversight over AI",
+    "where": "UAE Charter for the Development and Use of AI, July 2024, principle 6, Human Oversight"
+   },
+   {
+    "text": "7. Governance and Accountability: The UAE adopts a responsible and proactive stance, emphasizing the importance of governance and accountability in AI",
+    "where": "UAE Charter for the Development and Use of AI, July 2024, principle 7, Governance and Accountability"
+   },
+   {
+    "text": "the privacy of community members remains a top priority.",
+    "where": "UAE Charter for the Development and Use of AI, July 2024, principle 4, Data Privacy"
+   },
+   {
+    "text": "The UAE emphasizes the importance of complying with international treaties and local laws in the development and use of AI.",
+    "where": "UAE Charter for the Development and Use of AI, July 2024, principle 12, Commitment to Treaties and Applicable Laws"
+   },
+   {
+    "text": "The UAE aims to enhance the harmonious and beneficial relationship between AI and humans, ensuring that all AI developments prioritize human well-being and progress.",
+    "where": "UAE Charter for the Development and Use of AI, July 2024, principle 1, Strengthening Human-Machine Ties"
+   },
+   {
+    "text": "The UAE aims to address the challenges posed by AI algorithms regarding algorithmic bias, contributing to a fair and equitable environment for all community members.",
+    "where": "UAE Charter for the Development and Use of AI, July 2024, principle 3, Algorithmic Bias"
+   },
+   {
+    "text": "AI should be a beacon of innovation, reflecting the UAE’s vision of digital, technological, and scientific excellence.",
+    "where": "UAE Charter for the Development and Use of AI, July 2024, principle 8, Technological Excellence"
+   },
+   {
+    "text": "Human commitment in AI reflects the spirit of the UAE, essential for ensuring that the development of this technology serves the public good.",
+    "where": "UAE Charter for the Development and Use of AI, July 2024, principle 9, Human Commitment"
+   },
+   {
+    "text": "Peaceful coexistence with AI is crucial to ensure technology enhances the well-being and progress of our communities without compromising human security or fundamental rights.",
+    "where": "UAE Charter for the Development and Use of AI, July 2024, principle 10, Peaceful Coexistence with AI"
+   },
+   {
+    "text": "It is essential to create an inclusive future that ensures everyone can benefit from AI advancements, guaranteeing equitable access to this technology and its advantages for all segments of society.",
+    "where": "UAE Charter for the Development and Use of AI, July 2024, principle 11, Promoting AI Awareness for an Inclusive Future"
+   }
+  ]
+ },
+ {
+  "id": "uae-cyber-ai-policy",
+  "title": "National Cyber Security Policy for Artificial Intelligence",
+  "url": "https://u.ae/en/about-the-uae/strategies-initiatives-and-awards/policies/cyber-activities/The-National-Cyber-Security-Policy-for-Artificial-Intelligence",
+  "issuer": "UAE Cyber Security Council",
+  "jurisdiction": "UAE-federal",
+  "instrument_type": "policy",
+  "binding": false,
+  "date": null,
+  "topics": [
+   "security",
+   "human-oversight",
+   "hosting"
+  ],
+  "source_sha256": "17f7bcecdbe95fe29c857e5262b3d4edab67ff09d1fb44b6867f97603b3535d8",
+  "excerpts": [
+   {
+    "text": "The National Artificial Intelligence Security Policy defines minimum security requirements for adoption of AI in the UAE. It establishes governance, infrastructure, algorithm protection, operational safety, threat monitoring, and performance evaluation to manage emerging AI risks.",
+    "where": "UAE Cyber Security Council, National Cyber Security Policy for AI, u.ae page, overview"
+   },
+   {
+    "text": "Adversarial AI Attacks Requirements to understand and anticipate potential AI/ML attacks, fostering a proactive security approach that includes education, awareness, and comprehensive defense techniques, continuous monitoring, testing, and robust incident response.",
+    "where": "UAE Cyber Security Council, National Cyber Security Policy for AI, u.ae page, adversarial AI attacks"
+   },
+   {
+    "text": "AI Monitoring & Response Requirements to establish an effective AI/ML security analytics framework for real-time threat detection and predictive insights.",
+    "where": "UAE Cyber Security Council, National Cyber Security Policy for AI, u.ae page, AI monitoring and response"
+   },
+   {
+    "text": "Operational Safety Requirements to tailor security measures based on the distinct applications of AI/ML systems, ensuring human oversight in critical decision-making",
+    "where": "UAE Cyber Security Council, National Cyber Security Policy for AI, u.ae page, operational safety"
+   },
+   {
+    "text": "Governance Requirements to establish a robust governance framework for AI/ML systems, ensuring their secure design, development, and operation",
+    "where": "UAE Cyber Security Council, National Cyber Security Policy for AI, u.ae page, governance"
+   }
+  ]
+ },
+ {
+  "id": "uae-data-protection-laws",
+  "title": "Federal Decree-Law No. 45 of 2021 on the Protection of Personal Data (PDPL): short excerpts only",
+  "url": "https://uaelegislation.gov.ae/en/legislations/1972",
+  "issuer": "UAE Federal Government (uaelegislation.gov.ae)",
+  "jurisdiction": "UAE-federal",
+  "instrument_type": "law",
+  "binding": true,
+  "date": "2021-09-20",
+  "topics": [
+   "privacy",
+   "data",
+   "consent",
+   "data-subject-rights",
+   "automated-decisions",
+   "cross-border",
+   "enforcement"
+  ],
+  "source_sha256": "d5d5f9e93bd6c0dc2afe79776f3101bcd599e4400a67309bc0b378b2812bcf3a",
+  "excerpts": [
+   {
+    "text": "Any data related to a specific natural person or related to a natural person that can be identified directly or indirectly by linking the data, through the use of identification elements such as his/her name, voice, image, identification number",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 1 (Definitions), Personal Data",
+    "section": "Art. 1"
+   },
+   {
+    "text": "An establishment or natural person that has Personal Data, and by virtue of its activity, determines whether individually or jointly with other persons or establishments, the method and criteria for processing such Personal Data and the purpose of processing it",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 1 (Definitions), Controller",
+    "section": "Art. 1"
+   },
+   {
+    "text": "Provisions of this Decree by Law shall not apply to the following: a. Government Data b. Governmental entities which control or process Personal Data.",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 2 (Scope), exclusions",
+    "section": "Art. 2(2)"
+   },
+   {
+    "text": "It is prohibited to process Personal Data without the consent of its owner. The following cases shall be excluded from such prohibition: 1. If the processing is necessary to protect public interest.",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 4 (Processing without consent)",
+    "section": "Art. 4"
+   },
+   {
+    "text": "Processing shall be carried out in a fair, transparent and lawful manner. 2. Personal Data shall be collected for a specific and clear purpose. It shall not be processed at any later time in a manner incompatible with such purpose.",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 5 (Processing controls)",
+    "section": "Art. 5(1)-(2)"
+   },
+   {
+    "text": "The Consent shall be prepared in a clear, simple, unambiguous and easily accessible manner, whether in writing or electronically. c. The Consent shall include the Data Subject's right to withdraw it easily.",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 6 (Consent)",
+    "section": "Art. 6(1)(b)-(c)"
+   },
+   {
+    "text": "Maintain a special record for Personal Data, provided that such record shall include the data of both the Controller and the Data Protection Officer, a description of the categories of Personal Data",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 7 (Controller obligations), record",
+    "section": "Art. 7(4)"
+   },
+   {
+    "text": "the Controller shall, at the time it becomes aware of the existence of any breach or violation of Personal Data of the Data Subject that would prejudice the privacy, confidentiality and security of data, notify the Bureau of such breach",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 9 (Breach reporting)",
+    "section": "Art. 9(1)"
+   },
+   {
+    "text": "The Data Subject shall have the right to request the correction of his/her inaccurate Personal data, or request to complete the data held by the Controller without undue delay",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 15 (Correction)",
+    "section": "Art. 15(1)"
+   },
+   {
+    "text": "the right to request erasure of his/ her Personal Data held by the Controller in any of the following cases: a. His/her Personal Data is no longer necessary for the purposes for which it is collected or processed.",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 15 (Erasure)",
+    "section": "Art. 15(2)"
+   },
+   {
+    "text": "The Data Subject shall have the right to object to any decisions resulting from automated processing, including profiling, particularly those decisions which have legal impact on or adversely affect the Data Subject.",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 18 (Automated processing), objection",
+    "section": "Art. 18(1)"
+   },
+   {
+    "text": "The Controller shall include the human element in reviewing automated processing decisions at the request of the Data Subject.",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 18 (Automated processing), human review",
+    "section": "Art. 18(4)"
+   },
+   {
+    "text": "the Controller shall, before carrying out the processing, evaluate the impact of the proposed processing operations on the protection of Personal Data, when using any of the modern technologies that would pose a high risk",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 21 (Impact assessment)",
+    "section": "Art. 21(1)"
+   },
+   {
+    "text": "Personal Data may be transferred to outside of the State in the following cases approved by the Bureau: 1. The State or Province to which the Personal Data is transferred shall have legislations addressing Personal Data Protection.",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 22 (Cross-border transfer)",
+    "section": "Art. 22"
+   },
+   {
+    "text": "The Data Subject shall have the right to submit complaints to the Bureau if he/she believes that there is a violation of this Decree by Law",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 24 (Complaints)",
+    "section": "Art. 24(1)"
+   },
+   {
+    "text": "The Council of Ministers, based upon a suggestion from the General Director of the Bureau, shall issue a decision to limit the actions which constitute a violation of this Decree by Law and its Executive Regulations, including administrative penalties",
+    "where": "Federal Decree-Law No. (45) of 2021 on the Protection of Personal Data (PDPL), official English text, Article 26 (Administrative penalties)",
+    "section": "Art. 26"
+   }
+  ],
+  "version": "Federal Decree-Law No. (45) of 2021, in force 2 January 2022"
+ },
+ {
+  "id": "dff-agentic-accelerator",
+  "title": "DFF launches the Agentic AI for Government Services Accelerator",
+  "url": "https://www.dubaifuture.ae/latest-news/dubai-future-foundation-launches-agentic-ai-for-government-services-accelerator/",
+  "issuer": "Dubai Future Foundation",
+  "jurisdiction": "Dubai",
+  "instrument_type": "press-release",
+  "binding": false,
+  "date": null,
+  "topics": [
+   "sandbox",
+   "agentic-services"
+  ],
+  "source_sha256": "87d7d5b63c886a3ff0f11de37a24fdb4dd181cdbb8c742b49bc08b5bb4199bd1",
+  "excerpts": [
+   {
+    "text": "The program will support Dubai Government entities in rapidly prototyping and deploying government services powered by agentic AI",
+    "where": "Dubai Future Foundation news release, purpose"
+   },
+   {
+    "text": "Participating entities will work with technology companies certified under the Dubai AI Seal, an initiative launched by DCAI to accelerate the growth of Dubai’s AI sector by recognising trusted AI companies.",
+    "where": "Dubai Future Foundation news release, Dubai AI Seal"
+   },
+   {
+    "text": "Organised by Dubai Centre for Artificial Intelligence (DCAI), an initiative overseen by DFF, in collaboration with Digital Dubai and the Dubai Electronic Security Center (DESC)",
+    "where": "Dubai Future Foundation news release, organisers"
+   },
+   {
+    "text": "In its first phase, the Accelerator will bring together 33 Dubai Government entities and assess more than 300 public-facing use cases",
+    "where": "Dubai Future Foundation news release, first phase"
+   },
+   {
+    "text": "Cybersecurity cannot be an afterthought in the adoption of AI. It must be embedded at every stage, from planning and design to operation and monitoring.",
+    "where": "Dubai Future Foundation news release, DESC on security"
+   }
+  ]
+ },
+ {
+  "id": "dff-ai-sandbox",
+  "title": "Dubai Future Foundation launches AI Sandbox",
+  "url": "https://techafricanews.com/2026/10/28/dubai-future-foundation-launches-ai-sandbox-to-help-companies-navigate-regulation/",
+  "issuer": "Dubai Future Foundation (reported by Tech Africa News)",
+  "jurisdiction": "Dubai",
+  "instrument_type": "press-release",
+  "binding": false,
+  "date": "2026-10-28",
+  "topics": [
+   "sandbox",
+   "regulation"
+  ],
+  "source_sha256": "98bdf7a1000971942d16b1975332182208d9106c90448300823c0b1eca4ae8a6",
+  "excerpts": [
+   {
+    "text": "has launched the AI Sandbox to help local and international technology companies overcome regulatory and policy barriers",
+    "where": "TechAfrica News, 28 October 2026, reporting Dubai Future Foundation, launch"
+   },
+   {
+    "text": "The AI Sandbox will allow innovators and regulators to work together to address these challenges.",
+    "where": "TechAfrica News, 28 October 2026, reporting Dubai Future Foundation, innovators and regulators"
+   },
+   {
+    "text": "The AI Sandbox also builds on Sandbox Dubai’s wider approach to regulatory modernisation, which brings innovators and regulators together to test emerging technologies and business models.",
+    "where": "TechAfrica News, 28 October 2026, reporting Dubai Future Foundation, Sandbox Dubai approach"
+   },
+   {
+    "text": "Through practical testing, regulators will be able to assess emerging applications, identify potential risks and gather evidence to inform future policies.",
+    "where": "TechAfrica News, 28 October 2026, reporting Dubai Future Foundation, practical testing"
+   },
+   {
+    "text": "Eligible solutions must be at minimum viable product (MVP) stage or beyond",
+    "where": "TechAfrica News, 28 October 2026, reporting Dubai Future Foundation, eligibility"
+   }
+  ]
+ },
+ {
+  "id": "sg-agentic-summary",
+  "title": "Singapore launches Model AI Governance Framework for Agentic AI (law firm summary)",
+  "url": "https://www.bakermckenzie.com/en/insight/publications/2026/01/singapore-governance-framework-for-agentic-ai-launched",
+  "issuer": "Baker McKenzie (summarising IMDA)",
+  "jurisdiction": "Singapore",
+  "instrument_type": "guidance",
+  "binding": false,
+  "date": "2026-01",
+  "topics": [
+   "accountability",
+   "human-oversight",
+   "agentic"
+  ],
+  "source_sha256": "7b74bf419febbaafcb9ade68dfd557bdf5244b00478e119dd1d03a8566414051",
+  "excerpts": [
+   {
+    "text": "On 22 January 2026, Singapore’s Infocomm Media Development Authority (IMDA) launched the Model AI Governance Framework for Agentic AI (MGF) at the World Economic Forum 2026.",
+    "where": "Baker McKenzie, Singapore: Governance Framework for Agentic AI Launched, 29 January 2026, launch"
+   },
+   {
+    "text": "four core dimensions: (1) assessing and bounding the risks upfront, (2) making humans meaningfully accountable, (3) implementing technical controls and processes, and (4) enabling end-user responsibility.",
+    "where": "Baker McKenzie, Singapore: Governance Framework for Agentic AI Launched, 29 January 2026, four dimensions"
+   },
+   {
+    "text": "2. Make humans meaningfully accountable A key innovation of the framework focuses on meaningful human accountability.",
+    "where": "Baker McKenzie, Singapore: Governance Framework for Agentic AI Launched, 29 January 2026, dimension 2"
+   },
+   {
+    "text": "The framework also requires human oversight mechanisms that can effectively override, intercept or review agentic AI actions. This is especially pivotal for actions that may have real-world material impact.",
+    "where": "Baker McKenzie, Singapore: Governance Framework for Agentic AI Launched, 29 January 2026, human oversight"
+   },
+   {
+    "text": "The framework suggests bounding risks by design by limiting what agents can do through controlling their tool access, permissions, operational environments and the scope of actions they may take.",
+    "where": "Baker McKenzie, Singapore: Governance Framework for Agentic AI Launched, 29 January 2026, bounding risks"
+   },
+   {
+    "text": "Enforce least-privilege access to tools and data to limit the agent’s impact on the external environment.",
+    "where": "Baker McKenzie, Singapore: Governance Framework for Agentic AI Launched, 29 January 2026, least privilege"
+   }
+  ]
+ },
+ {
+  "id": "eu-ai-act-annex3",
+  "title": "EU AI Act, Annex III: high-risk AI systems",
+  "url": "https://artificialintelligenceact.eu/annex/3/",
+  "issuer": "European Union",
+  "jurisdiction": "EU",
+  "instrument_type": "law",
+  "binding": true,
+  "date": "2024",
+  "topics": [
+   "high-risk",
+   "public-services",
+   "human-oversight"
+  ]
+ },
+ {
+  "id": "nist-ai-rmf",
+  "title": "NIST AI Risk Management Framework (AI RMF 1.0)",
+  "url": "https://nvlpubs.nist.gov/nistpubs/ai/NIST.AI.100-1.pdf",
+  "issuer": "NIST",
+  "jurisdiction": "US",
+  "instrument_type": "framework",
+  "binding": false,
+  "date": "2023-01",
+  "topics": [
+   "risk",
+   "measurement",
+   "governance"
+  ]
+ },
+ {
+  "id": "un-global-dialogue",
+  "title": "UN Global Dialogue on AI Governance",
+  "url": "https://news.un.org/en/story/2026/07/1167862",
+  "issuer": "United Nations",
+  "jurisdiction": "international",
+  "instrument_type": "press-release",
+  "binding": false,
+  "date": "2026-07",
+  "topics": [
+   "governance"
+  ],
+  "source_sha256": "d787e3696666b11f5d5235722912ad1d99f7b3189826380923be80b78bd96296",
+  "excerpts": [
+   {
+    "text": "Can artificial intelligence benefit all of humanity – safely, fairly and without causing “catastrophic harm”?",
+    "where": "UN News, 5 July 2026, opening question"
+   },
+   {
+    "text": "Governments, tech companies, academics and civil society will spend two days at the Global Dialogue on AI Governance wrestling with how to regulate a technology that is evolving faster than the rules meant to contain it.",
+    "where": "UN News, 5 July 2026, Dialogue purpose"
+   },
+   {
+    "text": "The Global Dialogue is the first platform in the United Nations for the discussion of AI governance.",
+    "where": "UN News, 5 July 2026, first UN platform"
+   },
+   {
+    "text": "The Independent International Scientific Panel on Artificial Intelligence is made up of 40 experts from every region of the world serving in their personal capacity. The Panel published its first report on July 1.",
+    "where": "UN News, 5 July 2026, Scientific Panel"
+   },
+   {
+    "text": "The world cannot govern what it cannot understand.",
+    "where": "UN News, 5 July 2026, Maria Ressa"
+   }
+  ]
+ },
+ {
+  "id": "itu-y3172-summary",
+  "title": "ITU-T Y.3172 summary (ITU reference repo InputDocs)",
+  "url": "https://github.com/CrashingGuru/ITUAIReadiness/blob/84010da9e9c443afcceeccb86d1700a662223395/simulation/server/knowledge/InputDocs/AI_Use_Cases/ITU-T_Y.3172_summary.txt",
+  "local": "AI_Use_Cases/ITU-T_Y.3172_summary.txt",
+  "issuer": "ITU",
+  "jurisdiction": "international",
+  "instrument_type": "standard",
+  "binding": false,
+  "date": "2019-06",
+  "topics": [
+   "y3172",
+   "ml-pipeline"
+  ],
+  "itu_repo_commit": "84010da9e9c443afcceeccb86d1700a662223395"
+ },
+ {
+  "id": "itu-eu-ai-act-summary",
+  "title": "EU AI Act summary (ITU reference repo InputDocs)",
+  "url": "https://github.com/CrashingGuru/ITUAIReadiness/blob/84010da9e9c443afcceeccb86d1700a662223395/simulation/server/knowledge/InputDocs/AI_Strategies/EU_AI_Act_summary.txt",
+  "local": "AI_Strategies/EU_AI_Act_summary.txt",
+  "issuer": "ITU reference repo",
+  "jurisdiction": "EU",
+  "instrument_type": "guidance",
+  "binding": false,
+  "date": "2026-04-12",
+  "topics": [
+   "high-risk",
+   "human-oversight"
+  ],
+  "itu_repo_commit": "84010da9e9c443afcceeccb86d1700a662223395"
+ },
+ {
+  "id": "itu-sandbox-summary",
+  "title": "ITU AI4G Sandbox summary (ITU reference repo InputDocs)",
+  "url": "https://github.com/CrashingGuru/ITUAIReadiness/blob/84010da9e9c443afcceeccb86d1700a662223395/simulation/server/knowledge/InputDocs/AI_Strategies/ITU_AI4G_Sandbox_summary.txt",
+  "local": "AI_Strategies/ITU_AI4G_Sandbox_summary.txt",
+  "issuer": "ITU",
+  "jurisdiction": "international",
+  "instrument_type": "guidance",
+  "binding": false,
+  "date": "2026-04-12",
+  "topics": [
+   "sandbox"
+  ],
+  "itu_repo_commit": "84010da9e9c443afcceeccb86d1700a662223395"
+ },
+ {
+  "id": "itu-y3172-standard",
+  "title": "Recommendation ITU-T Y.3172 (06/2019): Architectural framework for machine learning in future networks including IMT-2020",
+  "url": "https://github.com/CrashingGuru/ITUAIReadiness/blob/84010da9e9c443afcceeccb86d1700a662223395/simulation/server/knowledge/InputDocs/AI_Use_Cases/T-REC-Y.3172-201906-I%21%21PDF-E.pdf",
+  "local": "AI_Use_Cases/T-REC-Y.3172-201906-I!!PDF-E.pdf",
+  "itu_repo_commit": "84010da9e9c443afcceeccb86d1700a662223395",
+  "issuer": "ITU-T",
+  "jurisdiction": "international",
+  "instrument_type": "standard",
+  "binding": false,
+  "date": "2019-06",
+  "topics": [
+   "y3172",
+   "ml-pipeline"
+  ]
+ },
+ {
+  "id": "itu-ai-ready-2025",
+  "title": "ITU AI Readiness Framework 2025 (ITU reference repo InputDocs)",
+  "url": "https://github.com/CrashingGuru/ITUAIReadiness/blob/84010da9e9c443afcceeccb86d1700a662223395/simulation/server/knowledge/InputDocs/AI_Strategies/AI_Ready_Framework_2025.pdf",
+  "local": "AI_Strategies/AI_Ready_Framework_2025.pdf",
+  "itu_repo_commit": "84010da9e9c443afcceeccb86d1700a662223395",
+  "issuer": "ITU",
+  "jurisdiction": "international",
+  "instrument_type": "framework",
+  "binding": false,
+  "date": "2025",
+  "topics": [
+   "readiness-framework",
+   "dimensions"
+  ]
+ },
+ {
+  "id": "desc-isr-excerpts",
+  "title": "Information Security Regulation, Version 3.1 (Dubai Electronic Security Center, 2024): short excerpts only",
+  "url": "https://www.desc.gov.ae/regulations/standards-policies/",
+  "issuer": "Dubai Electronic Security Center (DESC)",
+  "jurisdiction": "Dubai",
+  "instrument_type": "regulation",
+  "binding": true,
+  "date": "2024-09",
+  "topics": [
+   "hosting",
+   "cloud-security",
+   "information-security",
+   "dubai-government"
+  ],
+  "source_sha256": "48f6d876c4e5a4e1ba91f56ada976a244465f47bb60e86fea054a9c0e5afa632",
+  "excerpts": [
+   {
+    "text": "Ensures adequate cloud security controls are implemented by cloud service provider (CSP)",
+    "where": "DESC ISR v3.1, control 13.2.3.1"
+   },
+   {
+    "text": "To set controls for mitigating risks associated with cloud computing",
+    "where": "DESC ISR v3.1, Domain 13 objective"
+   },
+   {
+    "text": "Conducts periodic reviews or audits to verify cloud service provider’s (CSP’s) compliance",
+    "where": "DESC ISR v3.1, control 13.2.6.1"
+   },
+   {
+    "text": "Defines and implements a process for users registration",
+    "where": "DESC ISR v3.1, control 5.2.1.1"
+   },
+   {
+    "text": "Information Security Regulation belongs to Dubai Government",
+    "where": "DESC ISR v3.1, section 5, ownership"
+   },
+   {
+    "text": "pursuant to the Dubai Law No. 11 of 2014",
+    "where": "DESC ISR v3.1, acknowledgement"
+   }
+  ]
+ },
+ {
+  "id": "dubai-ai-matrix-excerpts",
+  "title": "AI Integration Matrix Framework for Government Organizations (Digital Dubai, 2026): short excerpts only",
+  "url": "https://mediaoffice.ae/en/news/2026/april/28-04/digital-dubai-launches-ai-integration-matrix-framework-to-accelerate-ai-adoption-across-government",
+  "issuer": "Digital Dubai",
+  "jurisdiction": "Dubai",
+  "instrument_type": "framework",
+  "binding": false,
+  "date": "2026-04",
+  "topics": [
+   "ai-integration-matrix",
+   "quadrants",
+   "governance"
+  ],
+  "matrix_quadrants": [
+   "Internal Agents",
+   "Internal RAG",
+   "External Agents",
+   "External RAG"
+  ],
+  "source_sha256": "ccbb5652279059231bc5ee6eec2e54e571bf0f0fa5a59f84adf04f4909510047",
+  "excerpts": [
+   {
+    "text": "Audit Trail System: Complete logging of all agent actions for compliance",
+    "where": "Digital Dubai AI Integration Matrix Framework, Chapter 12, technical architecture"
+   },
+   {
+    "text": "AI Steering Committee AI Program Office Quadrant Working Groups Ethics and Compliance Board",
+    "where": "Digital Dubai AI Integration Matrix Framework, Chapter 10, governance structure"
+   },
+   {
+    "text": "Level 1: Initial Awareness",
+    "where": "Digital Dubai AI Integration Matrix Framework, Chapter 11, maturity model"
+   }
+  ]
+ },
+ {
+  "id": "uae-ai-strategy-2031",
+  "title": "UAE National Strategy for Artificial Intelligence 2031: short excerpts only",
+  "url": "https://ai.gov.ae/wp-content/uploads/2021/07/UAE-National-Strategy-for-Artificial-Intelligence-2031.pdf",
+  "issuer": "UAE Office of the Minister of State for Artificial Intelligence",
+  "jurisdiction": "UAE-federal",
+  "instrument_type": "strategy",
+  "binding": false,
+  "date": null,
+  "topics": [
+   "ai-strategy",
+   "strategic-objectives",
+   "governance",
+   "regulation",
+   "ethics",
+   "government-services",
+   "talent"
+  ],
+  "source_sha256": "79e05c502d1fc1247165fc744205984675d6422a490a70201dc4c05bf9aed693",
+  "excerpts": [
+   {
+    "text": "The UAE sets a clear vision through its AI Strategy, to become the world leader in AI by 2031.",
+    "where": "UAE National Strategy for Artificial Intelligence 2031, Executive Summary"
+   },
+   {
+    "text": "Build a reputation as an AI destination. Increase the UAE competitive assets in priority sectors through deployment of AI. Develop a fertile ecosystem for AI. Adopt AI across customer services to improve lives and government.",
+    "where": "UAE National Strategy for Artificial Intelligence 2031, Executive Summary, eight strategic objectives (1 to 4)"
+   },
+   {
+    "text": "Attract and train talent for future jobs enabled by AI. Bring world-leading research capability to work with target industries.",
+    "where": "UAE National Strategy for Artificial Intelligence 2031, Executive Summary, eight strategic objectives (5 and 6)"
+   },
+   {
+    "text": "Provide the data and supporting infrastructure essential to become a test bed for AI. Ensure strong governance and effective regulation.",
+    "where": "UAE National Strategy for Artificial Intelligence 2031, Executive Summary, eight strategic objectives (7 and 8)"
+   },
+   {
+    "text": "The UAE AI and Blockchain Council will overlook the implementation of the AI Strategy throughout all emirates",
+    "where": "UAE National Strategy for Artificial Intelligence 2031, Executive Summary, implementation"
+   },
+   {
+    "text": "The UAE has the ambition to take a leading role in the development of responsible AI and advancing the regulation of AI.",
+    "where": "UAE National Strategy for Artificial Intelligence 2031, Objective 8: Ensure strong governance and effective regulation"
+   },
+   {
+    "text": "The UAE Artificial Intelligence and Blockchain Council will add to its remit to review national approaches to issues such as data management, ethics and cybersecurity.",
+    "where": "UAE National Strategy for Artificial Intelligence 2031, Objective 8, National Governance Review"
+   },
+   {
+    "text": "This includes a UAI mark recognizing high quality, ethical AI companies. It would reward safe, efficient, verified AI technology with a ‘UAI Seal of Approval’.",
+    "where": "UAE National Strategy for Artificial Intelligence 2031, Objective 1: Build a reputation as an AI destination"
+   },
+   {
+    "text": "Government can play a strong role in making sure AI delivers the greatest public value, by making citizens safer, healthier and happier.",
+    "where": "UAE National Strategy for Artificial Intelligence 2031, Objective 4: Adopt AI across customer services to improve lives and government"
+   },
+   {
+    "text": "With around 70% of Emiratis employed in the public sector, retraining of government workers is particularly critical.",
+    "where": "UAE National Strategy for Artificial Intelligence 2031, Objective 5: Attract and train talent for future jobs enabled by AI"
+   }
+  ]
+ },
+ {
+  "id": "dubai-ai-ethics-2019",
+  "title": "Smart Dubai AI Ethics Principles & Guidelines: short excerpts only",
+  "url": "https://smartdubai.ae/initiatives/ai-principles-ethics",
+  "issuer": "Smart Dubai (now Digital Dubai)",
+  "jurisdiction": "Dubai",
+  "instrument_type": "guidance",
+  "binding": false,
+  "date": null,
+  "version": "v1.6 per the document changelog (last entry 30/12/2018); the PDF states no publication date",
+  "topics": [
+   "ethics",
+   "fairness",
+   "transparency",
+   "accountability",
+   "explainability",
+   "security",
+   "privacy",
+   "human-oversight",
+   "self-assessment"
+  ],
+  "source_sha256": "ea7a80d45a3d698d9f0eef98fc99b7aa735a0b081154758b1ff567c7c83c6a3e",
+  "excerpts": [
+   {
+    "text": "AI systems should be fair, transparent, accountable and understandable",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Ethics principle (overview)",
+    "section": "Ethics"
+   },
+   {
+    "text": "AI systems should be safe and secure, and should serve and protect humanity",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Security principle (overview)",
+    "section": "Security"
+   },
+   {
+    "text": "AI should be beneficial to humans and aligned with human values, in both the long and short term",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Humanity principle (overview)",
+    "section": "Humanity"
+   },
+   {
+    "text": "AI should benefit all people in society, be governed globally, and respect dignity and people rights",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Inclusiveness principle (overview)",
+    "section": "Inclusiveness"
+   },
+   {
+    "text": "Data ingested should, where possible, be representative of the affected population",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Ethics, fairness",
+    "section": "Ethics"
+   },
+   {
+    "text": "Accountability for the outcomes of an AI system lies not with the system itself but is apportioned between those who design, develop and deploy it",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Ethics, accountability",
+    "section": "Ethics"
+   },
+   {
+    "text": "AI systems should have built-in appeals procedures whereby users can challenge significant decisions",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Ethics, accountability (appeals)",
+    "section": "Ethics"
+   },
+   {
+    "text": "People should be told when significant decisions about them are being made by AI",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Ethics, transparency",
+    "section": "Ethics"
+   },
+   {
+    "text": "Decisions and methodologies of AI systems which have a significant effect on individuals should be explainable to them, to the extent permitted by available technology",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Ethics, explainability",
+    "section": "Ethics"
+   },
+   {
+    "text": "AI systems should be verifiably secure and controllable throughout their operational lifetime, to the extent permitted by technology",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Security, safe and controllable",
+    "section": "Security"
+   },
+   {
+    "text": "Such systems should be able to be overridden or their decisions reversed by designated people",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Security, human oversight",
+    "section": "Security"
+   },
+   {
+    "text": "AI systems should respect privacy and use the minimum intrusion necessary",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Inclusiveness, privacy",
+    "section": "Inclusiveness"
+   },
+   {
+    "text": "Humanity should retain the power to govern itself and make the final decision, with AI in an assisting role",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Inclusiveness, human control",
+    "section": "Inclusiveness"
+   },
+   {
+    "text": "It consists of principles and guidelines, and a self-assessment tool for developers to assess their platforms.",
+    "where": "Smart Dubai, AI Ethics Principles & Guidelines, Introduction, self-assessment tool",
+    "section": "Introduction"
+   }
+  ]
+ }
+]

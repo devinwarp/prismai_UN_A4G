@@ -1,0 +1,112 @@
+{
+ "uae-cabinet-agentic-50": {
+  "sha256": "105a47930ccea981a6d993a267b3ac76476d632f3bade39889d2b4f0f224a4da",
+  "bytes": 0,
+  "chars": 983
+ },
+ "uae-cabinet-2026-05-18": {
+  "sha256": "bd76b6b644709fedaed9b4efe2bde6373383c5e156517fa5410266d6bc3e428a",
+  "bytes": 0,
+  "chars": 910
+ },
+ "ani-agentic-workshop": {
+  "sha256": "1b25e24fc693705fc9cd78f4280a3ca72c1a7a25814e613d87a635c084fbddff",
+  "bytes": 110127,
+  "chars": 1648
+ },
+ "dubai-ai-matrix-launch": {
+  "sha256": "00b62fc54f956be84fef817eae7a8bab5deb1fcd331aff6282764127b94beca5",
+  "bytes": 0,
+  "chars": 910
+ },
+ "uae-ai-charter": {
+  "sha256": "2f1de5776449748a91964cd5b061f88b36265ba0be8a5d7a91120e27a6908c1c",
+  "bytes": 0,
+  "chars": 1627
+ },
+ "uae-cyber-ai-policy": {
+  "sha256": "17f7bcecdbe95fe29c857e5262b3d4edab67ff09d1fb44b6867f97603b3535d8",
+  "bytes": 0,
+  "chars": 1007
+ },
+ "uae-data-protection-laws": {
+  "sha256": "d5d5f9e93bd6c0dc2afe79776f3101bcd599e4400a67309bc0b378b2812bcf3a",
+  "bytes": 0,
+  "chars": 3296
+ },
+ "dff-agentic-accelerator": {
+  "sha256": "87d7d5b63c886a3ff0f11de37a24fdb4dd181cdbb8c742b49bc08b5bb4199bd1",
+  "bytes": 0,
+  "chars": 797
+ },
+ "dff-ai-sandbox": {
+  "sha256": "98bdf7a1000971942d16b1975332182208d9106c90448300823c0b1eca4ae8a6",
+  "bytes": 0,
+  "chars": 634
+ },
+ "sg-agentic-summary": {
+  "sha256": "7b74bf419febbaafcb9ade68dfd557bdf5244b00478e119dd1d03a8566414051",
+  "bytes": 0,
+  "chars": 1000
+ },
+ "eu-ai-act-annex3": {
+  "sha256": "3d3bcc28bba6481b0280b4bbb2e4b0f0a5d6c5261bc9f84deb0d4f95a4a06451",
+  "bytes": 142119,
+  "chars": 13642
+ },
+ "nist-ai-rmf": {
+  "sha256": "7576edb531d9848825814ee88e28b1795d3a84b435b4b797d3670eafdc4a89f1",
+  "bytes": 1946127,
+  "chars": 106571
+ },
+ "un-global-dialogue": {
+  "sha256": "d787e3696666b11f5d5235722912ad1d99f7b3189826380923be80b78bd96296",
+  "bytes": 0,
+  "chars": 692
+ },
+ "itu-y3172-summary": {
+  "sha256": "624bc25f3eeacc0925a5c9a216e642083ad0452b89545130052ef0ec90041a30",
+  "bytes": 5153,
+  "chars": 5103
+ },
+ "itu-eu-ai-act-summary": {
+  "sha256": "68b40c89b28903511c60e3f951a29cb848dd285882d27b2aa2496bba7360f209",
+  "bytes": 2571,
+  "chars": 2569
+ },
+ "itu-sandbox-summary": {
+  "sha256": "0720c7aca42f3de37df13a3df09251ebd6c87ca0c7c9d7a3b4d8bb15403684b5",
+  "bytes": 1966,
+  "chars": 1964
+ },
+ "itu-y3172-standard": {
+  "sha256": "e42f9a3be3f951d3e19b9007f876f0b389c81b4693f0d8576e18185a1acfe67b",
+  "bytes": 1145173,
+  "chars": 72781
+ },
+ "itu-ai-ready-2025": {
+  "sha256": "71191768d46b60778c15f8d62b162aff73a319785cfc31ebf76bb944b0c68273",
+  "bytes": 1109667,
+  "chars": 125080
+ },
+ "desc-isr-excerpts": {
+  "sha256": "48f6d876c4e5a4e1ba91f56ada976a244465f47bb60e86fea054a9c0e5afa632",
+  "bytes": 0,
+  "chars": 399
+ },
+ "dubai-ai-matrix-excerpts": {
+  "sha256": "ccbb5652279059231bc5ee6eec2e54e571bf0f0fa5a59f84adf04f4909510047",
+  "bytes": 0,
+  "chars": 189
+ },
+ "uae-ai-strategy-2031": {
+  "sha256": "79e05c502d1fc1247165fc744205984675d6422a490a70201dc4c05bf9aed693",
+  "bytes": 0,
+  "chars": 1390
+ },
+ "dubai-ai-ethics-2019": {
+  "sha256": "ea7a80d45a3d698d9f0eef98fc99b7aa735a0b081154758b1ff567c7c83c6a3e",
+  "bytes": 0,
+  "chars": 1431
+ }
+}

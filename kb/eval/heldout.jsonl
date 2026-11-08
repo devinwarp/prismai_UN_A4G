@@ -1,0 +1,14 @@
+{"id":"H01","area":"target","question":"What data-sharing principle did the Cabinet adopt for government services?","anchor":"collecting data once and using it securely across entities","gold":["uae-cabinet-agentic-50#4"]}
+{"id":"H02","area":"hosting","question":"Which control covers registering and removing users in the Dubai regulation?","anchor":"Defines and implements a process for users registration","gold":["desc-isr-excerpts#3"]}
+{"id":"H03","area":"matrix","question":"What is the first maturity level in the Dubai framework?","anchor":"Level 1: Initial Awareness","gold":["dubai-ai-matrix-excerpts#2"]}
+{"id":"H04","area":"charter","question":"What does the UAE Charter say about safety standards for AI?","anchor":"comply with the highest safety standards","gold":["uae-ai-charter#0"]}
+{"id":"H05","area":"target","question":"Which council did the Cabinet reconstitute on 18 May?","anchor":"reconstitution of the UAE Council for Digital Wellbeing","gold":["uae-cabinet-2026-05-18#5"]}
+{"id":"H06","area":"security","question":"What areas does the UAE national cyber policy for AI cover?","anchor":"algorithm protection, operational safety, threat monitoring","gold":["uae-cyber-ai-policy#0"]}
+{"id":"H07","area":"y3172","question":"What does Y.3172 recommend for data from several sources?","anchor":"support the correlation of data coming from multiple sources","gold":["itu-y3172-standard#15"]}
+{"id":"H08","area":"high_risk","question":"What does NIST GOVERN 1.1 say about legal and regulatory requirements?","anchor":"Legal and regulatory requirements involving AI are understood, managed, and documented","gold":["nist-ai-rmf#38"]}
+{"id":"H09","area":"human_final_approval","question":"What is the fourth dimension of Singapore's agentic framework?","anchor":"enabling end-user responsibility","gold":["sg-agentic-summary#1"]}
+{"id":"H10","area":"high_risk","question":"Which EU high-risk area covers remote biometric identification?","anchor":"biometric identification means the automated recognition","gold":["eu-ai-act-annex3#0"]}
+{"id":"H11","area":"matrix","question":"Who organises the Dubai agentic AI accelerator?","anchor":"Organised by Dubai Centre for Artificial Intelligence","gold":["dff-agentic-accelerator#2"]}
+{"id":"H12","area":"hosting","question":"Who owns the Dubai Information Security Regulation?","anchor":"Information Security Regulation belongs to Dubai Government","gold":["desc-isr-excerpts#4"]}
+{"id":"H13","area":"target","question":"Who will oversee implementation of the agentic project?","anchor":"will oversee the implementation","gold":["uae-cabinet-agentic-50#3"]}
+{"id":"H14","area":"sandbox","question":"What wider approach does the Dubai AI Sandbox build on?","anchor":"wider approach to regulatory modernisation","gold":["dff-ai-sandbox#2"]}
