@@ -54,9 +54,9 @@ hitl?: { config: HitlConfig; entity: string; facts: { client_facing: boolean; af
 
 ## Things to know
 
-- **S2 changed** (C2-3): its expected path is now GO_SUPERVISED → ASSISTANT_ONLY → NO_GO → NO_GO → ASSISTANT_ONLY → GO_SUPERVISED, with an added `fee_accuracy` gate. The report's S2 description and `docs/demo-script.md` (S2 line) still describe the old path.
+- **S2 changed** (C2-3): its expected path is now GO_SUPERVISED → ASSISTANT_ONLY → NO_GO → NO_GO → ASSISTANT_ONLY → GO_SUPERVISED, with an added `fee_accuracy` gate. The report's S2 description and `docs/demo-script.md` (S2 line) now describe the new path.
 - **Policy engine**: `decide()` is unchanged. The only addition to `policy.ts` is an optional `fee_accuracy` gate (owner: compliance), which joins a run only when a message about it is accepted.
-- **Retrieval** (full note and results: `docs/RETRIEVAL_NOTE.md`): BM25 is the default. `GET /api/admin/un/kb` returns `vector: "on" | "off"` and reports "on" only when `KB_VECTOR=on` is set in the environment, `kb/vectors.json` exists and the query embedder loads within `KB_VECTOR_TIMEOUT_MS` (8 s); otherwise it answers from BM25. To test: set `KB_VECTOR=on` on the deployed project, query the endpoint, and if the cold start is slow, unset it (or set `off`) and redeploy or restart. `kb/vectors.json` is not built yet (needs `ollama pull nomic-embed-text`, then `python kb/build.py --embed`). Agent retrieval inside runs stays BM25 so runs reproduce.
+- **Retrieval** (full note and results: `docs/RETRIEVAL_NOTE.md`): BM25 is the default. `GET /api/admin/un/kb` returns `vector: "on" | "off"` and reports "on" only when `KB_VECTOR=on` is set in the environment, `kb/vectors.json` exists and the query embedder loads within `KB_VECTOR_TIMEOUT_MS` (8 s); otherwise it answers from BM25. To test: set `KB_VECTOR=on` on the deployed project, query the endpoint, and if the cold start is slow, unset it (or set `off`) and redeploy or restart. `kb/vectors.json` is built and committed (331 chunks, 768 dimensions; some excerpt-chunk vectors are approximate, see `docs/RETRIEVAL_NOTE.md`); to rebuild it, run `ollama pull nomic-embed-text`, then `python kb/build.py --embed`. Agent retrieval inside runs stays BM25 so runs reproduce.
 - **No `.env` files or keys** are in this branch.
 
 ## Not done on `t1-fixes` (needs a download or a decision)
