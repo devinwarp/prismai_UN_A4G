@@ -18,7 +18,7 @@ Technical report: [`docs/report/prism-technical-report.pdf`](docs/report/prism-t
 | Area | Where |
 |---|---|
 | Policy config, use-case CSV import, federal dashboard (deployed % beside compliant %) | `src/lib/un/model.ts`, `src/app/admin/federal/` |
-| Knowledge base (22 sources, 331 chunks, SHA-256 provenance) built with ITU's code | `kb/` |
+| Knowledge base (26 sources, 364 chunks, SHA-256 provenance) built with ITU's code | `kb/` |
 | Eight role agents, typed coordination protocol | `src/lib/un/agents.ts`, `protocol.ts`, `round.ts` |
 | Deterministic policy engine: five hard gates never averaged, client-facing cap at `GO_SUPERVISED` | `src/lib/un/policy.ts` |
 | Staged scenarios S1 (gate engine), S2 (voice contact centre), S3 (federal cascade) and S4 (consumer complaint escalating to a privacy breach) | `src/lib/un/scenario.ts`, `scenarios.ts` |
@@ -127,7 +127,7 @@ Not yet run against a real node; the adapter is tested with a mocked `fetch`.
 - Sijil is simulated unless `SIJIL_BASE_URL` is set; the live adapter is untested against a real node, and accuracy, hallucination and goal alignment stay simulated either way.
 - Agents were evaluated in their deterministic mode; model-driven mode is built, not yet scored.
 - Retrieval is lexical, so citation relevance is uneven; some steps cite nothing by design.
-- Some sources are secondary (PDPL via a UAE portal summary, the Singapore framework via a law-firm summary); the DESC regulation text is not ingested.
+- Some sources are secondary (the ITU summaries; the Singapore law-firm summary, now superseded in the gap register by the IMDA framework excerpts); the DESC regulation text is not ingested. Primary global texts (IMDA, EU AI Act Arts. 14, 26, 86 and Annex III, G7 Hiroshima Code, UN System White Paper) are held as short attributed excerpts.
 - Inclusion (Readiness dimension 11) and multilingual service are not addressed.
 
 ## Licence
