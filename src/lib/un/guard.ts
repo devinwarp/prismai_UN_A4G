@@ -33,7 +33,7 @@ export function engineValues<T extends UnUseCaseState>(u: T): T {
   return { ...u, verdict: verdictOk ? u.verdict : null, compliant: compliantOk ? u.compliant : false };
 }
 
-/** `run.id` is the un_runs row id (uuid), not RunState.run_id. Columns to write when a completed run sets a use case's verdict. */
+/** `run.id` is the un_runs row id (uuid), not RunState.run_id. Columns to write when a completed run sets a use case's verdict (including the lifecycle stage). */
 export function verdictPatch(
   run: { id: string; head_hash: string; done: boolean },
   verdict: Verdict,
@@ -43,7 +43,10 @@ export function verdictPatch(
   if (!run.done) throw new Error("verdict can only be written from a completed scenario run");
   if (!signed?.signer_id) throw new Error("verdict needs a human signature");
   if (clientFacing && verdict === "GO_AUTONOMOUS") throw new Error("client-facing use cases are capped at GO_SUPERVISED");
-  return { verdict, verdict_run_id: run.id, verdict_head_hash: run.head_hash, verdict_signed_by: signed.signer_id, verdict_signed_at: signed.signed_at };
+  // A signed GO verdict (autonomous, or supervised = with a human in the loop) counts as deployed;
+  // any other signed verdict leaves the case in the pilot stage.
+  const stage = verdict === "GO_AUTONOMOUS" || verdict === "GO_SUPERVISED" ? "deployed" : "pilot";
+  return { verdict, stage, verdict_run_id: run.id, verdict_head_hash: run.head_hash, verdict_signed_by: signed.signer_id, verdict_signed_at: signed.signed_at };
 }
 
 /** Columns to write when Sijil files a report. Only a passing one flips compliant. */

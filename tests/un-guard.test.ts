@@ -32,8 +32,10 @@ test("I-1: verdict is written only from a completed run, with run id and head ha
   const run = { id: "uuid", head_hash: "abc", done: true };
   const sig = { signer_id: "u1", signed_at: "2026-11-09T08:00:00Z" };
   assert.deepEqual(verdictPatch(run, "GO_SUPERVISED", true, sig), {
-    verdict: "GO_SUPERVISED", verdict_run_id: "uuid", verdict_head_hash: "abc", verdict_signed_by: "u1", verdict_signed_at: sig.signed_at,
+    verdict: "GO_SUPERVISED", stage: "deployed", verdict_run_id: "uuid", verdict_head_hash: "abc", verdict_signed_by: "u1", verdict_signed_at: sig.signed_at,
   });
+  assert.equal(verdictPatch(run, "ASSISTANT_ONLY", true, sig).stage, "pilot"); // not a GO verdict: not deployed
+  assert.equal(verdictPatch(run, "GO_AUTONOMOUS", false, sig).stage, "deployed");
   assert.throws(() => verdictPatch({ ...run, done: false }, "NO_GO", true, sig), /completed/);
   assert.throws(() => verdictPatch(run, "GO_AUTONOMOUS", true, sig), /client-facing/);
   assert.throws(() => verdictPatch(run, "GO_SUPERVISED", true, { signer_id: "", signed_at: "" }), /signature/);
