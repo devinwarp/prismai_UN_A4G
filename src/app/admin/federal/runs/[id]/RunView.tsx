@@ -13,7 +13,7 @@ import { ROLES } from "@/lib/un/roles";
 import { GateChip, Section, VerdictBadge, STATUS_META, btnGhost, btnPrimary, card, field } from "../../_components/ui";
 
 const isVerdict = (s: string): s is Verdict => (VERDICTS as readonly string[]).includes(s);
-const time = (iso: string) => new Date(iso).toLocaleTimeString();
+const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai" });
 /** Portfolio steps: "deployed 6/20 (30%), compliant 4/20 (20%), target 10, gap 4 ..." */
 function dash(outcome: string) {
   const m = /deployed (\d+)\/(\d+).*?compliant (\d+)\/\d+.*?target (\d+)/.exec(outcome);

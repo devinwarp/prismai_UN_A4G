@@ -58,7 +58,7 @@ export default async function ScenariosPage() {
                   <span>{r.steps} step{r.steps === 1 ? "" : "s"} released</span>
                   <span className={`rounded-full border px-2 py-0.5 font-mono text-[11px] ${r.done ? "border-lit/50 text-lit-deep" : "border-line text-ink-soft"}`}>{r.done ? "✓ complete" : "in progress"}</span>
                 </span>
-                <span className="text-ink-soft tabular-nums">{new Date(r.created_at).toLocaleString()}</span>
+                <span className="text-ink-soft tabular-nums">{new Date(r.created_at).toLocaleString("en-GB", { timeZone: "Asia/Dubai" })}</span>
               </Link>
             </li>
           ))}
