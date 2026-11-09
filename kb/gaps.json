@@ -1,0 +1,242 @@
+{
+  "title": "Policy and standards gaps in governing agentic AI for public services",
+  "scope": "Domain-level gaps (agentic AI in public services), not recommendations to any country. UAE and Dubai instruments are the reference implementation. Every chunk id resolves in kb/chunks.json and every global example names a source id in kb/sources.json; quotes are rendered from the chunks, never retyped.",
+  "categories": {
+    "unclear_responsibilities": "Unclear responsibilities",
+    "standards": "Standards",
+    "technology": "Technology",
+    "legislative": "Legislative",
+    "coordination": "Coordination",
+    "conflicting_objectives": "Conflicting objectives"
+  },
+  "gaps": [
+    {
+      "id": "G1",
+      "category": "unclear_responsibilities",
+      "statement": "When an agent acts across several entities, no instrument says which role answers for its outcome once design, deployment and oversight sit in different hands.",
+      "national": [
+        { "chunk_id": "uae-cabinet-2026-05-18#3", "note": "Roles per ministry and federal entity are defined in a framework, but the text ingested here does not say who is accountable for an individual agent action." },
+        { "chunk_id": "dubai-ai-ethics-2019#5", "note": "Accountability is apportioned between designers, developers and deployers, without naming who decides the split." },
+        { "chunk_id": "dubai-ai-matrix-excerpts#1", "note": "A governance structure of committees and a board exists; per-agent ownership is not shown in the excerpt." }
+      ],
+      "global": [
+        { "source_id": "nist-ai-rmf", "chunk_ids": ["nist-ai-rmf#17"], "support": "primary", "note": "Different AI actors have different responsibilities by lifecycle role; accountability mechanisms and roles must be established." },
+        { "source_id": "nist-ai-rmf", "chunk_ids": ["nist-ai-rmf#66"], "support": "primary", "note": "Human roles and responsibilities in overseeing AI systems need to be clearly defined and differentiated." }
+      ],
+      "not_ingested": [],
+      "prism": {
+        "response": "Every gate has exactly one owning role; advisory roles (frontline, finance) own no gate, so a failed gate always points to one accountable role.",
+        "refs": [
+          { "kind": "rule", "label": "GATES owner and ROLES mandate", "path": "src/lib/un/policy.ts" },
+          { "kind": "rule", "label": "Role definitions", "path": "src/lib/un/roles.ts" }
+        ]
+      },
+      "caveat": "National evidence is the absence of a statement in short excerpts; the full documents may say more."
+    },
+    {
+      "id": "G2",
+      "category": "unclear_responsibilities",
+      "statement": "Frameworks require human oversight of agents but rarely say who the overseeing person is, what authority they hold, or what they sign.",
+      "national": [
+        { "chunk_id": "uae-ai-charter#2", "note": "Human oversight is a charter principle, stated at the level of principle." },
+        { "chunk_id": "dubai-ai-ethics-2019#10", "note": "Systems should be overridable or reversible by designated people; designation is left open." },
+        { "chunk_id": "dubai-ai-ethics-2019#12", "note": "Humanity retains the final decision, with AI in an assisting role." }
+      ],
+      "global": [
+        { "source_id": "nist-ai-rmf", "chunk_ids": ["nist-ai-rmf#46"], "support": "primary", "note": "MAP 3.5: processes for human oversight are defined, assessed and documented." },
+        { "source_id": "sg-agentic-summary", "chunk_ids": ["sg-agentic-summary#2", "sg-agentic-summary#3"], "support": "secondary-summary", "note": "Singapore's agentic framework, as summarised by a law firm: meaningful human accountability and mechanisms to override, intercept or review agent actions." },
+        { "source_id": "itu-eu-ai-act-summary", "chunk_ids": ["itu-eu-ai-act-summary#0"], "support": "secondary-summary", "note": "Summary states high-risk systems require human oversight." }
+      ],
+      "not_ingested": [
+        { "name": "EU AI Act, Article 14 (human oversight)", "note": "Well known, but its text is not in the knowledge base; only the Annex III list and a summary are." }
+      ],
+      "prism": {
+        "response": "Client-facing output cannot be signed off automatically: the human_final_approval gate, per-entity HITL rules, and a recorded human SIGN or WITHHOLD that must exist before a verdict is written.",
+        "refs": [
+          { "kind": "gate", "label": "human_final_approval gate", "path": "src/lib/un/policy.ts" },
+          { "kind": "rule", "label": "HITL rules", "path": "src/lib/un/hitl.ts" },
+          { "kind": "feature", "label": "Human signature (I-4)", "path": "src/lib/un/signature.ts" }
+        ]
+      },
+      "caveat": "Singapore and EU examples rest on secondary summaries, not the primary text."
+    },
+    {
+      "id": "G3",
+      "category": "standards",
+      "statement": "There is no shared, testable standard for when an agent has been shown fit to go live; assurance relies on self-assessment tools and seals.",
+      "national": [
+        { "chunk_id": "dubai-ai-ethics-2019#13", "note": "Principles come with a self-assessment tool for developers." },
+        { "chunk_id": "uae-ai-strategy-2031#7", "note": "A quality mark ('UAI Seal of Approval') is proposed for ethical AI companies." },
+        { "chunk_id": "dff-agentic-accelerator#1", "note": "Participating entities work with companies certified under the Dubai AI Seal." }
+      ],
+      "global": [
+        { "source_id": "nist-ai-rmf", "chunk_ids": ["nist-ai-rmf#54"], "support": "primary", "note": "MANAGE 2.4 assigns responsibility to supersede, disengage or deactivate systems whose outcomes drift from intended use; it sets no numeric acceptance threshold." },
+        { "source_id": "itu-y3172-standard", "chunk_ids": ["itu-y3172-standard#35"], "support": "primary", "note": "Y.3172 defines an ML sandbox for training, testing and evaluating before live deployment; it is about networks, not public-service agents." }
+      ],
+      "not_ingested": [],
+      "prism": {
+        "response": "Deterministic acceptance thresholds (accuracy, hallucination, goal alignment) with hard criteria that are never averaged. The attestation panel is simulated in this build.",
+        "refs": [
+          { "kind": "rule", "label": "Sijil criteria and thresholds", "path": "src/lib/un/sijil.ts" },
+          { "kind": "screen", "label": "Sijil panel", "path": "src/app/admin/federal/use-cases/[id]/SijilPanel.tsx" }
+        ]
+      },
+      "caveat": "Prism's thresholds are defaults chosen for the demo, not drawn from any ingested standard."
+    },
+    {
+      "id": "G4",
+      "category": "standards",
+      "statement": "Risk classification schemes differ in kind: a use-case ecosystem map in one jurisdiction, a list of high-risk areas in another, so an agent cannot be classified once and reused.",
+      "national": [
+        { "chunk_id": "dubai-ai-matrix-launch#2", "note": "Dubai classifies use cases into four strategic quadrants." },
+        { "chunk_id": "dubai-ai-matrix-launch#4", "note": "External quadrants cover agents that deliver services to customers and RAG systems informing the public." }
+      ],
+      "global": [
+        { "source_id": "eu-ai-act-annex3", "chunk_ids": ["eu-ai-act-annex3#0", "eu-ai-act-annex3#3"], "support": "primary", "note": "Annex III classifies by area, including systems used to grant, reduce, revoke or reclaim public benefits and services." },
+        { "source_id": "itu-eu-ai-act-summary", "chunk_ids": ["itu-eu-ai-act-summary#0"], "support": "secondary-summary", "note": "Four risk tiers, from prohibited to minimal." }
+      ],
+      "not_ingested": [],
+      "prism": {
+        "response": "Classifies by three observable facts (client-facing, affects rights, irreversible) that map onto either scheme, and turns them into required gates and HITL rules.",
+        "refs": [
+          { "kind": "rule", "label": "HITL triggers", "path": "src/lib/un/hitl.ts" },
+          { "kind": "rule", "label": "Applicable gates by client-facing", "path": "src/lib/un/policy.ts" }
+        ]
+      },
+      "caveat": "Prism's three facts are a simplification; they do not reproduce Annex III."
+    },
+    {
+      "id": "G5",
+      "category": "technology",
+      "statement": "Agents need bounded tool access and approved hosting, yet national policy states these at requirement level while agentic frameworks are still being written.",
+      "national": [
+        { "chunk_id": "uae-cyber-ai-policy#3", "note": "Operational safety: security measures tailored to the AI application, with human oversight in critical decisions." },
+        { "chunk_id": "dff-agentic-accelerator#4", "note": "DESC: cybersecurity must be embedded at every stage, not an afterthought." },
+        { "chunk_id": "desc-isr-excerpts#0", "note": "Cloud security controls must be implemented by the cloud service provider." }
+      ],
+      "global": [
+        { "source_id": "sg-agentic-summary", "chunk_ids": ["sg-agentic-summary#4", "sg-agentic-summary#5"], "support": "secondary-summary", "note": "Bound risk by design: control tool access, permissions and environments; enforce least privilege." }
+      ],
+      "not_ingested": [],
+      "prism": {
+        "response": "approved_infrastructure gate owned by the security role; agents see only the events released to them.",
+        "refs": [
+          { "kind": "gate", "label": "approved_infrastructure gate", "path": "src/lib/un/policy.ts" },
+          { "kind": "feature", "label": "Per-agent knowledge partition", "path": "src/lib/un/knowledge.ts" }
+        ]
+      },
+      "caveat": "The only global example is a law-firm summary of Singapore's framework."
+    },
+    {
+      "id": "G6",
+      "category": "technology",
+      "statement": "Agent actions must be logged and monitored, but no ingested instrument specifies a tamper-evident format for the audit record.",
+      "national": [
+        { "chunk_id": "dubai-ai-matrix-excerpts#0", "note": "Technical architecture lists an audit trail system with complete logging of agent actions." },
+        { "chunk_id": "uae-cyber-ai-policy#2", "note": "AI monitoring and response requirements for real-time threat detection." }
+      ],
+      "global": [
+        { "source_id": "nist-ai-rmf", "chunk_ids": ["nist-ai-rmf#54"], "support": "primary", "note": "Incident response, recovery and change management are part of MANAGE; no record format is specified." }
+      ],
+      "not_ingested": [],
+      "prism": {
+        "response": "Append-only, hash-chained trace of every scenario step, and an audit_log gate.",
+        "refs": [
+          { "kind": "feature", "label": "Hash-chained trace", "path": "src/lib/un/trace.ts" },
+          { "kind": "gate", "label": "audit_log gate", "path": "src/lib/un/policy.ts" }
+        ]
+      },
+      "caveat": "Weak global grounding: the NIST chunk supports that incident handling exists, not that logging is unspecified."
+    },
+    {
+      "id": "G7",
+      "category": "legislative",
+      "statement": "A personal-data law can give people rights against automated decisions yet exclude government data and governmental entities, leaving public-service agents outside its reach.",
+      "national": [
+        { "chunk_id": "uae-data-protection-laws#2", "note": "The decree-law does not apply to Government Data or to governmental entities that control or process personal data." },
+        { "chunk_id": "uae-data-protection-laws#10", "note": "Data subjects may object to decisions from automated processing." },
+        { "chunk_id": "uae-data-protection-laws#11", "note": "The controller includes a human element in reviewing automated decisions on request." },
+        { "chunk_id": "uae-data-protection-laws#12", "note": "Impact assessment before processing with modern technologies." }
+      ],
+      "global": [
+        { "source_id": "eu-ai-act-annex3", "chunk_ids": ["eu-ai-act-annex3#3"], "support": "primary", "note": "Annex III places systems deciding public benefits and services among high-risk systems." }
+      ],
+      "not_ingested": [],
+      "prism": {
+        "response": "Applies the PDPL-style rights as policy anyway: data_lawful gate, and a rule that decisions affecting rights or fees need a human decision.",
+        "refs": [
+          { "kind": "gate", "label": "data_lawful gate", "path": "src/lib/un/policy.ts" },
+          { "kind": "rule", "label": "rights_or_fees_human_decision", "path": "src/lib/un/hitl.ts" }
+        ]
+      },
+      "caveat": "Reading of scope is from one excerpt; other federal or local rules may cover government entities. Not legal advice."
+    },
+    {
+      "id": "G8",
+      "category": "legislative",
+      "statement": "Most instruments that speak to agentic AI are non-binding statements, so obligations that bind an agent come from adjacent law rather than agent-specific rules.",
+      "national": [
+        { "chunk_id": "uae-ai-charter#3", "note": "The Charter (framework, non-binding in the KB metadata) stresses governance and accountability as principles." },
+        { "chunk_id": "uae-ai-strategy-2031#5", "note": "Ambition to advance regulation of AI, stated as a strategy objective." }
+      ],
+      "global": [
+        { "source_id": "un-global-dialogue", "chunk_ids": ["un-global-dialogue#1"], "support": "secondary-summary", "note": "Governments are wrestling with regulating a technology evolving faster than the rules (news report)." },
+        { "source_id": "eu-ai-act-annex3", "chunk_ids": ["eu-ai-act-annex3#0"], "support": "primary", "note": "A binding legal list of high-risk areas, the contrast case." }
+      ],
+      "not_ingested": [],
+      "prism": {
+        "response": "Converts principles into deterministic gates so a non-binding rule still has a testable pass or fail, and cites the chunk behind each.",
+        "refs": [
+          { "kind": "rule", "label": "decide() verdict engine", "path": "src/lib/un/policy.ts" },
+          { "kind": "screen", "label": "KB explorer", "path": "src/app/admin/federal/kb/page.tsx" }
+        ]
+      },
+      "caveat": "Binding status comes from kb/sources.json metadata. The UN item is a news report, not a UN instrument."
+    },
+    {
+      "id": "G9",
+      "category": "coordination",
+      "statement": "Federal programmes, city-level frameworks and sector regulators each issue agentic-AI rules, with no stated mechanism for reconciling them or sharing evidence across entities.",
+      "national": [
+        { "chunk_id": "uae-cabinet-agentic-50#4", "note": "A government services data sharing policy: collect data once, use across entities." },
+        { "chunk_id": "dff-agentic-accelerator#2", "note": "Dubai accelerator is organised by DCAI with Digital Dubai and DESC, showing multi-body coordination at city level." },
+        { "chunk_id": "uae-cabinet-2026-05-18#3", "note": "Federal framework defines roles of each ministry and entity." }
+      ],
+      "global": [
+        { "source_id": "itu-ai-ready-2025", "chunk_ids": ["itu-ai-ready-2025#14"], "support": "secondary-summary", "note": "Fragmented governance and coordination limit participation in international standardisation (ITU reference-repo copy of the framework)." },
+        { "source_id": "un-global-dialogue", "chunk_ids": ["un-global-dialogue#2"], "support": "secondary-summary", "note": "The Global Dialogue is the first UN platform for AI governance discussion (news report)." }
+      ],
+      "not_ingested": [],
+      "prism": {
+        "response": "One portfolio dashboard across entities and use cases, with the same gates and trace applied to each.",
+        "refs": [
+          { "kind": "screen", "label": "Federal dashboard", "path": "src/app/admin/federal/FederalPanel.tsx" }
+        ]
+      },
+      "caveat": "The ITU item is a general readiness statement about countries, not about federal-city coordination."
+    },
+    {
+      "id": "G10",
+      "category": "conflicting_objectives",
+      "statement": "Adoption targets and assurance duties pull in opposite directions: entities are assessed on speed of adoption while principles demand safety and human oversight.",
+      "national": [
+        { "chunk_id": "uae-cabinet-agentic-50#2", "note": "Aim: 50% of government sectors on autonomous agentic models within two years." },
+        { "chunk_id": "uae-cabinet-agentic-50#1", "note": "Performance of ministers and entities is assessed on their ability to adopt." },
+        { "chunk_id": "uae-ai-charter#0", "note": "Safety is a stated priority." },
+        { "chunk_id": "uae-cabinet-agentic-50#6", "note": "'People come first.'" }
+      ],
+      "global": [
+        { "source_id": "nist-ai-rmf", "chunk_ids": ["nist-ai-rmf#15"], "support": "primary", "note": "Unrealistic expectations about risk can misallocate resources; not all failures can be eliminated." }
+      ],
+      "not_ingested": [],
+      "prism": {
+        "response": "A failed hard gate rules out every GO verdict and client-facing is capped at supervised, so speed cannot buy out assurance; the pace is measured on the dashboard.",
+        "refs": [
+          { "kind": "rule", "label": "Hard gates never averaged", "path": "src/lib/un/policy.ts" },
+          { "kind": "screen", "label": "Federal progress panel", "path": "src/app/admin/federal/FederalPanel.tsx" }
+        ]
+      },
+      "caveat": "The tension is inferred from two kinds of statement; no source says they conflict."
+    }
+  ]
+}

@@ -100,7 +100,9 @@ export default function FederalPanel({
         {NAV.filter(([id]) => canEdit || !["policy", "import", "hitl"].includes(id)).map(([id, label]) => (
           <a key={id} href={`#${id}`} className="rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep">{label}</a>
         ))}
-        <Link href="/admin/federal/scenarios" className="ml-auto rounded-full bg-ink px-3 py-1 font-medium text-paper hover:opacity-90">Run a staged scenario →</Link>
+        <Link href="/admin/federal/kb" className="ml-auto rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep">Knowledge base</Link>
+        <Link href="/admin/federal/gaps" className="rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep">Gaps</Link>
+        <Link href="/admin/federal/scenarios" className="rounded-full bg-ink px-3 py-1 font-medium text-paper hover:opacity-90">Run a staged scenario →</Link>
       </nav>
 
       <Section id="progress" eyebrow="Headline" title="Progress toward the federal target">
