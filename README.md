@@ -21,7 +21,7 @@ Technical report: [`docs/report/prism-technical-report.pdf`](docs/report/prism-t
 | Knowledge base (22 sources, 331 chunks, SHA-256 provenance) built with ITU's code | `kb/` |
 | Eight role agents, typed coordination protocol | `src/lib/un/agents.ts`, `protocol.ts`, `round.ts` |
 | Deterministic policy engine: five hard gates never averaged, client-facing cap at `GO_SUPERVISED` | `src/lib/un/policy.ts` |
-| Staged scenarios S1 (gate engine), S2 (voice contact centre) and S3 (federal cascade) | `src/lib/un/scenario.ts`, `scenarios.ts` |
+| Staged scenarios S1 (gate engine), S2 (voice contact centre), S3 (federal cascade) and S4 (consumer complaint escalating to a privacy breach) | `src/lib/un/scenario.ts`, `scenarios.ts` |
 | Hash-chained reasoning traces, verifier, replay, trace viewer | `src/lib/un/trace.ts`, `src/app/admin/federal/runs/` |
 | Sijil panel: runs, attestation, rejects per criterion, auto-filed pilot reports | `src/lib/un/sijil.ts`, `src/app/admin/federal/use-cases/` |
 | Per-entity human-in-the-loop rules (breach = hard-gate failure) | `src/lib/un/hitl.ts`, `src/app/admin/federal/HitlEditor.tsx` |
@@ -40,7 +40,7 @@ policy node, not a "policer".)
  cases,  / pull  and    agents   engine    messages     signed verdict
  events                 (propose)(decide)  and trace
                  ▲                  ▲
-   MLFO ─────────┴── orchestrates ──┘      ML sandbox: staged scenarios S1-S3
+   MLFO ─────────┴── orchestrates ──┘      ML sandbox: staged scenarios S1-S4
    ML intent: policy target + each use case's requested autonomy
 ```
 

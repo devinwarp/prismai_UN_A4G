@@ -33,13 +33,13 @@ export const ROLES: Record<RoleId, RoleDef> = {
   privacy: {
     label: "Privacy / legal",
     mandate: "Data minimisation, lawful use and redaction.",
-    gates: ["data_lawful"],
+    gates: ["data_lawful", "purpose_limitation"],
     kbQuery: "personal data protection lawful processing privacy",
   },
   compliance: {
     label: "Compliance",
     mandate: "Human-in-the-loop rules, transparency to citizens and attestation.",
-    gates: ["human_final_approval", "ai_disclosure", "hallucination_rate", "fee_accuracy"],
+    gates: ["human_final_approval", "ai_disclosure", "hallucination_rate", "fee_accuracy", "no_commercial_promotion"],
     kbQuery: "human oversight transparency inform users interacting with AI accountability",
   },
   frontline: {

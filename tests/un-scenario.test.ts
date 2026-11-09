@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import test from "node:test";
 import { DEFAULT_POLICY, parseUseCases, type UnUseCaseState } from "../src/lib/un/model.ts";
 import { nextStep, startRun, type RunEnv, type RunState, type Scenario } from "../src/lib/un/scenario.ts";
-import { S1, S2, S3 } from "../src/lib/un/scenarios.ts";
+import { S1, S2, S3, S4 } from "../src/lib/un/scenarios.ts";
 import { loadChunksFrom } from "./helpers-un.ts";
 import { replayVerdicts, verifyLog } from "../src/lib/un/trace.ts";
 
@@ -171,11 +171,76 @@ test("C2-3: the complaint links to the T1 alert and adds the fee_accuracy gate; 
 });
 
 test("C2-3: a linked event only links events its recipient was shown", () => {
-  for (const sc of [S1, S2]) {
+  for (const sc of [S1, S2, S4]) {
     const shown = new Map<string, Set<string>>();
     for (const st of sc.steps) {
       for (const e of st.events) for (const l of (e as { links?: string[] }).links ?? []) for (const r of e.recipients) assert.ok(shown.get(r)?.has(l), `${e.id} links ${l} which ${r} never saw`);
       for (const e of st.events) for (const r of e.recipients) shown.set(r, (shown.get(r) ?? new Set()).add(e.id));
     }
   }
+});
+
+test("S4: consumer complaint escalates into a privacy breach; full path equals the declared expected path (6 of 6)", async () => {
+  const run = await runAll(S4, startRun(S4, "S4-run"));
+  const path = ["ESCALATE", "NO_GO", "NO_GO", "NO_GO", "ASSISTANT_ONLY", "GO_SUPERVISED"];
+  assert.deepEqual(run.steps.map((s) => s.outcome), path);
+  assert.deepEqual(S4.steps.map((s) => s.expected), path);
+  assert.ok(run.steps.every((s) => s.match));
+  assert.deepEqual(run.state!.extraGates, ["no_commercial_promotion", "purpose_limitation"]);
+  assert.ok(run.steps[1].reasons.some((x) => x.includes("promote paid third-party")));
+  assert.equal(run.steps[2].reasons.length, 2); // two open failures
+  assert.ok(run.log.some((r) => r.step === "T2" && r.message?.type === "ESCALATE" && /no_commercial_promotion,purpose_limitation/.test(r.message.reason)));
+  assert.equal(run.log.filter((r) => r.message?.type === "ESCALATE").length, 1); // referred once, not repeated at T3
+  assert.equal(run.state!.gates.no_commercial_promotion, "pass");
+  assert.equal(run.state!.gates.purpose_limitation, "pass");
+});
+
+test("S4: each event reaches only its recipients", async () => {
+  const run = await runAll(S4, startRun(S4, "r"));
+  const saw = (id: string) => [...new Set(run.log.filter((r) => r.inputs_seen.includes(id)).map((r) => r.agent))].sort();
+  assert.deepEqual(saw("S4-T1-complaint"), ["compliance", "frontline"]);
+  assert.deepEqual(saw("S4-T2-log"), ["privacy", "security"]);
+  assert.deepEqual(saw("S4-T2-purpose"), ["privacy"]);
+  assert.deepEqual(saw("S4-T3-kb"), ["policy_adviser"]);
+  assert.ok(!run.log.some((r) => r.step === "T1" && r.agent === "privacy"));
+  assert.ok(!run.log.some((r) => r.step === "T2" && r.agent === "compliance"));
+});
+
+test("S4: the new gates are optional (absent from S1 runs), owned by compliance and privacy", async () => {
+  const s1 = await runAll(S1, startRun(S1, "r"));
+  assert.equal(s1.state!.extraGates, undefined);
+  const { GATES } = await import("../src/lib/un/policy.ts");
+  assert.equal(GATES.no_commercial_promotion.owner, "compliance");
+  assert.equal(GATES.purpose_limitation.owner, "privacy");
+  assert.ok(GATES.no_commercial_promotion.optional && GATES.purpose_limitation.optional);
+});
+
+test("S4: citations resolve to real PDPL, Dubai AI ethics and UAE AI Charter chunks; uncited gate claims stay rejected", async () => {
+  const run = await runAll(S4, startRun(S4, "r"));
+  const cited = new Set(run.log.flatMap((r) => r.kb_citations.map((c) => c.chunk_id)));
+  for (const id of cited) assert.ok(has(id), id);
+  for (const src of ["uae-data-protection-laws", "dubai-ai-ethics-2019", "uae-ai-charter"]) {
+    assert.ok([...cited].some((id) => id.startsWith(`${src}#`)), src);
+  }
+  const t3 = run.log.find((r) => r.step === "T3" && r.agent === "policy_adviser")!;
+  assert.ok(t3.kb_citations.length > 0 && t3.kb_citations.every((c) => c.chunk_id.startsWith("uae-data-protection-laws#")));
+  const { reconcile } = await import("../src/lib/un/protocol.ts");
+  const r = reconcile({ ext_id: "UC13", clientFacing: true, requested: "ASSISTANT_ONLY", gates: {} },
+    [{ msg_id: "x", from: "privacy", to: ["coordinator"], type: "CHALLENGE", re: "UC13", gate: "purpose_limitation", status: "fail", reason: "r", evidence: [], kb: [] }], has);
+  assert.equal(r.rejected.length, 1);
+});
+
+test("S4: verdict records link to traces, the hash chain verifies and replays; a tampered log fails", async () => {
+  const run = await runAll(S4, startRun(S4, "r"));
+  assert.ok(verifyLog(run.log).ok);
+  const verdicts = run.log.filter((r) => r.disposition === "verdict");
+  assert.equal(verdicts.length, 6);
+  for (const v of verdicts) {
+    assert.ok(v.derived_from.length > 0);
+    assert.ok(v.derived_from.every((id) => run.log.some((r) => r.trace_id === id && r.step === v.step)));
+  }
+  assert.ok(replayVerdicts(run.log, { ext_id: "UC13", clientFacing: true, requested: "ASSISTANT_ONLY", gates: {} }, has).ok);
+  const forged = structuredClone(run.log);
+  forged[8].claims[0].text = "Consumer complaint: none";
+  assert.equal(verifyLog(forged).ok, false);
 });

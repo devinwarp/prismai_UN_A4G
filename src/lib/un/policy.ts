@@ -20,7 +20,9 @@ export type GateId =
   | "human_final_approval"
   | "ai_disclosure"
   | "hallucination_rate"
-  | "fee_accuracy";
+  | "fee_accuracy"
+  | "no_commercial_promotion"
+  | "purpose_limitation";
 
 /** unknown = no evidence yet; fix_declared = applicant says it is fixed but it
  * has not been re-tested; pass/fail need evidence (see protocol.ts). */
@@ -72,6 +74,20 @@ export const GATES: Record<GateId, { label: string; owner: RoleId; clientFacingO
     clientFacingOnly: true,
     optional: true,
     kbQuery: "accuracy of information given to citizens fees transparency reliability monitoring",
+  },
+  no_commercial_promotion: {
+    label: "The assistant does not promote paid third-party products to citizens",
+    owner: "compliance",
+    clientFacingOnly: true,
+    optional: true,
+    kbQuery: "AI systems should be fair transparent accountable understandable consumer commercial promotion",
+  },
+  purpose_limitation: {
+    label: "Data is used only for its declared purpose, with no inferred sensitive attributes",
+    owner: "privacy",
+    clientFacingOnly: false,
+    optional: true,
+    kbQuery: "collected for a specific and clear purpose, not processed at any later time in a manner incompatible with such purpose",
   },
 };
 
