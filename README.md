@@ -67,6 +67,9 @@ cp .env.example .env.local     # fill in Supabase, OPENROUTER_API_KEY, ADMIN_EMA
 # In a new Supabase project's SQL editor, run in order:
 #   supabase/schema.sql
 #   supabase/un-federal.sql
+#   supabase/un-federal-t1.sql   (verdict guard, append-only trace table, entities)
+#   supabase/un-federal-t2.sql   (tamper-evident change history)
+#   supabase/seed-entities.sql   (after importing the use cases)
 npm ci
 npm run dev                    # http://localhost:3000 -> /admin/federal
 npm test                       # unit tests (no database needed)

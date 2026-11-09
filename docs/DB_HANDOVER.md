@@ -11,6 +11,7 @@
 1. Back up: Supabase dashboard → Database → Backups, or `pg_dump`.
 2. Look for hand-set values: `select ext_id, verdict, compliant from un_use_cases where verdict is not null or compliant;`. The dashboard already reads values without a run id and signer as unset. Decide: reset them (`update un_use_cases set verdict = null, compliant = false;` before the trigger exists) or re-derive them by running the scenarios (D-6).
 3. Review `supabase/un-federal-t1.sql`. It adds: verdict provenance columns and the `un_guard_verdict` trigger (13.1); `compliant_report_sha256` (the plan says to store the report's sha256); the append-only `un_trace_records` table with UPDATE/DELETE/TRUNCATE blocked and a `un_trace_heads` view (D-8); `un_entities` (D-10). Then `supabase/seed-entities.sql`.
+4. `supabase/un-federal-t2.sql` (applied after the above): the append-only, hash-chained `un_change_log` and its triggers on `un_use_cases`, `un_policy` and `un_hitl_rules`, which store the old and new value of every changed column, and `un_verify_change_log()`, which recomputes the chain and names the first broken row. The use-case page shows a use case's history and the chain status.
 
 ## What is already done in code (no database needed)
 

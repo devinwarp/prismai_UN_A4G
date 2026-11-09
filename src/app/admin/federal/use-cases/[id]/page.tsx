@@ -9,6 +9,49 @@ import AdminHeader from "../../../AdminHeader";
 import { liveConfigFromEnv, liveNode } from "@/lib/un/sijil-live";
 import SijilPanel from "./SijilPanel";
 
+const DUBAI = { timeZone: "Asia/Dubai" } as const;
+interface ChangeRow { seq: number; at: string; op: string; changes: Record<string, { from: unknown; to: unknown }>; actor: string; hash: string }
+const show = (v: unknown) => (v === null || v === undefined ? "none" : typeof v === "string" ? v : JSON.stringify(v));
+
+/** Tamper-evident history of this use case (un_change_log, supabase/un-federal-t2.sql). Renders nothing if the table is absent. */
+async function ChangeHistory({ ext_id }: { ext_id: string }) {
+  const admin = createAdminClient();
+  const [{ data, error }, ver] = await Promise.all([
+    admin.from("un_change_log").select("seq, at, op, changes, actor, hash").eq("table_name", "un_use_cases").like("row_id", `${ext_id} (%`).order("seq", { ascending: false }).limit(20),
+    admin.rpc("un_verify_change_log"),
+  ]);
+  if (error) return null;
+  const v = (ver.data as { ok: boolean; length: number; broken_seq: number | null; reason: string | null }[] | null)?.[0];
+  const rows = (data ?? []) as ChangeRow[];
+  return (
+    <section className="mx-auto mt-10 max-w-6xl px-4 sm:px-6" aria-label="Change history">
+      <h2 className="text-lg font-semibold">Change history</h2>
+      <p className="mt-1 text-sm text-ink-soft">
+        Every change to this use case's stage, verdict or compliant flag is stored with its old and new value in an append-only,
+        hash-chained log. History starts when the log was installed.{" "}
+        {v ? (v.ok ? `✓ Chain verified: ${v.length} records, intact.` : `✕ Chain broken at record ${v.broken_seq}: ${v.reason}`) : ""}
+      </p>
+      {rows.length === 0 ? (
+        <p className="mt-3 text-sm text-ink-soft">No changes recorded for this use case yet.</p>
+      ) : (
+        <ul className="mt-3 divide-y divide-line text-sm">
+          {rows.map((r) => (
+            <li key={r.seq} className="py-2">
+              <span className="tabular-nums text-ink-soft">#{r.seq} · {new Date(r.at).toLocaleString("en-GB", DUBAI)} · {r.actor}</span>
+              <div>
+                {Object.entries(r.changes).filter(([k]) => !k.startsWith("verdict_") || k === "verdict").map(([k, c]) => (
+                  <span key={k} className="mr-4">{k}: {show(c.from)} → <strong>{show(c.to)}</strong></span>
+                ))}
+              </div>
+              <code className="text-xs text-ink-soft">{r.hash.slice(0, 16)}…</code>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
 export const metadata: Metadata = { title: "Pilot and Sijil", robots: { index: false, follow: false } };
 
 export default async function UseCasePage({ params }: { params: Promise<{ id: string }> }) {
@@ -43,6 +86,8 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
           canEdit={profile.role === "admin"}
         />
       </main>
+      <ChangeHistory ext_id={uc.ext_id} />
+      <div className="h-12" />
     </div>
   );
 }
