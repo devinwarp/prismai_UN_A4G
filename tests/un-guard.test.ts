@@ -157,7 +157,7 @@ test("C5-1 / C2-3: the report docx quotes the Y.3172 P node and describes the re
   const xml = execFileSync("python", ["-c", "import zipfile,sys;sys.stdout.buffer.write(zipfile.ZipFile('docs/report/prism-technical-report.docx').read('word/document.xml'))"], { encoding: "utf8" });
   assert.ok(xml.includes("enables the application of policies to the output of the model node"));
   assert.ok(xml.includes("GO_SUPERVISED, ASSISTANT_ONLY, NO_GO, NO_GO, ASSISTANT_ONLY, GO_SUPERVISED"));
-  assert.ok(xml.includes("fee_accuracy") && xml.includes("20 sources pinned"));
+  assert.ok(xml.includes("fee_accuracy") && xml.includes("22 sources (331 chunks) pinned"));
 });
 
 test("13.1: the UN SQL lives in supabase/un-federal-t1.sql and the verdict trigger lets a verdict be cleared to null", async () => {
