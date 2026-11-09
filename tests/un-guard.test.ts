@@ -176,7 +176,7 @@ test("C3-2 / C3-3: the report's gap table covers the six ITU categories and ever
   const { execFileSync } = await import("node:child_process");
   const { readFileSync } = await import("node:fs");
   const xml = execFileSync("python", ["-c", "import zipfile,re,sys;x=zipfile.ZipFile('docs/report/prism-technical-report.docx').read('word/document.xml').decode('utf8');sys.stdout.buffer.write(re.sub(r'<[^>]+>','',x).encode('utf8'))"], { encoding: "utf8" });
-  for (const c of ["Unclear responsibilities", "Standards:", "Technology:", "Legislative:", "Coordination:", "Conflicts between objectives"]) assert.ok(xml.includes(c), c);
+  for (const c of ["Responsibilities:", "Standards:", "Technology:", "Legislative:", "Coordination:", "Conflicting objectives:"]) assert.ok(xml.includes(c), c);
   assert.ok(!xml.includes("Not verified here"));
   const ids = new Set((JSON.parse(readFileSync("kb/chunks.json", "utf8")) as { chunk_id: string }[]).map((c) => c.chunk_id));
   const cited = [...xml.matchAll(/\(((?:[a-z0-9-]+#\d+(?:, #\d+)*)(?:; [a-z0-9-]+#\d+)*)\)/g)].flatMap((m) => m[1].split(/;\s*/));
@@ -185,6 +185,14 @@ test("C3-2 / C3-3: the report's gap table covers the six ITU categories and ever
     const [first, ...rest] = group.split(/,\s*/);
     const src = first.split("#")[0];
     for (const id of [first, ...rest.map((r) => `${src}${r}`)]) assert.ok(ids.has(id), `cited chunk ${id} does not exist`);
+  }
+  // the hand-typed table must not drift from kb/gaps.json: every gap id and every chunk it lists appears in the report
+  const resolved = new Set(cited.flatMap((group) => { const [first, ...rest] = group.split(/,\s*/); const src = first.split("#")[0]; return [first, ...rest.map((r) => `${src}${r}`)]; }));
+  const gj = JSON.parse(readFileSync("kb/gaps.json", "utf8"));
+  const gaps = (Array.isArray(gj) ? gj : gj.gaps) as { id: string; national: { chunk_id: string }[]; global: { chunk_ids: string[] }[] }[];
+  for (const g of gaps) {
+    assert.ok(new RegExp(`\\b${g.id}\\b`).test(xml), `${g.id} missing from the report`);
+    for (const id of [...g.national.map((n) => n.chunk_id), ...g.global.flatMap((x) => x.chunk_ids)]) assert.ok(resolved.has(id), `${g.id}: ${id} is in kb/gaps.json but not in the report`);
   }
 });
 
