@@ -111,4 +111,55 @@ export const S3: PortfolioScenario = {
   ],
 };
 
-export const SCENARIOS: Record<string, Scenario> = { S1, S2, S3 };
+/** S4: UC13 citizen mobility and fines assistant (Qanat TMA). The ITU judges'
+ * added scenario: a consumer-protection issue escalates into a data-privacy and
+ * ethics breach, and knowledge-base policies make stronger guardrails permanent.
+ *  T0 autonomy requested for a client-facing case -> ESCALATE (capped, no evidence yet for one gate);
+ *  T1 a consumer complaint (compliance and frontline only): paid add-ons are
+ *     promoted in the chat; no_commercial_promotion is added and fails -> NO_GO;
+ *  T2 a privacy-log review (security and privacy only): the promotions target
+ *     attributes inferred from fines and permit data; purpose_limitation is added
+ *     and fails; two open failures, referred to human oversight -> NO_GO;
+ *  T3 the adviser alone surfaces the PDPL, Dubai AI ethics and UAE AI Charter
+ *     material; both gates stay permanent for the entity -> NO_GO;
+ *  T4 the owner removes the module and blocks inferred-attribute use -> ASSISTANT_ONLY;
+ *  T5 the re-tests pass -> GO_SUPERVISED (the ceiling for client-facing). */
+export const S4: GateScenario = {
+  kind: "gate",
+  id: "S4",
+  title: "UC13 Citizen mobility and fines assistant: promotions escalate into a privacy breach",
+  ext_id: "UC13",
+  clientFacing: true,
+  requested: "GO_AUTONOMOUS",
+  steps: [
+    { step: "T0", expected: "ESCALATE", events: [
+      ev("S4-T0-live", ["innovator", "frontline"], "Pilot is live: the assistant answers citizens' questions about traffic fines and mobility permits"),
+      ev("S4-T0-hosting", ["security"], "Hosting report: the model endpoint is on DESC-certified infrastructure", "approved_infrastructure", "pass"),
+      ev("S4-T0-audit", ["security"], "Audit log covers every chat the agent handles", "audit_log", "pass"),
+      ev("S4-T0-dpa", ["privacy"], "Data processing terms cover the fines and permit data used", "data_lawful", "pass"),
+      ev("S4-T0-disclosure", ["compliance"], "Every chat opens with a message that the citizen is talking to an AI assistant", "ai_disclosure", "pass"),
+    ] },
+    { step: "T1", expected: "NO_GO", events: [
+      ev("S4-T1-complaint", ["compliance", "frontline"], "Consumer complaint: citizens report the assistant keeps promoting paid third-party parking and insurance add-ons in the chat"),
+      ev("S4-T1-promo", ["compliance"], "The complaint is confirmed in the chat logs: the assistant promotes paid third-party products. No commercial promotion is added as a gate and fails", "no_commercial_promotion", "fail"),
+    ] },
+    { step: "T2", expected: "NO_GO", events: [
+      ev("S4-T2-log", ["security", "privacy"], "Privacy-log review: the promotions are targeted using attributes inferred from fines history and permit data, such as financial hardship and a disability inferred from accessible-parking permits"),
+      ev("S4-T2-purpose", ["privacy"], "The consumer-protection issue is a data-privacy and ethics breach: fines and permit data were processed for advertising, a purpose incompatible with the declared one, through profiling", "purpose_limitation", "fail"),
+    ] },
+    { step: "T3", expected: "NO_GO", events: [
+      ev("S4-T3-kb", ["policy_adviser"], "Knowledge base: processing must be fair, transparent and lawful, for a specific and clear purpose and never later in a manner incompatible with it; the data subject may object to automated processing including profiling and the controller includes the human element in review; AI systems should be fair, transparent and accountable, respect privacy with the minimum intrusion necessary, and keep human oversight. Guardrails now permanent for this entity: no inferred sensitive attributes for any commercial purpose, and referral to human oversight"),
+    ] },
+    { step: "T4", expected: "ASSISTANT_ONLY", events: [
+      ev("S4-T4-promo-fix", ["innovator"], "Owner removed the promotions module from the assistant", "no_commercial_promotion", "fix_declared"),
+      ev("S4-T4-purpose-fix", ["innovator"], "Owner blocked the use of inferred attributes from fines and permit data", "purpose_limitation", "fix_declared"),
+    ] },
+    { step: "T5", expected: "GO_SUPERVISED", events: [
+      ev("S4-T5-promo", ["compliance"], "Re-test passed: no promotion of paid third-party products in 60 test chats", "no_commercial_promotion", "pass"),
+      ev("S4-T5-purpose", ["privacy"], "Re-test passed: fines and permit data are processed only for the declared purpose, with no profiling for advertising", "purpose_limitation", "pass"),
+      ev("S4-T5-oversight", ["compliance"], "Human oversight in place, the irreplaceable value of human judgment and human oversight over AI: an officer reviews every case referred to human oversight before any reply reaches a citizen", "human_final_approval", "pass"),
+    ] },
+  ],
+};
+
+export const SCENARIOS: Record<string, Scenario> = { S1, S2, S3, S4 };
