@@ -1,6 +1,6 @@
 # Live-demo video v3: voiceover and captions (about 4 minutes)
 
-For ITU AI for Good (UAE). Trimmed from the section 9 storyboard of `docs/IMPROVEMENT_PLAN.md`. Shameer records from the deployed app after the Monday merge (screen at 1080p, browser zoom 125–150%, cursor highlight, burned-in captions). If the recording is not done by the submission cut-off, submit without it or with the current video plus the two caption fixes below; v3 is for the 18 Nov shortlist.
+For ITU AI for Good (UAE). Trimmed from the section 9 storyboard of `docs/IMPROVEMENT_PLAN.md`. Shameer records from the deployed app from the deployed app (merged and live at https://prismai-un.vercel.app) (screen at 1080p, browser zoom 125–150%, cursor highlight, burned-in captions). If the recording is not done by the submission cut-off, submit without it or with the current video plus the two caption fixes below; v3 is for the 18 Nov shortlist.
 
 All entities and data are fictitious. Sijil is simulated.
 
@@ -18,7 +18,7 @@ Shameer has applied the database migration and tested it (a manual verdict, a ma
 
 Still do not show, or confirm on screen before you say it (cut the line if the control is not there):
 
-- Goal list on the use-case page and goal-based alignment: needs `supabase/seed-entities.sql` to have been run. Check the use-case page first.
+- Goal list and goal-based alignment: the entity goals are seeded. The UC02 page lists the Marsa goals (MARSA-G1 and onward) beside the Sijil attestation, and goal alignment is computed from them (the mean, over the entity's goals, of one minus the rejects on the goal's criterion divided by the actions in the run). Sijil itself is still simulated.
 - The knowledge-base explorer page and the gap page do not exist yet (plan C1-9, C3-1). The KB is shown through its JSON endpoint; the gaps are shown from the report.
 - Vector search: it is off in the live app and BM25 is the default. Do not say or imply that retrieval is vector or hybrid.
 
@@ -30,7 +30,7 @@ Words are spoken at about 150 per minute. Captions are the bold line; keep each 
 |---|---|---|---|
 | 0:00–0:20 | Title card, then the live federal dashboard (2 of 20 deployed, 2 of 20 compliant) | **Deploying agents is easy. Proving them safe is hard.** | "The UAE aims to run agentic AI across half of government within about two years. Deploying an agent is easy. Proving it is safe is hard. Prism is the approval and assurance layer between the two. On the live dashboard today, two of twenty use cases are deployed and two are compliant. The target is ten." |
 | 0:20–0:40 | README architecture diagram (Y.3172 nodes) | **Built on ITU-T Y.3172 · runs with no paid keys** | "Prism follows the Y.3172 pipeline. Role agents are the model node. The policy engine is the P node, the policy node, and it alone decides. It runs in deterministic mode with no paid keys." |
-| 0:40–1:05 | Federal > Policy, then Import (drop `data/un-use-cases.csv`) | **Policy is configuration. Target 50%, deadline ≈ April 2028 (assumed).** | "The policy sets the target, the counting rule and the deadline, which is our assumption, two years from the Cabinet's twenty-third of April announcement. We import twenty fictitious use cases from five entities. Importing keeps the two signed verdicts: two deployed, two compliant, UC01 and UC02, against a target of ten." |
+| 0:40–1:05 | On the dashboard: Policy, then Import use cases (drop `data/un-use-cases.csv`) | **Policy is configuration. Target 50%, deadline ≈ April 2028 (assumed).** | "The policy sets the target, the counting rule and the deadline, which is our assumption, two years from the Cabinet's twenty-third of April announcement. We import twenty fictitious use cases from five entities. Importing keeps the two signed verdicts: two deployed, two compliant, UC01 and UC02, against a target of ten." |
 | 1:05–1:25 | Tab: `/api/admin/un/kb?q=...` | **Retrieval returns source, link, hash and quote** | "The knowledge base is built with ITU's pipeline. Each hit carries its source link, a SHA-256 of the source and a verbatim quote. **[Check the query before recording; use one whose top hit is a UAE source.]**" |
 | 1:25–2:35 | Scenarios > S1 run: release T0 to T4 | **S1: client-facing, autonomy requested** | "Scenario one is a trade licence pre-check. Autonomy is requested for a citizen-facing case." |
 | | Run page: Expected vs actual, then "What each agent knows" | **Each agent sees only some events** | "Each step releases events to only some agents. This panel shows what each one knows. Security never sees the approval failure." |
@@ -40,7 +40,7 @@ Words are spoken at about 150 per minute. Captions are the bold line; keep each 
 | 2:35–3:00 | S2 run, steps released quickly | **S2: every event changes the outcome** | "Scenario two is a live voice pilot. A hallucination alert is contained and the case drops to assistant only. A complaint adds a fee accuracy gate and fails. A transparency requirement re-tests disclosure and fails. Fixes, retests, and it returns to supervised with the new gates permanent." |
 | 3:00–3:20 | S3 run, T1 to T3 | **Sandbox scenario: 6/20 deployed · 4/20 compliant · target 10** | "Scenario three is the federal view, run on a sandbox copy of the data, not the live numbers. In the scenario, six are reported deployed and four attested compliant. Deployed and compliant are never merged. A policy update flags four use cases for re-scoring. The live dashboard is unchanged: two of twenty deployed, two compliant." |
 | 3:20–3:40 | Terminal: `npm run verify-log run.json` (good export, then an edited copy) | **Tamper with one record: the verifier names it** | "Every record is hash-chained. This verifier runs offline, with no database. On an untouched export it passes. Change one word and it names the broken record." |
-| 3:40–3:55 | Report page with the gap table (six categories) | **Gaps from the mapping, with global examples** | "Where UAE material is silent, we record the gap and attach a global example: oversight levels, approval authority, citizen recourse, measurement, and cross-entity data sharing." |
+| 3:40–3:55 | The report PDF, gap table page (six categories) | **Gaps from the mapping, with global examples** | "Where UAE material is silent, we record the gap and attach a global example: oversight levels, approval authority, citizen recourse, measurement, and cross-entity data sharing." |
 | 3:55–4:15 | Honest-limits slide, repository URL | **Sijil simulated · deterministic mode · AGPL-3.0** | "Limits: Sijil is simulated. Agents were evaluated in deterministic mode. Retrieval is lexical for now. All data is synthetic. The code is open source under AGPL." |
 
 ## Before recording

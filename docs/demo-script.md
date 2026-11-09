@@ -1,6 +1,6 @@
 # Demo video script (max 7:00)
 
-ITU AI for Good (UAE) hackathon. All entities and data are fictitious. Everything below is built; nothing here shows a feature that does not exist. The app has one admin area, **Federal** (`/admin/federal`); login lands there.
+ITU AI for Good (UAE) hackathon. All entities and data are fictitious. Everything below is built; nothing here shows a feature that does not exist (Sijil is simulated; the live Sijil adapter has only been tested against a mock). The app has one admin area, **Federal** (`/admin/federal`); login lands there.
 
 ## Pre-flight checklist
 
