@@ -167,7 +167,7 @@ export default function SijilPanel({ uc, runs, goals, attestation: a, thresholds
                   <div className="flex flex-wrap items-center justify-between gap-2">
                     <span className="flex flex-wrap items-center gap-2">
                       <span className={`rounded-full border px-2 py-0.5 font-mono text-[11px] ${r.pass ? "border-lit/50 text-lit-deep" : "border-ember/60 text-ember"}`}>{r.pass ? "✓ PASS" : "✕ FAIL"}</span>
-                      <span>{new Date(r.created_at).toLocaleString()} · {r.runs} runs{i === 0 ? " · latest" : ""}</span>
+                      <span>{new Date(r.created_at).toLocaleString("en-GB", { timeZone: "Asia/Dubai" })} · {r.runs} runs{i === 0 ? " · latest" : ""}</span>
                     </span>
                     <button className="font-medium underline underline-offset-2" aria-expanded={open === r.id} onClick={() => setOpen(open === r.id ? null : r.id)}>{open === r.id ? "Hide" : "View"}</button>
                   </div>
