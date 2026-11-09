@@ -30,7 +30,7 @@ test("the retrieval note names the decision, both result sets and the switch", a
   const { readFileSync } = await import("node:fs");
   const note = readFileSync("docs/RETRIEVAL_NOTE.md", "utf8");
   const results = readFileSync("kb/eval/RESULTS.md", "utf8");
-  for (const s of ["BM25 (what the app uses)", "KB_VECTOR=on", "331 chunks", "short quoted excerpts", "0.87", "0.86", "0.50", "not met"]) assert.ok(note.includes(s), s);
+  for (const s of ["BM25 (what the app uses)", "KB_VECTOR=on", "364 chunks", "short quoted excerpts", "0.87", "0.86", "0.53", "not met"]) assert.ok(note.includes(s), s);
   // the 30-question numbers in the note are the ones in the generated results
   for (const row of results.split("\n").filter((l) => /^\| (bm25|vector|hybrid) /.test(l))) assert.ok(note.includes(row.split("|")[2].trim()), row);
 });

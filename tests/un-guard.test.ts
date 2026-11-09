@@ -159,7 +159,7 @@ test("C5-1 / C2-3: the report docx quotes the Y.3172 P node and describes the re
   const xml = execFileSync("python", ["-c", "import zipfile,sys;sys.stdout.buffer.write(zipfile.ZipFile('docs/report/prism-technical-report.docx').read('word/document.xml'))"], { encoding: "utf8" });
   assert.ok(xml.includes("enables the application of policies to the output of the model node"));
   assert.ok(xml.includes("GO_SUPERVISED, ASSISTANT_ONLY, NO_GO, NO_GO, ASSISTANT_ONLY, GO_SUPERVISED"));
-  assert.ok(xml.includes("fee_accuracy") && xml.includes("22 sources (331 chunks) pinned"));
+  assert.ok(xml.includes("fee_accuracy") && xml.includes("26 sources (364 chunks) pinned"));
 });
 
 test("13.1: the UN SQL lives in supabase/un-federal-t1.sql and the verdict trigger lets a verdict be cleared to null", async () => {
@@ -216,7 +216,7 @@ test("I-6: the two restricted sources are held as short excerpts only; the notic
   const src = JSON.parse(readFileSync("kb/sources.json", "utf8")) as { id: string; excerpts?: { text: string; where: string }[]; file?: string; local?: string; url: string }[];
   const chunks = JSON.parse(readFileSync("kb/chunks.json", "utf8")) as { chunk_id: string; source_id: string; text: string }[];
   const ex = src.filter((s) => s.excerpts);
-  assert.deepEqual(ex.map((s) => s.id).sort(), ["desc-isr-excerpts", "dff-agentic-accelerator", "dff-ai-sandbox", "dubai-ai-ethics-2019", "dubai-ai-matrix-excerpts", "dubai-ai-matrix-launch", "sg-agentic-summary", "uae-ai-charter", "uae-ai-strategy-2031", "uae-cabinet-2026-05-18", "uae-cabinet-agentic-50", "uae-cyber-ai-policy", "uae-data-protection-laws", "un-global-dialogue"]);
+  assert.deepEqual(ex.map((s) => s.id).sort(), ["desc-isr-excerpts", "dff-agentic-accelerator", "dff-ai-sandbox", "dubai-ai-ethics-2019", "dubai-ai-matrix-excerpts", "dubai-ai-matrix-launch", "eu-ai-act-articles", "g7-hiroshima-code", "sg-agentic-summary", "sg-imda-agentic-mgf", "uae-ai-charter", "uae-ai-strategy-2031", "uae-cabinet-2026-05-18", "uae-cabinet-agentic-50", "uae-cyber-ai-policy", "uae-data-protection-laws", "un-global-dialogue", "un-system-white-paper"]);
   for (const s of ex) {
     assert.ok(s.url.startsWith("https://") && !s.file && !s.local, s.id);
     for (const e of s.excerpts!) assert.ok(e.text.split(/\s+/).length <= 40 && e.where, `${s.id}: ${e.text}`);

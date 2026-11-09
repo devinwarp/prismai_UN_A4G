@@ -108,5 +108,25 @@
   "sha256": "ea7a80d45a3d698d9f0eef98fc99b7aa735a0b081154758b1ff567c7c83c6a3e",
   "bytes": 0,
   "chars": 1431
+ },
+ "sg-imda-agentic-mgf": {
+  "sha256": "2636e19ff1c86e862394d2fc900592e97b83c04cc35e3c8443108114b7f1dfba",
+  "bytes": 0,
+  "chars": 1553
+ },
+ "eu-ai-act-articles": {
+  "sha256": "8f0b656302f9864cc87e040c371f209a9d65ae1a6cecc25ca5eb737e872d721a",
+  "bytes": 0,
+  "chars": 1493
+ },
+ "g7-hiroshima-code": {
+  "sha256": "27c36802150ad11d5c70aa3c56db17ff19b7ee366fb46d5815c634501eed3923",
+  "bytes": 0,
+  "chars": 968
+ },
+ "un-system-white-paper": {
+  "sha256": "d5c2895e1f73bff167e1e51083408eaecd3483f37da7c406f01f8ccde6bea6f1",
+  "bytes": 0,
+  "chars": 1080
  }
 }
