@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { T } from "./_components/Lang";
 import HitlEditor from "./HitlEditor";
 import ImportCsv from "./_components/ImportCsv";
 import {
@@ -98,12 +99,35 @@ export default function FederalPanel({
     <div className="mt-6 space-y-14">
       <nav aria-label="On this page" className="-mx-1 flex flex-wrap gap-1 text-sm">
         {NAV.filter(([id]) => canEdit || !["policy", "import", "hitl"].includes(id)).map(([id, label]) => (
-          <a key={id} href={`#${id}`} className="rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep">{label}</a>
+          <a key={id} href={`#${id}`} className="rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep"><T k={`nav.${id}`} en={label} /></a>
         ))}
-        <Link href="/admin/federal/kb" className="ml-auto rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep">Knowledge base</Link>
+        <Link href="/admin/federal/kb" className="ms-auto rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep">Knowledge base</Link>
         <Link href="/admin/federal/gaps" className="rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep">Gaps</Link>
+        <Link href="/admin/federal/compare" className="rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep">Compare jurisdictions</Link>
         <Link href="/admin/federal/scenarios" className="rounded-full bg-ink px-3 py-1 font-medium text-paper hover:opacity-90">Run a staged scenario →</Link>
       </nav>
+
+      <section aria-labelledby="headline-pair" className="rounded-2xl border-2 border-ink bg-card p-6 sm:p-8">
+        <h2 id="headline-pair" className="sr-only">
+          Deployed {d.deployedPct} percent, compliant {d.compliantPct} percent, target {d.targetPercent} percent
+        </h2>
+        <div className="grid gap-6 sm:grid-cols-2 sm:gap-10">
+          <div>
+            <p className="text-lg font-medium text-ink-soft sm:text-xl">Deployed</p>
+            <p className="font-display text-7xl leading-none font-semibold tabular-nums sm:text-8xl lg:text-9xl" aria-hidden>{d.deployedPct}%</p>
+            <p className="mt-2 text-base text-ink-soft sm:text-lg">{d.deployed} of {d.total} use cases</p>
+          </div>
+          <div>
+            <p className="text-lg font-medium text-ink-soft sm:text-xl">Compliant</p>
+            <p className="font-display text-7xl leading-none font-semibold tabular-nums sm:text-8xl lg:text-9xl" aria-hidden>{d.compliantPct}%</p>
+            <p className="mt-2 text-base text-ink-soft sm:text-lg">{d.compliant} of {d.total} use cases</p>
+          </div>
+        </div>
+        <p className="mt-6 border-t border-line pt-4 text-lg font-medium sm:text-xl">
+          Target: {d.targetPercent}% deployed{deadlineText(policy)} ({d.targetCount} of {d.total}).{" "}
+          {d.gap === 0 && d.total > 0 ? "Target met." : `Gap: ${d.gap} to deploy.`}
+        </p>
+      </section>
 
       <Section id="progress" eyebrow="Headline" title="Progress toward the federal target">
         <TargetProgress d={d} deadline={policy.deadline} deadlineNote={deadlineText(policy)} asOf={asOf} />
@@ -127,8 +151,8 @@ export default function FederalPanel({
           <div>
             <h3 className="mb-1 text-sm font-medium">By entity</h3>
             <p className="mb-2 flex flex-wrap gap-x-4 px-2 font-mono text-[11px] text-ink-soft">
-              <span><span aria-hidden className="mr-1 inline-block h-2 w-2 rounded-full bg-lit" />deployed</span>
-              <span><span aria-hidden className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: "var(--color-v-sup)" }} />compliant</span>
+              <span><span aria-hidden className="me-1 inline-block h-2 w-2 rounded-full bg-lit" />deployed</span>
+              <span><span aria-hidden className="me-1 inline-block h-2 w-2 rounded-full" style={{ background: "var(--color-v-sup)" }} />compliant</span>
             </p>
             <TallyList rows={d.byEntity} noun="entities" active={entity} onSelect={pick(setEntity)} expanded={showAllEntities} onToggle={() => setShowAllEntities((x) => !x)} />
           </div>
@@ -181,7 +205,7 @@ export default function FederalPanel({
         <div className="mt-4 relative max-h-[34rem] overflow-auto rounded-2xl border border-line bg-card">
           <table className="w-full min-w-[56rem] text-sm">
             <caption className="sr-only">Use cases with stage, verdict and compliance</caption>
-            <thead className="sticky top-0 z-10 bg-card text-left font-mono text-[11px] tracking-wide text-ink-soft uppercase shadow-[0_1px_0_var(--color-line)]">
+            <thead className="sticky top-0 z-10 bg-card text-start font-mono text-[11px] tracking-wide text-ink-soft uppercase shadow-[0_1px_0_var(--color-line)]">
               <tr>
                 <th scope="col" className="px-4 py-3 font-normal">ID</th>
                 <th scope="col" className="font-normal">Use case</th>
@@ -189,22 +213,22 @@ export default function FederalPanel({
                 <th scope="col" className="font-normal">Oversight</th>
                 <th scope="col" className="font-normal">Stage</th>
                 <th scope="col" className="font-normal">Verdict</th>
-                <th scope="col" className="pr-4 text-center font-normal">Compliant</th>
+                <th scope="col" className="pe-4 text-center font-normal">Compliant</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((u) => (
                 <tr key={u.id} className="border-t border-line align-middle hover:bg-paper-deep/50">
                   <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">{u.ext_id}</td>
-                  <td className="max-w-80 py-2.5 pr-3">
+                  <td className="max-w-80 py-2.5 pe-3">
                     <Link href={`/admin/federal/use-cases/${u.id}`} className="font-medium underline decoration-line underline-offset-2 hover:decoration-ink">{u.title}</Link>
                     <span className="block text-xs text-ink-soft">{u.entity}</span>
                   </td>
-                  <td className="pr-3 whitespace-nowrap">{u.quadrant}</td>
-                  <td className="pr-3 whitespace-nowrap text-xs text-ink-soft">{u.client_facing ? "● client-facing" : "○ internal"}</td>
-                  <td className="pr-3">
+                  <td className="pe-3 whitespace-nowrap">{u.quadrant}</td>
+                  <td className="pe-3 whitespace-nowrap text-xs text-ink-soft">{u.client_facing ? "● client-facing" : "○ internal"}</td>
+                  <td className="pe-3">
                     <span className="relative inline-flex items-center rounded-md border border-line px-2 py-0.5 font-mono text-[11px] focus-within:outline-2 focus-within:outline-lit">
-                      {u.stage}{canEdit && <span aria-hidden className="ml-1 text-ink-soft">▾</span>}
+                      {u.stage}{canEdit && <span aria-hidden className="ms-1 text-ink-soft">▾</span>}
                       {canEdit && (
                         <select aria-label={`Stage for ${u.ext_id}`} disabled={busy} value={u.stage} onChange={(e) => patch(u.id, { stage: e.target.value })} className="absolute inset-0 w-full cursor-pointer opacity-0">
                           {STAGES.map((s) => <option key={s}>{s}</option>)}
@@ -212,10 +236,10 @@ export default function FederalPanel({
                       )}
                     </span>
                   </td>
-                  <td className="pr-3">
+                  <td className="pe-3">
                     <VerdictBadge verdict={u.verdict} />
                   </td>
-                  <td className="pr-4 text-center">
+                  <td className="pe-4 text-center">
                     <span aria-label={`Compliant ${u.ext_id}: ${u.compliant ? "yes" : "no"}`} title="Set only by a passing Sijil attestation">{u.compliant ? "✓" : "–"}</span>
                   </td>
                 </tr>

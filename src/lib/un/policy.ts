@@ -1,4 +1,5 @@
 import type { Verdict } from "./model.ts";
+import type { RuleSet } from "./rulesets.ts";
 
 // Deterministic policy engine. LLM agents propose and explain; only this code
 // turns gate states into a verdict. Hard gates are never averaged: one failed
@@ -117,8 +118,16 @@ export function decide(opts: {
   /** Human-in-the-loop rules (hitl.ts) the use case breaches. Any one is a
    * hard failure of human_final_approval, whatever that gate's own state. */
   hitlBreaches?: string[];
+  /** Jurisdiction rule set (rulesets.ts). Omitted = today's UAE behaviour. */
+  ruleset?: RuleSet;
 }): Decision {
-  const ids = applicableGates(opts.clientFacing, opts.extraGates);
+  const rs = opts.ruleset;
+  const ids = rs
+    ? (Object.keys(GATES) as GateId[]).filter(
+        (g) => (opts.clientFacing || !GATES[g].clientFacingOnly) && (rs.gates.includes(g) || !!opts.extraGates?.includes(g)),
+      )
+    : applicableGates(opts.clientFacing, opts.extraGates);
+  const capped = opts.clientFacing || rs?.capAutonomy === "always";
   if (opts.hitlBreaches?.length) {
     const failed = ids.filter((g) => g !== "human_final_approval" && opts.gates[g] === "fail");
     return {
@@ -145,12 +154,12 @@ export function decide(opts: {
   const unknown = ids.filter((g) => st(g) === "unknown");
   if (unknown.length) {
     const reasons = unknown.map((g) => `No evidence yet: ${label(g)}`);
-    if (opts.clientFacing && opts.requested === "GO_AUTONOMOUS") {
+    if (capped && opts.requested === "GO_AUTONOMOUS") {
       reasons.unshift("Autonomy requested is above the cap for a client-facing use case");
     }
     return { verdict: "ESCALATE", reasons };
   }
-  if (opts.clientFacing && opts.requested === "GO_AUTONOMOUS") {
+  if (capped && opts.requested === "GO_AUTONOMOUS") {
     return {
       verdict: "GO_SUPERVISED",
       reasons: ["All gates passed; capped at GO_SUPERVISED because the use case is client-facing"],

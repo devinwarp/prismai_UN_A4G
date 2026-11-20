@@ -128,5 +128,35 @@
   "sha256": "d5c2895e1f73bff167e1e51083408eaecd3483f37da7c406f01f8ccde6bea6f1",
   "bytes": 0,
   "chars": 1080
+ },
+ "gdpr-art22": {
+  "sha256": "3ff06289b3e0215065ecab036ee87046c09f5d7d1f9caec71cb8ae340523059c",
+  "bytes": 0,
+  "chars": 697
+ },
+ "eu-ai-act-art12": {
+  "sha256": "90250b7b32dec892822f4a2ccdc7c8de3f4294a2233a46ae0e4fc46641a0a83f",
+  "bytes": 0,
+  "chars": 866
+ },
+ "eu-ai-act-inclusion-energy": {
+  "sha256": "90250b7b32dec892822f4a2ccdc7c8de3f4294a2233a46ae0e4fc46641a0a83f",
+  "bytes": 0,
+  "chars": 969
+ },
+ "w3c-wcag22": {
+  "sha256": "d68af876cbc2d6bf766a6b2128dbd042deb0c3192c28f88f6e75c8aeb19a42e4",
+  "bytes": 0,
+  "chars": 434
+ },
+ "au-continental-ai-strategy": {
+  "sha256": "c5429f73786c0a0c170a78278016339ab86f914b239290ba1d6623cc07734e3f",
+  "bytes": 0,
+  "chars": 1285
+ },
+ "in-ai-governance-guidelines": {
+  "sha256": "87f6faff2646faefe17a7b80015fca64b4e905f7bce42d3a0958e04da3e0162f",
+  "bytes": 0,
+  "chars": 1140
  }
 }

@@ -186,22 +186,22 @@ export default function SijilPanel({ uc, runs, goals, attestation: a, thresholds
         <div className="relative max-h-[28rem] overflow-auto rounded-2xl border border-line bg-card">
           <table className="w-full min-w-[40rem] text-sm">
             <caption className="sr-only">Pilot runs with accuracy, hallucination, alignment and rejects</caption>
-            <thead className="sticky top-0 bg-card text-left font-mono text-[11px] tracking-wide text-ink-soft uppercase shadow-[0_1px_0_var(--color-line)]">
+            <thead className="sticky top-0 bg-card text-start font-mono text-[11px] tracking-wide text-ink-soft uppercase shadow-[0_1px_0_var(--color-line)]">
               <tr>
                 <th scope="col" className="px-4 py-3 font-normal">Run</th><th scope="col" className="font-normal">Actions</th>
                 <th scope="col" className="font-normal">Accuracy</th><th scope="col" className="font-normal">Hallucination</th>
-                <th scope="col" className="font-normal">Alignment</th><th scope="col" className="pr-4 font-normal">Rejects</th>
+                <th scope="col" className="font-normal">Alignment</th><th scope="col" className="pe-4 font-normal">Rejects</th>
               </tr>
             </thead>
             <tbody>
               {[...runs].reverse().map((r) => (
                 <tr key={r.run_no} className="border-t border-line">
-                  <th scope="row" className="px-4 py-2 text-left font-mono text-xs font-normal">{r.run_no}</th>
+                  <th scope="row" className="px-4 py-2 text-start font-mono text-xs font-normal">{r.run_no}</th>
                   <td className="tabular-nums">{r.actions}</td>
                   {flag(accOk(r), pct(r.accuracy))}
                   {flag(halOk(r), pct(r.hallucination_rate))}
                   {flag(aliOk(r), pct(r.goal_alignment))}
-                  <td className={`pr-4 tabular-nums ${hardIn(r) ? "font-medium text-ember" : ""}`}>{hardIn(r) ? <span aria-hidden>✕ </span> : null}{rejectsIn(r)}{hardIn(r) ? <span className="sr-only"> (hard criterion breached)</span> : null}</td>
+                  <td className={`pe-4 tabular-nums ${hardIn(r) ? "font-medium text-ember" : ""}`}>{hardIn(r) ? <span aria-hidden>✕ </span> : null}{rejectsIn(r)}{hardIn(r) ? <span className="sr-only"> (hard criterion breached)</span> : null}</td>
                 </tr>
               ))}
               {!hasRuns && <tr><td colSpan={6} className="px-4 py-10 text-center text-ink-soft">No runs yet.{canEdit ? " Use “Run pilot” above." : ""}</td></tr>}

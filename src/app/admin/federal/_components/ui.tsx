@@ -1,6 +1,7 @@
 import type { ReactNode } from "react";
 import type { Verdict } from "@/lib/un/model";
 import type { GateStatus } from "@/lib/un/policy";
+import { T } from "./Lang";
 
 // Shared building blocks for the federal screens. Server-safe (no hooks).
 
@@ -36,7 +37,7 @@ export function VerdictBadge({ verdict, size = "sm" }: { verdict: Verdict | null
       }}
     >
       <span aria-hidden style={{ color: m?.color ?? "var(--color-ink-soft)" }}>{m?.glyph ?? "–"}</span>
-      <span className={m ? "text-ink" : "text-ink-soft"}>{verdictLabel(verdict)}</span>
+      <span className={m ? "text-ink" : "text-ink-soft"}><T k={`verdict.${verdict ?? "NONE"}`} en={verdictLabel(verdict)} /></span>
     </span>
   );
 }
@@ -59,8 +60,8 @@ export function GateChip({ gate, status }: { gate: string; status: GateStatus })
       }}
     >
       <span aria-hidden style={{ color: m.color }}>{m.glyph}</span>
-      <span className="text-ink">{gate.replaceAll("_", " ")}</span>
-      <span className="text-ink-soft">· {m.label}</span>
+      <span className="text-ink"><T k={`gate.${gate}`} en={gate.replaceAll("_", " ")} /></span>
+      <span className="text-ink-soft">· <T k={`status.${status}`} en={m.label} /></span>
     </span>
   );
 }
@@ -106,13 +107,13 @@ export function DataTableAlt({ caption, head, rows }: { caption: string; head: s
     <details className="mt-3 text-xs text-ink-soft">
       <summary className="w-fit cursor-pointer rounded underline underline-offset-2">View as table</summary>
       <div className="relative mt-2 overflow-x-auto">
-        <table className="w-full text-left tabular-nums">
+        <table className="w-full text-start tabular-nums">
           <caption className="sr-only">{caption}</caption>
-          <thead><tr>{head.map((h) => <th key={h} scope="col" className="py-1 pr-4 font-mono text-[10px] font-normal uppercase">{h}</th>)}</tr></thead>
+          <thead><tr>{head.map((h) => <th key={h} scope="col" className="py-1 pe-4 font-mono text-[10px] font-normal uppercase">{h}</th>)}</tr></thead>
           <tbody>
             {rows.map((r, i) => (
               <tr key={i} className="border-t border-line">
-                {r.map((c, j) => (j === 0 ? <th key={j} scope="row" className="py-1 pr-4 font-normal text-ink">{c}</th> : <td key={j} className="py-1 pr-4">{c}</td>))}
+                {r.map((c, j) => (j === 0 ? <th key={j} scope="row" className="py-1 pe-4 font-normal text-ink">{c}</th> : <td key={j} className="py-1 pe-4">{c}</td>))}
               </tr>
             ))}
           </tbody>

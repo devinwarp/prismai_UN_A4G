@@ -1,0 +1,12 @@
+{
+  "QA01": "What should human oversight mechanisms for agent actions enable?",
+  "QA02": "What rights do individuals have against decisions based solely on automated processing under the General Data Protection Regulation (GDPR)?",
+  "QA03": "What must high-risk AI systems record under the EU Artificial Intelligence Act?",
+  "QA04": "What is the target percentage of government sectors to transition to agentic AI in the UAE?",
+  "QA05": "What does the UAE Personal Data Protection Law require for transferring data abroad?",
+  "QA06": "What approach does the African Union Continental Artificial Intelligence Strategy propose?",
+  "HA01": "How does the UAE Charter for the Development and Use of Artificial Intelligence describe the principle of human oversight?",
+  "HA02": "What grievance redressal mechanism does India recommend for entities that deploy AI systems?",
+  "HA03": "What information on energy consumption is required from providers of general-purpose AI models?",
+  "HA04": "To whom can a data subject submit a complaint regarding a violation of the Personal Data Law?"
+}

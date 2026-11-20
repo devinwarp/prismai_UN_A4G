@@ -27,6 +27,8 @@ interface ChatRequestOpts {
   /** Multi-turn conversation id: caches the system prompt and history
    * across turns and keeps the conversation on one provider. */
   conversationId?: string;
+  /** Receives the provider `usage` block (token counts) when one is returned. */
+  onUsage?: (usage: { prompt_tokens?: number; completion_tokens?: number; cost?: number } | undefined) => void;
 }
 
 // Anthropic caches only up to an explicit breakpoint (5-min TTL, refreshed on
@@ -94,6 +96,7 @@ export class LlmHttpError extends Error {
 
 export async function chatCompletion(opts: ChatRequestOpts): Promise<string> {
   const data = await postChat(requestBody(opts), opts.timeoutMs);
+  opts.onUsage?.(data.usage);
   return data.choices?.[0]?.message?.content ?? "";
 }
 

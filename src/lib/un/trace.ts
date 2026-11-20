@@ -30,6 +30,8 @@ export interface TraceRecord {
   hitl_breaches?: string[];
   /** Present only on the final human signature record (I-4). */
   signature?: HumanSignature;
+  /** Present only on records of model-written messages: model id and prompt hash. Older logs lack it and still verify. */
+  llm?: { model: string; prompt_sha256: string };
   timestamp: string;
   prev_hash: string;
   hash: string;
@@ -122,10 +124,10 @@ export function roundBodies(opts: {
   });
   const out: Body[] = [];
   for (const m of opts.accepted) {
-    out.push({ ...base(m), claims: [{ text: m.reason, evidence: m.evidence }], kb_citations: cite(m), proposal: proposalOf(m), confidence: m.evidence.length && m.kb.length ? "high" : "medium", disposition: "accepted", message: m, derived_from: [] });
+    out.push({ ...base(m), claims: [{ text: m.reason, evidence: m.evidence }], kb_citations: cite(m), proposal: proposalOf(m), confidence: m.evidence.length && m.kb.length ? "high" : "medium", disposition: "accepted", message: m, derived_from: [], ...(m.llm ? { llm: m.llm } : {}) });
   }
   for (const { msg, why } of opts.rejected) {
-    out.push({ ...base(msg), claims: [{ text: msg.reason, evidence: msg.evidence }], kb_citations: [], proposal: proposalOf(msg), confidence: "low", disposition: `rejected: ${why}`, message: msg, derived_from: [] });
+    out.push({ ...base(msg), claims: [{ text: msg.reason, evidence: msg.evidence }], kb_citations: [], proposal: proposalOf(msg), confidence: "low", disposition: `rejected: ${why}`, message: msg, derived_from: [], ...(msg.llm ? { llm: msg.llm } : {}) });
   }
   // trace ids of the accepted records are firstId, firstId+1, ... in order
   const acceptedIds = opts.accepted.map((_, i) => `tr_${String(opts.firstId + i).padStart(6, "0")}`);

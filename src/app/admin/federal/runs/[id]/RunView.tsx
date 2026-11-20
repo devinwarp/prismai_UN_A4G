@@ -10,6 +10,9 @@ import { VERDICTS, type Verdict } from "@/lib/un/model";
 import { knowledgeByAgent } from "@/lib/un/knowledge";
 import { expectedCsv, expectedVsActual, matchSummary } from "@/lib/un/expected";
 import { ROLES } from "@/lib/un/roles";
+import type { RoleId } from "@/lib/un/policy";
+import { T } from "../../_components/Lang";
+import RunMetering from "./RunMetering";
 import { GateChip, Section, VerdictBadge, STATUS_META, btnGhost, btnPrimary, card, field } from "../../_components/ui";
 
 const isVerdict = (s: string): s is Verdict => (VERDICTS as readonly string[]).includes(s);
@@ -27,9 +30,9 @@ function PortfolioBars({ outcome }: { outcome: string }) {
   return (
     <div className="mt-3" role="img" aria-label={`Deployed ${d.deployed} of ${d.total}, compliant ${d.compliant}, target ${d.target}`}>
       <div className="relative h-3 rounded-full bg-paper-deep">
-        <div className="absolute inset-y-0 left-0 rounded-full bg-lit" style={{ width: w(d.deployed) }} />
-        <div className="absolute inset-y-0 left-0 rounded-full" style={{ width: w(d.compliant), background: "var(--color-v-sup)" }} />
-        <div aria-hidden className="absolute -top-1 -bottom-1 w-0.5 bg-ink" style={{ left: `calc(${w(d.target)} - 1px)` }} />
+        <div className="absolute inset-y-0 start-0 rounded-full bg-lit" style={{ width: w(d.deployed) }} />
+        <div className="absolute inset-y-0 start-0 rounded-full" style={{ width: w(d.compliant), background: "var(--color-v-sup)" }} />
+        <div aria-hidden className="absolute -top-1 -bottom-1 w-0.5 bg-ink" style={{ insetInlineStart: `calc(${w(d.target)} - 1px)` }} />
       </div>
       <p className="mt-1 font-mono text-[11px] text-ink-soft">deployed {d.deployed} (green) · compliant {d.compliant} (blue) · target line {d.target} of {d.total}</p>
     </div>
@@ -100,8 +103,36 @@ export default function RunView({
     URL.revokeObjectURL(url);
   }
 
-  const nextLabel = state.steps.length ? "Release next step" : "Release first step";
-  const slots = Array.from({ length: totalSteps }, (_, i) => state.steps[i] ?? null);
+  const nextLabel = state.steps.length ? <T k="run.release_next" en="Release next step" /> : <T k="run.release_first" en="Release first step" />;
+  const scripted = state.steps.filter((s) => !s.adhoc);
+  const slots = Array.from({ length: totalSteps }, (_, i) => scripted[i] ?? null);
+  const signed = Boolean(signature);
+
+  // Live scenario editor: one operator-written step, run through the same agents and engine.
+  const agentRoles = (Object.keys(ROLES) as RoleId[]).filter((r) => r !== "coordinator");
+  const [form, setForm] = useState({ summary: "", gate: "", status: "fail", expected: "", recipients: [] as RoleId[] });
+  async function addStep() {
+    setBusy(true);
+    setErr(null);
+    const res = await fetch(`/api/admin/un/runs/${runId}/adhoc`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ summary: form.summary, recipients: form.recipients, llm, ...(form.gate ? { gate: form.gate, status: form.status } : {}), ...(form.expected ? { expected: form.expected } : {}) }),
+    });
+    const data = (await res.json().catch(() => ({}))) as { error?: string };
+    setBusy(false);
+    if (res.ok) { setForm({ ...form, summary: "" }); router.refresh(); } else setErr(data.error ?? "Failed");
+  }
+
+  // Tamper demo: the server edits a throwaway copy and runs the verifier; the stored run is never changed.
+  const [tamper, setTamper] = useState<{ edited: { trace_id: string; before: string; after: string } | null; verification: Verification; named: string | null } | null>(null);
+  async function tamperDemo() {
+    setBusy(true);
+    setErr(null);
+    const res = await fetch(`/api/admin/un/runs/${runId}/export`, { method: "POST" });
+    setBusy(false);
+    if (res.ok) setTamper(await res.json()); else setErr("Tamper demo failed");
+  }
 
   async function next() {
     setBusy(true);
@@ -120,7 +151,7 @@ export default function RunView({
   return (
     <div className="space-y-12">
       <header>
-        <Link href="/admin/federal/scenarios" className="text-sm text-ink-soft underline underline-offset-2">← All scenarios</Link>
+        <Link href="/admin/federal/scenarios" className="text-sm text-ink-soft underline underline-offset-2">← <T k="run.all_scenarios" en="All scenarios" /></Link>
         <h1 className="font-display mt-3 max-w-[30ch] text-3xl font-medium tracking-tight sm:text-4xl">{title}</h1>
         <p className="mt-2 font-mono text-xs text-ink-soft">{state.run_id} · {state.steps.length} of {totalSteps} steps released</p>
       </header>
@@ -157,7 +188,73 @@ export default function RunView({
         )}
         {state.done && <p className="text-sm font-medium text-ink-soft">✓ All steps released.</p>}
       </div>
+      <RunMetering metering={state.metering} />
       {err && <p role="alert" className="-mt-8 text-sm text-ember">✕ {err}</p>}
+
+      <Section eyebrow="Integrity" title="Export and tamper demo" lede="Export the run as JSON and check it offline with npm run verify-log. The demo edits a throwaway copy of the last record and shows the verifier naming it; the stored run is not changed.">
+        <div className={card}>
+          <div className="flex flex-wrap items-center gap-3">
+            <a href={`/api/admin/un/runs/${runId}/export`} download className={btnGhost}>Export run (JSON)</a>
+            <button type="button" onClick={tamperDemo} disabled={busy || !state.log.length} className={btnGhost}>Tamper last record (demo)</button>
+          </div>
+          {tamper && (
+            <div role="status" className="mt-4 border-t border-line pt-3 text-sm">
+              {tamper.edited && <p className="font-mono text-xs text-ink-soft">Edited a copy of {tamper.edited.trace_id}: “{tamper.edited.before.slice(0, 60)}” → “{tamper.edited.after.slice(0, 80)}”</p>}
+              <p className={`mt-2 font-medium ${tamper.verification.ok ? "text-lit-deep" : "text-ember"}`}>
+                <span aria-hidden>{tamper.verification.ok ? "✓" : "✕"}</span>{" "}
+                {tamper.verification.ok ? "Verifier found no problem (unexpected)" : `Verifier: BROKEN at record ${(tamper.verification.brokenAt ?? 0) + 1} (${tamper.named}): ${tamper.verification.reason}`}
+              </p>
+              <p className="mt-1 text-ink-soft">The real run above is still verified: this was a copy.</p>
+            </div>
+          )}
+        </div>
+      </Section>
+
+      {isGate && canEdit && !signed && (
+        <Section eyebrow="Live scenario" title="Add your own step" lede="Write an event, choose which agents see it, and run it. It goes through the same agents and policy engine and is logged and hash-chained like any step. It does not advance the scripted steps.">
+          <form className={card} onSubmit={(e) => { e.preventDefault(); void addStep(); }}>
+            <label className="block text-xs">
+              <span className="font-medium">What happened</span>
+              <textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} rows={2} maxLength={500} required className={`${field} mt-1 w-full`} />
+            </label>
+            <div className="mt-3 grid gap-3 sm:grid-cols-3">
+              <label className="block text-xs">
+                <span className="font-medium">Gate (optional)</span>
+                <select value={form.gate} onChange={(e) => setForm({ ...form, gate: e.target.value })} className={`${field} mt-1 w-full`}>
+                  <option value="">No gate (context only)</option>
+                  {(Object.keys(GATES) as GateId[]).map((g) => <option key={g} value={g}>{GATES[g].label}</option>)}
+                </select>
+              </label>
+              <label className="block text-xs">
+                <span className="font-medium">Status</span>
+                <select value={form.status} disabled={!form.gate} onChange={(e) => setForm({ ...form, status: e.target.value })} className={`${field} mt-1 w-full`}>
+                  <option value="fail">fail</option><option value="pass">pass</option><option value="fix_declared">fix declared</option>
+                </select>
+              </label>
+              <label className="block text-xs">
+                <span className="font-medium">Expected verdict (optional)</span>
+                <select value={form.expected} onChange={(e) => setForm({ ...form, expected: e.target.value })} className={`${field} mt-1 w-full`}>
+                  <option value="">Not scored</option>
+                  {VERDICTS.map((v) => <option key={v} value={v}>{v}</option>)}
+                </select>
+              </label>
+            </div>
+            <fieldset className="mt-3">
+              <legend className="text-xs font-medium">Only these agents see it</legend>
+              <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+                {agentRoles.map((r) => (
+                  <label key={r} className="flex items-center gap-1.5 text-sm">
+                    <input type="checkbox" className="accent-[var(--color-lit)]" checked={form.recipients.includes(r)}
+                      onChange={(e) => setForm({ ...form, recipients: e.target.checked ? [...form.recipients, r] : form.recipients.filter((x) => x !== r) })} />
+                    {ROLES[r].label}
+                  </label>
+                ))}
+              </div>
+            </fieldset>
+            <button type="submit" disabled={busy || !verification.ok || !form.summary.trim() || !form.recipients.length} className={`${btnPrimary} mt-4`}>{busy ? "Running…" : "Run this step"}</button>
+          </form>
+        </Section>
+      )}
 
       {isGate && state.done && (
         <Section eyebrow="Final approval" title="Human sign-off" lede="The policy engine and the agents propose; a person signs. The verdict is written to the use case only after a Sign, together with this run, its head hash and the signer. Withholding leaves the use case without a verdict.">
@@ -182,8 +279,8 @@ export default function RunView({
                   <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2} maxLength={1000} className={`${field} mt-1 w-full`} />
                 </label>
                 <div className="mt-3 flex flex-wrap gap-3">
-                  <button type="button" onClick={() => sign("SIGN")} disabled={busy || !verification.ok} className={btnPrimary}>Sign</button>
-                  <button type="button" onClick={() => sign("WITHHOLD")} disabled={busy || !verification.ok} className={btnGhost}>Withhold</button>
+                  <button type="button" onClick={() => sign("SIGN")} disabled={busy || !verification.ok} className={btnPrimary}><T k="run.sign" en="Sign" /></button>
+                  <button type="button" onClick={() => sign("WITHHOLD")} disabled={busy || !verification.ok} className={btnGhost}><T k="run.withhold" en="Withhold" /></button>
                 </div>
               </div>
             ) : (
@@ -213,17 +310,17 @@ export default function RunView({
         {showGates && (
           <div className="relative mt-6 overflow-x-auto">
             <table className="w-full min-w-[28rem] border-separate border-spacing-1 text-sm">
-              <caption className="mb-2 text-left font-mono text-[11px] tracking-widest text-ink-soft uppercase">Gate status after each step</caption>
+              <caption className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">Gate status after each step</caption>
               <thead>
                 <tr>
-                  <th scope="col" className="text-left font-mono text-[10px] font-normal text-ink-soft uppercase">Gate</th>
+                  <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">Gate</th>
                   {state.steps.map((s) => <th key={s.step} scope="col" className="px-1 font-mono text-xs font-normal">{s.step}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {gateIds.map((g) => (
                   <tr key={g}>
-                    <th scope="row" className="py-1 pr-3 text-left font-normal" title={GATES[g].label}>{g.replaceAll("_", " ")}</th>
+                    <th scope="row" className="py-1 pe-3 text-start font-normal" title={GATES[g].label}>{g.replaceAll("_", " ")}</th>
                     {gateAt(g).map((c, i) => {
                       const m = STATUS_META[c.cur];
                       return (
@@ -244,21 +341,21 @@ export default function RunView({
         {expected.length > 0 && (
           <div className="relative mt-8 overflow-x-auto">
             <table className="w-full min-w-[28rem] border-separate border-spacing-y-1 text-sm">
-              <caption className="mb-2 flex flex-wrap items-center justify-between gap-3 text-left">
+              <caption className="mb-2 flex flex-wrap items-center justify-between gap-3 text-start">
                 <span className="font-mono text-[11px] tracking-widest text-ink-soft uppercase">Expected vs actual · {matchSummary(expected)}</span>
                 <button type="button" onClick={downloadExpected} className="text-xs underline underline-offset-2">Download CSV</button>
               </caption>
               <thead>
-                <tr className="text-left font-mono text-[10px] font-normal text-ink-soft uppercase">
+                <tr className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">
                   <th scope="col" className="font-normal">Step</th><th scope="col" className="font-normal">Expected</th><th scope="col" className="font-normal">Actual</th><th scope="col" className="font-normal">Match</th>
                 </tr>
               </thead>
               <tbody>
                 {expected.map((r) => (
                   <tr key={r.step}>
-                    <th scope="row" className="py-1 pr-3 text-left font-mono text-xs font-normal">{r.step}</th>
-                    <td className="pr-3">{isVerdict(r.expected) ? <VerdictBadge verdict={r.expected} /> : <span className="text-xs">{r.expected}</span>}</td>
-                    <td className="pr-3">{isVerdict(r.actual) ? <VerdictBadge verdict={r.actual} /> : <span className="text-xs">{r.actual}</span>}</td>
+                    <th scope="row" className="py-1 pe-3 text-start font-mono text-xs font-normal">{r.step}</th>
+                    <td className="pe-3">{isVerdict(r.expected) ? <VerdictBadge verdict={r.expected} /> : <span className="text-xs">{r.expected}</span>}</td>
+                    <td className="pe-3">{isVerdict(r.actual) ? <VerdictBadge verdict={r.actual} /> : <span className="text-xs">{r.actual}</span>}</td>
                     <td className={r.match ? "text-lit-deep" : "font-medium text-ember"}><span aria-hidden>{r.match ? "✓" : "✕"}</span> {r.match ? "match" : "differs"}</td>
                   </tr>
                 ))}
@@ -270,17 +367,17 @@ export default function RunView({
         {know.length > 1 && (
           <div className="relative mt-8 overflow-x-auto">
             <table className="w-full min-w-[40rem] border-separate border-spacing-1 text-sm">
-              <caption className="mb-2 text-left font-mono text-[11px] tracking-widest text-ink-soft uppercase">What each agent knows after each step</caption>
+              <caption className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">What each agent knows after each step</caption>
               <thead>
                 <tr>
-                  <th scope="col" className="text-left font-mono text-[10px] font-normal text-ink-soft uppercase">Step</th>
-                  {know.map((a) => <th key={a.role} scope="col" className="px-1 text-left text-xs font-medium" title={ROLES[a.role].mandate}>{ROLES[a.role].label}</th>)}
+                  <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">Step</th>
+                  {know.map((a) => <th key={a.role} scope="col" className="px-1 text-start text-xs font-medium" title={ROLES[a.role].mandate}>{ROLES[a.role].label}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {state.steps.map((s, i) => (
                   <tr key={s.step} className="align-top">
-                    <th scope="row" className="py-1 pr-2 text-left font-mono text-xs font-normal">{s.step}</th>
+                    <th scope="row" className="py-1 pe-2 text-start font-mono text-xs font-normal">{s.step}</th>
                     {know.map((a) => (
                       <td key={a.role} className={`min-w-36 rounded-md border p-1.5 text-xs ${a.received[i].length ? "border-lit/50 bg-lit-soft/30" : "border-dashed border-line text-ink-soft"}`}>
                         {a.received[i].length
@@ -302,7 +399,7 @@ export default function RunView({
               <div className="flex flex-wrap items-center justify-between gap-3">
                 <p className="font-mono text-sm font-medium">{s.step} <span className="font-normal text-ink-soft">· released {time(s.released_at)}</span></p>
                 <p className={`text-sm font-medium ${s.match ? "text-lit-deep" : "text-ember"}`}>
-                  <span aria-hidden>{s.match ? "✓" : "✕"}</span> {s.match ? "matches expected" : `expected ${s.expected}`}
+                  {s.adhoc && !s.expected ? "ad hoc, not scored" : <><span aria-hidden>{s.match ? "✓" : "✕"}</span> {s.match ? "matches expected" : `expected ${s.expected}`}</>}
                 </p>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -369,7 +466,7 @@ export default function RunView({
                       <div className="mt-2 space-y-1.5 text-sm">
                         <p className="font-mono text-[10px] tracking-widest text-ink-soft uppercase">Agent reasoning</p>
                         {r.claims.map((c) => (
-                          <p key={c.text}>{c.text}{c.evidence.length > 0 && <span className="ml-2 font-mono text-[11px] text-ink-soft">[{c.evidence.join(", ")}]</span>}</p>
+                          <p key={c.text}>{c.text}{c.evidence.length > 0 && <span className="ms-2 font-mono text-[11px] text-ink-soft">[{c.evidence.join(", ")}]</span>}</p>
                         ))}
                       </div>
                       {/* Evidence: quoted, framed and sourced, so it never reads as the agent's own words. */}

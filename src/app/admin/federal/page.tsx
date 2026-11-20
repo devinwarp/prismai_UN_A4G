@@ -5,6 +5,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { computeDashboard, deadlineText } from "@/lib/un/model";
 import { loadHitlConfig, loadPolicy, loadUnUseCases } from "@/lib/un/store";
 import AdminHeader from "../AdminHeader";
+import LangShell, { T } from "./_components/Lang";
+import CitizenMessageCheck from "./_components/CitizenMessageCheck";
 import FederalPanel from "./FederalPanel";
 
 export const metadata: Metadata = {
@@ -28,9 +30,10 @@ export default async function FederalPage() {
   return (
     <div className="conduit-bg min-h-dvh">
       <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
+      <LangShell>
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase">
-          Federal dashboard
+          <T k="page.federal" en="Federal dashboard" />
         </p>
         <h1 className="font-display mt-2 text-3xl font-medium tracking-tight sm:text-4xl">
           {policy.name}
@@ -46,7 +49,9 @@ export default async function FederalPage() {
           hitl={hitl}
           asOf={new Date().toISOString()}
         />
+        <CitizenMessageCheck />
       </main>
+      </LangShell>
     </div>
   );
 }

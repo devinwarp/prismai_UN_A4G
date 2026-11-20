@@ -141,10 +141,11 @@
       "global": [
         {"source_id": "nist-ai-rmf", "chunk_ids": ["nist-ai-rmf#54"], "support": "primary", "note": "Incident response, recovery and change management are part of MANAGE; no record format is specified."},
         {"source_id": "eu-ai-act-articles", "chunk_ids": ["eu-ai-act-articles#4"], "support": "primary", "note": "EU AI Act Art. 26(6): deployers keep automatically generated logs under their control (at least six months); the quoted text sets no record format."},
+        {"source_id": "eu-ai-act-art12", "chunk_ids": ["eu-ai-act-art12#0", "eu-ai-act-art12#1", "eu-ai-act-art12#2"], "support": "primary", "note": "EU AI Act Art. 12 (primary text, read from EUR-Lex 19 Nov 2026): high-risk systems must allow automatic recording of events over their lifetime, enabling traceability for risk, post-market monitoring and deployer oversight. It says what events to enable, not how to make the record tamper-evident."},
         {"source_id": "sg-imda-agentic-mgf", "chunk_ids": ["sg-imda-agentic-mgf#6", "sg-imda-agentic-mgf#7"], "support": "primary", "note": "IMDA: organisations decide what to log; machine-speed logs are hard to analyse. No format is prescribed in these passages."}
       ],
       "not_ingested": [
-        {"name": "EU AI Act, Article 12 (record-keeping)", "note": "Not in the knowledge base; it may say more about what logs contain, so the absence claim is limited to the passages ingested."}
+        {"name": "AI Act harmonised standards (CEN-CENELEC JTC 21) on logging", "note": "Not ingested and not read; they may specify record formats, so the absence claim stays limited to the passages ingested."}
       ],
       "prism": {
         "response": "Append-only, hash-chained trace of every scenario step, and an audit_log gate.",
@@ -153,7 +154,7 @@
           {"kind": "gate", "label": "audit_log gate", "path": "src/lib/un/policy.ts"}
         ]
       },
-      "caveat": "Absence claim limited to what is ingested: the EU and IMDA passages require or advise logging and leave the record format open, but Article 12 and harmonised standards were not read. Prism's hash chain is its own design."
+      "caveat": "Absence claim limited to what is ingested: the EU and IMDA passages require or advise logging and leave the record format open; Article 12 is now read in primary text and also names events to record, not integrity of the record. Harmonised standards and the implementing guidance were not read. Prism's hash chain is its own design."
     },
     {
       "id": "G7",
@@ -166,12 +167,13 @@
         {"chunk_id": "uae-data-protection-laws#12", "note": "Impact assessment before processing with modern technologies."}
       ],
       "global": [
+        {"source_id": "gdpr-art22", "chunk_ids": ["gdpr-art22#0", "gdpr-art22#2", "gdpr-art22#3"], "support": "primary", "note": "GDPR Art. 22 (primary text, read from EUR-Lex 19 Nov 2026): a right not to be subject to a decision based solely on automated processing with legal or similarly significant effects; where an exception applies, at least the right to obtain human intervention, to express a point of view and to contest the decision. A data law with no public-sector carve-out in the quoted text, the contrast with the PDPL scope exclusion."},
         {"source_id": "eu-ai-act-annex3", "chunk_ids": ["eu-ai-act-annex3#3"], "support": "primary", "note": "Annex III places systems deciding public benefits and services among high-risk systems."},
         {"source_id": "eu-ai-act-articles", "chunk_ids": ["eu-ai-act-articles#5", "eu-ai-act-articles#6"], "support": "primary", "note": "EU AI Act Art. 86(1): a person affected by a decision a deployer takes on the output of an Annex III system (except point 2) has the right to a clear and meaningful explanation. This is the citizen-recourse contrast."},
         {"source_id": "un-system-white-paper", "chunk_ids": ["un-system-white-paper#0"], "support": "primary", "note": "UN System White Paper: apart from voluntary incident monitoring, no internationally coordinated avenues exist for redress of AI-related harms."}
       ],
       "not_ingested": [
-        {"name": "GDPR, Article 22 (automated individual decision-making)", "note": "Not ingested and its wording was not verified here [verify]; it is not relied on."}
+        {"name": "GDPR, Article 23 (restrictions) and Article 2 (material scope)", "note": "Not ingested; they limit when Art. 22 applies, so the contrast is limited to Art. 22 as quoted."}
       ],
       "prism": {
         "response": "Applies the PDPL-style rights as policy anyway: data_lawful gate, and a rule that decisions affecting rights or fees need a human decision.",
@@ -180,7 +182,7 @@
           {"kind": "rule", "label": "rights_or_fees_human_decision", "path": "src/lib/un/hitl.ts"}
         ]
       },
-      "caveat": "The reading of PDPL scope rests on one excerpt (uae-data-protection-laws#2); other federal or local rules may cover government entities. Art. 86 is an explanation right, not a data law or a full remedy, and carries its own exceptions. Not legal advice."
+      "caveat": "The reading of PDPL scope rests on one excerpt (uae-data-protection-laws#2); other federal or local rules may cover government entities. GDPR Art. 22 has its own exceptions (Art. 22(2)) and member-state law may restrict it (Art. 23); only Art. 22 was read, not the rest of the GDPR or its case law. Art. 86 is an explanation right, not a data law or a full remedy, and carries its own exceptions. Not legal advice."
     },
     {
       "id": "G8",
@@ -241,7 +243,8 @@
       "global": [
         {"source_id": "nist-ai-rmf", "chunk_ids": ["nist-ai-rmf#15"], "support": "primary", "note": "Unrealistic expectations about risk can misallocate resources; not all failures can be eliminated."},
         {"source_id": "sg-imda-agentic-mgf", "chunk_ids": ["sg-imda-agentic-mgf#8"], "support": "primary", "note": "IMDA: the speed of agent decisions makes it hard for oversight to catch unauthorised actions before harm."},
-        {"source_id": "g7-hiroshima-code", "chunk_ids": ["g7-hiroshima-code#5"], "support": "primary", "note": "G7 Hiroshima Code: while harnessing innovation, organisations should respect the rule of law, human rights and fairness."}
+        {"source_id": "g7-hiroshima-code", "chunk_ids": ["g7-hiroshima-code#5"], "support": "primary", "note": "G7 Hiroshima Code: while harnessing innovation, organisations should respect the rule of law, human rights and fairness."},
+        {"source_id": "in-ai-governance-guidelines", "chunk_ids": ["in-ai-governance-guidelines#8", "in-ai-governance-guidelines#4"], "support": "primary", "note": "India AI Governance Guidelines (MeitY, Nov 2025): responsible innovation should be prioritised over cautionary restraint, other things being equal; and direct human oversight is ineffective where systems act at high velocity. A Global South statement that pace and oversight pull against each other."}
       ],
       "not_ingested": [],
       "prism": {
@@ -251,7 +254,7 @@
           {"kind": "screen", "label": "Federal progress panel", "path": "src/app/admin/federal/FederalPanel.tsx"}
         ]
       },
-      "caveat": "Weak grounding remains: IMDA says speed strains oversight and the G7 Code pairs innovation with rights, but no source says adoption targets and assurance duties conflict."
+      "caveat": "Grounding is firmer than before for the tension itself: India's guidance (non-binding) states that responsible innovation is prioritised over cautionary restraint, other things being equal, and that direct human oversight is ineffective at high speed. Still, no instrument says that UAE-style adoption targets conflict with assurance duties; that link is our reading of the Cabinet release against the Charter. IMDA and the G7 Code are also non-binding."
     }
   ]
 }

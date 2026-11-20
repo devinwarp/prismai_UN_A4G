@@ -1,8 +1,17 @@
 // Dev-only safety flag — this repo's .env.local points at the production
 // Supabase project, so local testing mutates live data. Show an obvious
 // banner on admin surfaces until a dedicated dev project exists.
+import { isOffline } from "@/lib/supabase/offline-flag";
+
 export default function DevDbBanner() {
   if (process.env.NODE_ENV === "production") return null;
+  if (isOffline()) {
+    return (
+      <div className="border-b border-ember/40 bg-ember/10 px-4 py-1.5 text-center font-mono text-[11px] tracking-wide text-ember">
+        OFFLINE — local file store (.data/), no database writes
+      </div>
+    );
+  }
   let host = "unknown db";
   try {
     host = new URL(process.env.NEXT_PUBLIC_SUPABASE_URL ?? "").host;

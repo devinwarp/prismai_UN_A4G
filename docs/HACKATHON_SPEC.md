@@ -39,7 +39,7 @@ Statements marked **[verify]** could not be confirmed from primary sources or fr
 - 10 Nov 2026: submission deadline.
 - 11–18 Nov: first-round evaluation.
 - 18 Nov: shortlist announced.
-- 8 Dec: final evaluation, onsite in Dubai during GITEX.
+- 9 Dec: final evaluation, onsite in Dubai at TDRA.
 - 10 Dec: awards.
 
 ### 1.2 Deliverables
@@ -501,7 +501,7 @@ AgentMessage(section 5.4)
 
 **Should (before the shortlist on 18 November):** SOP upload and the org design agent with RACI (7.5, 7.6); scenario S2; the auto-filed pilot report.
 
-**Could (before the final on 8 December):** workforce change on approval (7.10); SOP auto-update (7.11); the watchdog (7.12); the demo video polish.
+**Could (before the final on 9 December):** workforce change on approval (7.10); SOP auto-update (7.11); the watchdog (7.12); the demo video polish.
 
 ---
 

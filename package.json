@@ -12,7 +12,11 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
+    "export-replay": "node scripts/export-replay.ts",
+    "a11y": "node scripts/a11y-check.mjs",
     "verify-log": "node scripts/verify_log.ts",
+    "eval-agents": "node scripts/eval_agents.ts",
+    "kb:score": "node scripts/eval_retrieval.ts",
     "test": "node --test \"tests/*.test.ts\""
   },
   "dependencies": {

@@ -21,7 +21,7 @@ export default function StartRun({ scenarioId }: { scenarioId: string }) {
     else setErr(data.error ?? "Could not start");
   }
   return (
-    <div className="text-right">
+    <div className="text-end">
       <button onClick={start} disabled={busy} className="rounded-xl bg-ink px-5 py-2.5 text-sm font-medium text-paper transition-opacity hover:opacity-90 disabled:opacity-50">
         {busy ? "Starting…" : "Start run"}
       </button>

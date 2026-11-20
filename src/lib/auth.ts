@@ -10,6 +10,13 @@ function adminEmails(): string[] {
     .filter(Boolean);
 }
 
+function judgeEmails(): string[] {
+  return (process.env.JUDGE_EMAILS ?? "")
+    .split(",")
+    .map((e) => e.trim().toLowerCase())
+    .filter(Boolean);
+}
+
 function platformEmails(): string[] {
   return (process.env.PLATFORM_EMAILS ?? "")
     .split(",")
@@ -64,6 +71,17 @@ export async function ensureProfile(user: User): Promise<Profile | null> {
       .update({ role: "admin" })
       .eq("id", user.id)
       .neq("role", "admin");
+  }
+
+  // Judges: read-only "viewer" in the demo workspace (JUDGE_ORG_ID, else the first admin's).
+  // Never demotes an admin or platform user. Writes stay blocked by requireAdmin.
+  if (judgeEmails().includes(email) && !isPlatformEmail && !isAdminEmail) {
+    let orgId = process.env.JUDGE_ORG_ID ?? null;
+    if (!orgId) {
+      const { data: a } = await admin.from("profiles").select("org_id").eq("role", "admin").limit(1).maybeSingle();
+      orgId = (a?.org_id as string | null) ?? null;
+    }
+    if (orgId) await admin.from("profiles").update({ role: "viewer", org_id: orgId }).eq("id", user.id).in("role", ["employee", "viewer"]);
   }
 
   const { data } = await admin

@@ -31,8 +31,8 @@ function TargetTrack({
         aria-valuetext={`${value} of ${total} use cases; target ${target}`}
         className="relative mt-2 h-4 overflow-visible rounded-full bg-paper-deep"
       >
-        <div className="bar-grow absolute inset-y-0 left-0 rounded-full" style={{ width: `${w}%`, background: fill }} />
-        <div aria-hidden className="absolute -top-1.5 -bottom-1.5 w-0.5 bg-ink" style={{ left: `calc(${t}% - 1px)` }} />
+        <div className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${w}%`, background: fill }} />
+        <div aria-hidden className="absolute -top-1.5 -bottom-1.5 w-0.5 bg-ink" style={{ insetInlineStart: `calc(${t}% - 1px)` }} />
       </div>
     </div>
   );
@@ -124,11 +124,11 @@ export function VerdictMix({
             onClick={() => onSelect(active === a.key ? "all" : a.key)}
             aria-pressed={active === a.key}
             title={`${a.key === "NONE" ? "Not yet assessed" : verdictLabel(a.key)}: ${a.n}`}
-            className="flex min-w-6 items-center justify-center font-mono text-xs font-medium first:rounded-l-lg last:rounded-r-lg aria-pressed:outline-2 aria-pressed:outline-offset-1 aria-pressed:outline-ink"
+            className="flex min-w-6 items-center justify-center font-mono text-xs font-medium first:rounded-s-lg last:rounded-e-lg aria-pressed:outline-2 aria-pressed:outline-offset-1 aria-pressed:outline-ink"
             style={{ width: `${(a.n / total) * 100}%`, background: color(a.key), color: a.key === "NONE" ? "var(--color-ink-soft)" : ["ASSISTANT_ONLY", "ESCALATE"].includes(a.key) ? "var(--color-v-on-light)" : "var(--color-v-on-dark)" }}
           >
             <span aria-hidden>{a.key === "NONE" ? "" : VERDICT_META[a.key].glyph}</span>
-            <span className="ml-1 tabular-nums">{a.n}</span>
+            <span className="ms-1 tabular-nums">{a.n}</span>
           </button>
         ))}
       </div>
@@ -139,7 +139,7 @@ export function VerdictMix({
               type="button"
               onClick={() => onSelect(active === a.key ? "all" : a.key)}
               aria-pressed={active === a.key}
-              className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left hover:bg-paper-deep aria-pressed:bg-paper-deep ${a.n ? "" : "opacity-60"}`}
+              className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-start hover:bg-paper-deep aria-pressed:bg-paper-deep ${a.n ? "" : "opacity-60"}`}
             >
               <span aria-hidden className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: color(a.key) }} />
               <span className="min-w-0 flex-1 truncate">{a.key === "NONE" ? "Not assessed" : verdictLabel(a.key)}</span>
@@ -188,7 +188,7 @@ export function TallyList({
             <li key={r.key}>
               <Row
                 {...(onSelect ? { type: "button" as const, onClick: () => onSelect(active === r.key ? "" : r.key), "aria-pressed": active === r.key } : {})}
-                className={`block w-full rounded-lg px-2 py-1.5 text-left ${onSelect ? "hover:bg-paper-deep aria-pressed:bg-paper-deep" : ""}`}
+                className={`block w-full rounded-lg px-2 py-1.5 text-start ${onSelect ? "hover:bg-paper-deep aria-pressed:bg-paper-deep" : ""}`}
               >
                 <span className="flex items-baseline justify-between gap-3 text-sm">
                   <span className="min-w-0 truncate">{r.key}</span>
@@ -197,8 +197,8 @@ export function TallyList({
                   </span>
                 </span>
                 <span className="relative mt-1.5 block h-2.5 rounded-full bg-paper-deep" style={{ width: `${(r.total / maxTotal) * 100}%`, minWidth: "3rem" }}>
-                  <span className="bar-grow absolute inset-y-0 left-0 rounded-full" style={{ width: `${pct(r.deployed, r.total)}%`, background: "var(--color-lit)" }} />
-                  <span className="bar-grow absolute inset-y-0 left-0 rounded-full" style={{ width: `${pct(r.compliant, r.total)}%`, background: "var(--color-v-sup)" }} />
+                  <span className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.deployed, r.total)}%`, background: "var(--color-lit)" }} />
+                  <span className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.compliant, r.total)}%`, background: "var(--color-v-sup)" }} />
                 </span>
               </Row>
             </li>
@@ -226,19 +226,19 @@ export function QuadrantVerdictMatrix({ useCases }: { useCases: UnUseCaseState[]
         <caption className="sr-only">Number of use cases per quadrant and verdict</caption>
         <thead>
           <tr>
-            <th scope="col" className="text-left font-mono text-[10px] font-normal text-ink-soft uppercase">Quadrant</th>
+            <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">Quadrant</th>
             {cols.map((v) => (
               <th key={v ?? "none"} scope="col" className="px-1 pb-1 text-center align-bottom">
                 <VerdictBadge verdict={v} />
               </th>
             ))}
-            <th scope="col" className="text-right font-mono text-[10px] font-normal text-ink-soft uppercase">Total</th>
+            <th scope="col" className="text-end font-mono text-[10px] font-normal text-ink-soft uppercase">Total</th>
           </tr>
         </thead>
         <tbody>
           {QUADRANTS.map((q) => (
             <tr key={q}>
-              <th scope="row" className="py-1 pr-3 text-left font-normal whitespace-nowrap">{q}</th>
+              <th scope="row" className="py-1 pe-3 text-start font-normal whitespace-nowrap">{q}</th>
               {cols.map((v) => {
                 const n = cell(q, v);
                 const c = v ? VERDICT_META[v].color : "var(--color-ink-soft)";
@@ -252,7 +252,7 @@ export function QuadrantVerdictMatrix({ useCases }: { useCases: UnUseCaseState[]
                   </td>
                 );
               })}
-              <td className="pl-2 text-right font-mono text-xs text-ink-soft tabular-nums">{useCases.filter((u) => u.quadrant === q).length}</td>
+              <td className="ps-2 text-end font-mono text-xs text-ink-soft tabular-nums">{useCases.filter((u) => u.quadrant === q).length}</td>
             </tr>
           ))}
         </tbody>

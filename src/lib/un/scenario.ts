@@ -1,8 +1,9 @@
 import { ROLES, type AgentDeps } from "./agents.ts";
 import { hitlBreaches, type HitlConfig, type HitlFacts, type HitlRuleId } from "./hitl.ts";
-import { computeDashboard, type Dashboard, type Policy, type UnUseCaseState, type Verdict } from "./model.ts";
-import { type RoleId } from "./policy.ts";
+import { computeDashboard, VERDICTS, type Dashboard, type Policy, type UnUseCaseState, type Verdict } from "./model.ts";
+import { GATES, type GateId, type GateStatus, type RoleId } from "./policy.ts";
 import { searchChunks, type Chunk } from "./kb.ts";
+import type { Metering } from "./metering.ts";
 import { type AgentMessage, type CaseState } from "./protocol.ts";
 import { runRound, type RoutedEvent } from "./round.ts";
 import { appendTrace, roundBodies, type TraceRecord } from "./trace.ts";
@@ -47,6 +48,8 @@ export interface StepResult {
   reasons: string[];
   trace_ids: string[];
   active: RoleId[];
+  /** A step added live by an operator (not part of the scenario). Empty `expected` = none declared. */
+  adhoc?: true;
 }
 
 export interface RunState {
@@ -63,6 +66,8 @@ export interface RunState {
   hitl_unmet?: HitlRuleId[];
   /** New runs also write append-only un_trace_records rows (C4-2); older runs keep only the jsonb log. */
   trace_rows?: boolean;
+  /** Measured tokens and seconds plus the inputs of an ESTIMATED energy figure (see metering.ts). Outside the hash chain. */
+  metering?: Metering;
   // portfolio scenarios: a sandbox copy, never the live table
   cases?: UnUseCaseState[];
   policy?: Policy;
@@ -73,6 +78,7 @@ export interface RunEnv {
   now: () => string;
   chunks: Chunk[];
   llm?: AgentDeps["llm"];
+  model?: string;
   /** The entity's HITL configuration and the use case's facts (I-2). Default:
    * every rule on, facts from the scenario (client-facing as declared). */
   hitl?: { config: HitlConfig; entity: string; facts: HitlFacts };
@@ -99,14 +105,15 @@ export async function nextStep(sc: Scenario, run: RunState, env: RunEnv): Promis
   return sc.kind === "gate" ? gateStep(sc, run, env) : portfolioStep(sc, run, env);
 }
 
-async function gateStep(sc: GateScenario, run: RunState, env: RunEnv): Promise<RunState> {
-  const def = sc.steps[run.next];
+async function gateStep(sc: GateScenario, run: RunState, env: RunEnv, adhoc?: { step: string; events: RoutedEvent[]; expected: string }): Promise<RunState> {
+  const def = adhoc ?? sc.steps[run.next];
   const at = env.now();
   let seq = run.msg_seq;
   const deps: AgentDeps = {
     search: (q) => searchChunks(env.chunks, q, { k: 4, mix: true }),
     nextId: () => `m${++seq}`,
     llm: env.llm,
+    model: env.model,
   };
   const byId = new Map(env.chunks.map((c) => [c.chunk_id, c]));
   // I-2: breaches are computed from the declared-unmet rules and enforced by decide().
@@ -119,7 +126,7 @@ async function gateStep(sc: GateScenario, run: RunState, env: RunEnv): Promise<R
   const h = env.hitl ?? { config: {}, entity: sc.ext_id, facts: { client_facing: sc.clientFacing, affects_rights: false, irreversible: false } };
   const breaches = hitlBreaches(h.config, h.entity, h.facts, [...unmet]);
   const r = await runRound(
-    { state: { ...run.state!, hitlBreaches: breaches }, title: sc.title, requested: run.next === 0 ? sc.requested : undefined, thread: run.thread!, events: def.events },
+    { state: { ...run.state!, hitlBreaches: breaches }, title: sc.title, requested: !adhoc && run.next === 0 ? sc.requested : undefined, thread: run.thread!, events: def.events },
     deps,
     (id) => byId.has(id),
   );
@@ -135,13 +142,54 @@ async function gateStep(sc: GateScenario, run: RunState, env: RunEnv): Promise<R
   });
   const log = bodies.reduce(appendTrace, run.log);
   return {
-    ...run, log, state: r.state, thread: r.thread, msg_seq: seq, hitl_unmet: [...unmet], next: run.next + 1,
-    done: run.next + 1 >= sc.steps.length,
+    ...run, log, state: r.state, thread: r.thread, msg_seq: seq, hitl_unmet: [...unmet],
+    next: adhoc ? run.next : run.next + 1,
+    done: adhoc ? run.done : run.next + 1 >= sc.steps.length,
     steps: [...run.steps, {
       step: def.step, released_at: at, events: def.events, outcome: r.decision.verdict, expected: def.expected,
-      match: r.decision.verdict === def.expected, reasons: r.decision.reasons, trace_ids: traceIds(log, before), active: r.active,
+      match: !def.expected || r.decision.verdict === def.expected, reasons: r.decision.reasons, trace_ids: traceIds(log, before), active: r.active,
+      ...(adhoc ? { adhoc: true as const } : {}),
     }],
   };
+}
+
+export interface AdhocInput {
+  summary: string;
+  gate?: GateId;
+  status?: GateStatus;
+  recipients: RoleId[];
+  /** Optional expected verdict; without it the step is logged but not scored. */
+  expected?: string;
+}
+
+export const AGENT_ROLES = Object.keys(ROLES).filter((r) => r !== "coordinator") as RoleId[];
+export const MAX_ADHOC = 20;
+
+/** Why an ad-hoc input is not acceptable, or null. */
+export function adhocError(input: AdhocInput): string | null {
+  const summary = typeof input.summary === "string" ? input.summary.trim() : "";
+  if (!summary || summary.length > 500) return "Summary is required (up to 500 characters)";
+  if (!Array.isArray(input.recipients) || !input.recipients.length || !input.recipients.every((r) => AGENT_ROLES.includes(r))) return "Pick at least one recipient role";
+  if (Boolean(input.gate) !== Boolean(input.status)) return "Gate and status go together: set both or neither";
+  if (input.gate && !Object.hasOwn(GATES, input.gate)) return "Unknown gate";
+  if (input.status && !["pass", "fail", "fix_declared"].includes(input.status)) return "Status must be pass, fail or fix_declared";
+  if (input.expected && !(VERDICTS as readonly string[]).includes(input.expected)) return "Unknown expected verdict";
+  return null;
+}
+
+/** Append a live, operator-written step to a gate run. It runs the same round
+ * as a scenario step (same agents, same policy engine, hash-chained records),
+ * but never advances the scenario's own step counter. Throws on invalid input. */
+export async function adhocStep(sc: Scenario, run: RunState, input: AdhocInput, env: RunEnv): Promise<RunState> {
+  if (sc.kind !== "gate") throw new Error("ad-hoc steps are only for use-case (gate) scenarios");
+  if (run.log[run.log.length - 1]?.signature) throw new Error("run is already signed");
+  const bad = adhocError(input);
+  if (bad) throw new Error(bad);
+  const n = run.steps.filter((s) => s.adhoc).length;
+  if (n >= MAX_ADHOC) throw new Error(`at most ${MAX_ADHOC} ad-hoc steps per run`);
+  const step = `A${n + 1}`;
+  const ev: RoutedEvent = { id: `${sc.id}-${step}-adhoc`, type: input.gate ? "gate_evidence" : "context", summary: input.summary.trim(), recipients: input.recipients, gate: input.gate, status: input.status };
+  return gateStep(sc, run, env, { step, events: [ev], expected: input.expected ?? "" });
 }
 
 function portfolioStep(sc: PortfolioScenario, run: RunState, env: RunEnv): RunState {

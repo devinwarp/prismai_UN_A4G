@@ -30,6 +30,13 @@ export interface AgentMessage {
   evidence: string[];
   /** Knowledge-base chunk ids that back the claim. */
   kb: string[];
+  /** Model-written messages only: which model, and the sha256 of the exact prompt (system + user). */
+  llm?: LlmProvenance;
+}
+
+export interface LlmProvenance {
+  model: string;
+  prompt_sha256: string;
 }
 
 export interface CaseState {

@@ -19,7 +19,7 @@ export default async function GapsPage() {
   const quote = (id: string) => {
     const c = chunk.get(id);
     return c ? (
-      <blockquote className="mt-1 border-l-2 border-line pl-3 text-xs text-ink-soft">
+      <blockquote className="mt-1 border-l-2 border-line ps-3 text-xs text-ink-soft">
         {c.text.length > 320 ? `${c.text.slice(0, 320)}…` : c.text}
         <span className="mt-1 block font-mono">{id} · <a href={c.url} className="underline">{c.title}</a></span>
       </blockquote>
@@ -55,7 +55,7 @@ export default async function GapsPage() {
                   <ul className="mt-2 space-y-3 text-sm">
                     {g.global.map((x) => (
                       <li key={x.source_id + x.chunk_ids.join()}>
-                        <span className={`mr-2 rounded-md px-2 py-0.5 font-mono text-xs ${x.support === "primary" ? "bg-paper-deep" : "border border-line"}`}>
+                        <span className={`me-2 rounded-md px-2 py-0.5 font-mono text-xs ${x.support === "primary" ? "bg-paper-deep" : "border border-line"}`}>
                           {x.support === "primary" ? "primary text" : "secondary summary"}
                         </span>
                         {x.note}

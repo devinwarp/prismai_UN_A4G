@@ -1,3 +1,5 @@
+import { parseLlmJson } from "../llm.ts";
+import { createHash } from "node:crypto";
 import { excerpt, supportingChunks, type Chunk, type Hit } from "./kb.ts";
 import { GATES, type GateId, type GateStatus, type RoleId } from "./policy.ts";
 import { ROLES, type RoleDef } from "./roles.ts";
@@ -34,6 +36,8 @@ export interface AgentDeps {
   search: (query: string) => Hit[];
   /** Returns the model's raw text (JSON). Omit for deterministic mode. */
   llm?: (system: string, user: string) => Promise<string>;
+  /** Model id recorded with each model-written message. */
+  model?: string;
   nextId: () => string;
 }
 
@@ -96,16 +100,20 @@ export async function runAgent(role: RoleId, ctx: AgentContext, deps: AgentDeps)
     messages_to_you: mine,
     knowledge_base: hits.map((h) => ({ chunk_id: h.chunk.chunk_id, source: h.chunk.title, quote: excerpt(h.chunk.text, query) })),
   });
+  const system = SYSTEM(role);
+  const llm = { model: deps.model ?? "unknown", prompt_sha256: createHash("sha256").update(`${system}\n${user}`, "utf8").digest("hex") };
   try {
-    const raw = JSON.parse((await deps.llm(SYSTEM(role), user)).replace(/^```(?:json)?|```$/g, "").trim()) as { messages?: Partial<AgentMessage>[] };
+    const raw = parseLlmJson(await deps.llm(system, user)) as { messages?: Partial<AgentMessage>[] };
     const known = new Set([...ctx.events.map((e) => e.id), ...mine.map((m) => m.msg_id)]);
     const msgs = (raw.messages ?? []).filter((m) => MSG_TYPES.includes(m.type as MsgType)).map((m) => ({
       msg_id: deps.nextId(), from: role, to: ALL, re: ctx.ext_id, type: m.type as MsgType,
       gate: m.gate && GATES[m.gate] ? m.gate : undefined, status: m.status, reason: String(m.reason ?? "").slice(0, 600),
-      evidence: (m.evidence ?? []).filter((id) => known.has(id)), kb: (m.kb ?? []).filter((id) => hits.some((h) => h.chunk.chunk_id === id)),
+      evidence: (m.evidence ?? []).filter((id) => known.has(id)), kb: (m.kb ?? []).filter((id) => hits.some((h) => h.chunk.chunk_id === id)), llm,
     }));
-    // The model may only add to what the rules already established, never contradict it.
-    return [...det, ...msgs.filter((m) => !det.some((d) => d.gate && d.gate === m.gate))];
+    // Strictly add-only: a model message may carry evidence, citations and comments, but sets a gate
+    // status only where this turn's rules already addressed that gate with the same status (agree).
+    // Anything else that sets a status is dropped (not logged: it never reaches the coordinator).
+    return [...det, ...msgs.filter((m) => !m.status || det.some((d) => d.gate === m.gate && d.status === m.status))];
   } catch {
     return det;
   }

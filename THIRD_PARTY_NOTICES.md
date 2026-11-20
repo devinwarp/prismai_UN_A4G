@@ -145,3 +145,18 @@ their source URL, issuer and SHA-256 in `kb/sources.json` and
 `kb/sources.lock.json`. They remain the property of their publishers; the
 sources that are not open or public-domain are held as excerpts only (see
 "Second step" above).
+
+### Sixth step: six further sources as short excerpts (19 Nov 2026)
+
+Added for GDPR Art. 22, EU AI Act Art. 12, energy, inclusion and accessibility, and two Global South instruments. Each is 3 to 8 verbatim excerpts of **at most 40 words**, attributed with issuer, instrument and location, and linked to its official URL; `kb/sources.json` records the date read and a `source_sha256` (of the PDF for the two PDFs; for the EUR-Lex and W3C pages, of the page's visible text as rendered in a browser, because EUR-Lex refuses scripted downloads). Chunk ids are `<source-id>#N`. EU legal texts are reusable under Commission Decision 2011/833/EU; W3C text is quoted briefly with attribution; the African Union and Government of India documents are quoted briefly with attribution, and no licence statement was checked for them beyond that.
+
+| Source id | Publisher | Excerpts |
+|---|---|---|
+| `gdpr-art22` | Regulation (EU) 2016/679, Art. 22 | 4 |
+| `eu-ai-act-art12` | Regulation (EU) 2024/1689, Art. 12 | 6 |
+| `eu-ai-act-inclusion-energy` | Regulation (EU) 2024/1689, Arts. 16(l), 95(2), Annex XI | 5 |
+| `w3c-wcag22` | W3C, WCAG 2.2 (Recommendation of 12 Dec 2024) | 3 |
+| `au-continental-ai-strategy` | African Union, Continental AI Strategy (July 2024) | 7 |
+| `in-ai-governance-guidelines` | MeitY, India AI Governance Guidelines (Nov 2025) | 8 |
+
+The knowledge base is now 32 sources and 398 chunks. `kb/sync_excerpts.py` writes these chunks without the ITU repo.

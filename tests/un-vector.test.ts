@@ -70,7 +70,7 @@ test("C1-6: the committed kb/vectors.json lines up with kb/chunks.json (every ch
   const { readFileSync } = await import("node:fs");
   const chunks = JSON.parse(readFileSync("kb/chunks.json", "utf8")) as Chunk[];
   const v = parseVectors(JSON.parse(readFileSync("kb/vectors.json", "utf8")), chunks);
-  assert.ok(v, "vectors.json does not match chunks.json: rebuild with python kb/build.py --embed");
+  assert.ok(v, "vectors.json does not match chunks.json: rebuild with node scripts/embed_kb.ts");
   assert.equal(v!.dim, 768);
   assert.equal(v!.ids.length, chunks.length);
   assert.deepEqual(v!.ids, chunks.map((c) => c.chunk_id)); // same order as the build wrote them
@@ -94,6 +94,6 @@ test("C1-7: per-source cap, stemming and fusion weights behave as defined (all o
 test("C1-7: the held-out questions are valid and scored separately", async () => {
   const { evaluate } = await import("../scripts/eval_retrieval.ts");
   const r = evaluate({ set: "heldout" });
-  assert.equal(r.n, 14);
+  assert.equal(r.n, 22);
   assert.ok(r.rows.find((x) => x.method === "bm25")!.recall5 >= 0.7);
 });
