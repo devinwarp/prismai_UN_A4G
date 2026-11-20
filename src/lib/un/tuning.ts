@@ -95,15 +95,18 @@ export function applyProposals(cfg: SubjectConfig, proposals: Proposal[]): Subje
 
 export type LogKind = "baseline" | "iteration" | "certification" | "holdout_burned" | "approval";
 
-export interface LogEntry {
+/** One entry of a hash-chained log. The tuning log and the production watchdog log share this shape. */
+export interface ChainEntry<K extends string = string> {
   seq: number;
-  kind: LogKind;
+  kind: K;
   at: string;
   actor: string;
   payload: Record<string, unknown>;
   prev_hash: string;
   hash: string;
 }
+
+export type LogEntry = ChainEntry<LogKind>;
 
 export const GENESIS = "0".repeat(64);
 
@@ -117,15 +120,15 @@ export function canon(v: unknown): string {
   return JSON.stringify(v) ?? "null";
 }
 
-const entryHash = (e: Omit<LogEntry, "hash">) =>
+const entryHash = (e: Omit<ChainEntry, "hash">) =>
   createHash("sha256").update(`${e.prev_hash}|${e.seq}|${e.kind}|${e.at}|${e.actor}|${canon(e.payload)}`, "utf8").digest("hex");
 
-export function appendEntry(prev: LogEntry | null, kind: LogKind, actor: string, payload: Record<string, unknown>, at: string): LogEntry {
+export function appendEntry<K extends string>(prev: ChainEntry<K> | null, kind: K, actor: string, payload: Record<string, unknown>, at: string): ChainEntry<K> {
   const e = { seq: (prev?.seq ?? 0) + 1, kind, at, actor, payload, prev_hash: prev?.hash ?? GENESIS };
   return { ...e, hash: entryHash(e) };
 }
 
-export function verifyChain(entries: LogEntry[]): { ok: true } | { ok: false; broken_seq: number; reason: string } {
+export function verifyChain(entries: ChainEntry[]): { ok: true } | { ok: false; broken_seq: number; reason: string } {
   let prev = GENESIS;
   for (const [i, e] of entries.entries()) {
     if (e.seq !== i + 1) return { ok: false, broken_seq: e.seq, reason: "sequence gap" };

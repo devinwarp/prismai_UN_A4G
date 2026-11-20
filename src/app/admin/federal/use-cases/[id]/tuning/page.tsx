@@ -153,6 +153,8 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
           </p>
           <p className="mt-3 text-sm">
             <Link href={`/admin/federal/use-cases/${id}/evals`} className="underline underline-offset-4"><T k="ev.link.evals" en="Pilot evals: expected against actual output" /></Link>
+            {" · "}
+            <Link href={`/admin/federal/use-cases/${id}/production`} className="underline underline-offset-4"><T k="pr.link" en="Production monitoring" /></Link>
           </p>
 
           {!hasSet ? (

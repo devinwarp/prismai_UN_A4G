@@ -12,6 +12,8 @@ const FILES = [
   "src/app/admin/federal/use-cases/[id]/tuning/TuningControls.tsx",
   "src/app/admin/federal/evals/page.tsx",
   "src/app/admin/federal/_components/EvalText.tsx",
+  "src/app/admin/federal/use-cases/[id]/production/page.tsx",
+  "src/app/admin/federal/use-cases/[id]/production/ProductionControls.tsx",
 ];
 
 test("every literal translation key the lifecycle screens use has an Arabic string", () => {
@@ -33,6 +35,9 @@ test("keys built at run time are covered: verdicts, findings, reasons, entry kin
     ...["contradicts_record", "not_in_record", "rejected_call", "no_disclosure", "missing_fact", "should_hand_over"].map((c) => `ev.f.${c}`),
     ...["tool_not_authorised", "human_release_missing"].map((r) => `ev.reason.${r}`),
     ...["baseline", "iteration", "certification", "holdout_burned", "approval"].map((k) => `tu.k.${k}`),
+    ...["active", "warned", "suspended", "probation"].map((x) => `pr.s.${x}`),
+    ...["sijil_rejection", "repeated_probe_failures", "probe_failures"].map((x) => `pr.r.${x}`),
+    ...["deployed", "window", "warning", "suspension", "reinstatement", "recovery"].map((x) => `pr.k.${x}`),
     ...Object.keys(SUBJECT_RULES).map((r) => `rule.${r}`),
     ...Object.values(EVAL_SETS).flat().flatMap((c) => [`case.${c.id}.title`, `case.${c.id}.request`]),
   ];

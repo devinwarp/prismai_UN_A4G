@@ -34,3 +34,23 @@ create table if not exists public.un_tuning_log (
 );
 create index if not exists un_tuning_log_uc_idx on public.un_tuning_log (use_case_id, seq);
 alter table public.un_tuning_log enable row level security;  -- service role only, like the other un_ tables
+
+-- Agent lifecycle (slice C): the production watchdog log. Same append-only hash chain as the tuning
+-- log. kind: deployed | window | warning | suspension | reinstatement | recovery. Current status,
+-- trust score and strikes are replayed from this log (replay in src/lib/un/watchdog.ts).
+create table if not exists public.un_watchdog_log (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references public.organizations(id) on delete cascade,
+  use_case_id uuid not null references public.un_use_cases(id) on delete cascade,
+  seq int not null check (seq > 0),
+  kind text not null check (kind in ('deployed','window','warning','suspension','reinstatement','recovery')),
+  at timestamptz not null,
+  actor text not null,
+  payload jsonb not null,
+  prev_hash text not null,
+  hash text not null,
+  created_at timestamptz not null default now(),
+  unique (use_case_id, seq)
+);
+create index if not exists un_watchdog_log_uc_idx on public.un_watchdog_log (use_case_id, seq);
+alter table public.un_watchdog_log enable row level security;  -- service role only, like the other un_ tables
