@@ -1,0 +1,50 @@
+{
+  "scenarios": [
+    {
+      "id": "B-EX1",
+      "title": "Worked example: internal document triage assistant (fictitious)",
+      "ext_id": "UC77",
+      "client_facing": false,
+      "requested": "GO_AUTONOMOUS",
+      "steps": [
+        {
+          "step": "T0",
+          "expected": "ESCALATE",
+          "events": [
+            { "id": "B-EX1-T0-audit", "recipients": ["security"], "summary": "Audit log covers every action the assistant takes", "gate": "audit_log", "status": "pass" },
+            { "id": "B-EX1-T0-dpa", "recipients": ["privacy"], "summary": "Data processing terms cover the internal documents used", "gate": "data_lawful", "status": "pass" },
+            { "id": "B-EX1-T0-context", "recipients": ["innovator", "frontline"], "summary": "The assistant sorts incoming internal documents into queues; staff read every sorted queue" }
+          ]
+        },
+        {
+          "step": "T1",
+          "expected": "GO_AUTONOMOUS",
+          "events": [
+            { "id": "B-EX1-T1-hosting", "recipients": ["security"], "summary": "Hosting report: the model endpoint is on DESC-certified infrastructure", "gate": "approved_infrastructure", "status": "pass" }
+          ]
+        },
+        {
+          "step": "T2",
+          "expected": "NO_GO",
+          "events": [
+            { "id": "B-EX1-T2-audit", "recipients": ["security"], "summary": "Log review: queue changes made on Monday are missing from the audit log", "gate": "audit_log", "status": "fail" }
+          ]
+        },
+        {
+          "step": "T3",
+          "expected": "ASSISTANT_ONLY",
+          "events": [
+            { "id": "B-EX1-T3-fix", "recipients": ["innovator"], "summary": "Owner switched on logging for queue changes", "gate": "audit_log", "status": "fix_declared" }
+          ]
+        },
+        {
+          "step": "T4",
+          "expected": "GO_AUTONOMOUS",
+          "events": [
+            { "id": "B-EX1-T4-retest", "recipients": ["security"], "summary": "Re-test passed: every queue change in 50 test documents appears in the audit log", "gate": "audit_log", "status": "pass" }
+          ]
+        }
+      ]
+    }
+  ]
+}

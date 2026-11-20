@@ -93,6 +93,7 @@ export function reconcile(
   const next: CaseState = { ...state, gates: { ...state.gates } };
   const accepted: AgentMessage[] = [];
   const rejected: Rejection[] = [];
+  const failedNow = new Set<GateId>();
   for (const m of msgs) {
     if (m.re !== state.ext_id) {
       rejected.push({ msg: m, why: "about a different use case" });
@@ -103,6 +104,13 @@ export function reconcile(
       rejected.push({ msg: m, why });
       continue;
     }
+    // Contradictory evidence in one round resolves to the stricter state: a fail already set this round is not
+    // overridden by a later pass or declared fix (last-write-wins would let message order loosen a verdict).
+    if (m.gate && (m.status === "pass" || m.status === "fix_declared") && failedNow.has(m.gate)) {
+      rejected.push({ msg: m, why: `conflicts with a fail on ${m.gate} in the same round (the stricter state stands)` });
+      continue;
+    }
+    if (m.gate && m.status === "fail") failedNow.add(m.gate);
     if (m.type === "PROPOSE") next.requested = m.requested!;
     else if (m.gate && m.status) {
       next.gates[m.gate] = m.status;
