@@ -7,6 +7,7 @@ import { getUserAndProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadChunks } from "@/lib/un/kb";
 import { parseUseCases } from "@/lib/un/model";
+import { loadUnUseCases } from "@/lib/un/store";
 import { compareProcesses, flatEvidence, s1EvidenceAt, type ProcessInput } from "@/lib/un/compare";
 import { GATES } from "@/lib/un/policy";
 import { DERIVED_GAPS, RULESETS } from "@/lib/un/rulesets";
@@ -31,10 +32,12 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
   if (!profile?.org_id) redirect("/login");
   const { data: org } = await createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle();
 
-  const all = parseUseCases(readFileSync(path.join(process.cwd(), "data", "un-use-cases.csv"), "utf8")).useCases;
+  // Promoted SOP rows (SOP-*) sit beside the CSV rows; see /admin/federal/sop.
+  const sop = (await loadUnUseCases(profile.org_id)).filter((u) => u.ext_id.startsWith("SOP-"));
+  const all = [...parseUseCases(readFileSync(path.join(process.cwd(), "data", "un-use-cases.csv"), "utf8")).useCases, ...sop];
   const submitted = one(sp.f) === "1";
   const ids = new Set(all.map((u) => u.ext_id));
-  const pick = (submitted ? many(sp.uc) : DEFAULT_PICK).filter((x) => ids.has(x));
+  const pick = (submitted ? many(sp.uc) : [...DEFAULT_PICK, ...sop.map((u) => u.ext_id)]).filter((x) => ids.has(x));
   const rightsSet = new Set(submitted ? many(sp.rights) : DEFAULT_RIGHTS);
   const jKey = one(sp.j) ?? "uae";
   const rs = RULESETS.find((r) => KEY[r.id] === jKey) ?? RULESETS[0];

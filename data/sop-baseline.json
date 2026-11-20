@@ -1,0 +1,14 @@
+{
+  "version": "synthetic-v1",
+  "note": "Fictional rates and volumes for demonstration only. XXD is a made-up currency unit, not a real one. Nothing here measures a real process.",
+  "currency": "XXD",
+  "loaded_hourly_rate": 36,
+  "share_by_class": { "automate": 0.55, "assist": 0.25, "keep_human": 0 },
+  "default_step_minutes": { "start": 3, "step": 8, "decision": 6, "handoff": 10, "exception": 15, "end": 2 },
+  "cases_per_year": {
+    "licence-renewal": 9600,
+    "records-archive": 21000,
+    "fee-waiver": 2400
+  },
+  "default_cases_per_year": 5000
+}

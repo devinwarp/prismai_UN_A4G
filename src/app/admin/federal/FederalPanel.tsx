@@ -24,6 +24,7 @@ async function send(url: string, method: string, body: string, type: string) {
 }
 
 const GO = [
+  { href: "/admin/federal/sop", k: "go.sop", en: "Start from a procedure", hint: "Read a SOP, see what could be automated and what it risks." },
   { href: "/admin/federal/scenarios", k: "go.scen", en: "Run a scenario", hint: "Watch evidence arrive, a decision form, a person sign." },
   { href: "/admin/federal/compare", k: "go.cmp", en: "Compare jurisdictions", hint: "Same processes, three rule sets. What changes?" },
   { href: "/admin/federal/kb", k: "go.kb", en: "Search the sources", hint: "Every claim cites a passage. Find it here." },
@@ -165,7 +166,7 @@ export default function FederalPanel({
 
       <StartHere steps={START} onTour={() => setTour(true)} />
 
-      <nav aria-label={tr(lang, "go.label", "Where to go")} data-tour="entry" className="grid gap-x-8 gap-y-5 border-y border-line py-5 sm:grid-cols-2 lg:grid-cols-4">
+      <nav aria-label={tr(lang, "go.label", "Where to go")} data-tour="entry" className="grid gap-x-8 gap-y-5 border-y border-line py-5 sm:grid-cols-2 lg:grid-cols-5">
         {GO.map((g, i) => (
           <Link key={g.href} href={g.href} className="fx-rise group block" style={{ ["--i" as string]: i + 2 }}>
             <p className="text-base font-medium underline decoration-line underline-offset-4 group-hover:decoration-ink">{tr(lang, g.k, g.en)} <span aria-hidden className="rtl:rotate-180 inline-block">→</span></p>
