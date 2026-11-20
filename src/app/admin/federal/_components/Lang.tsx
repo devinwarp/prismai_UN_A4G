@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Noto_Sans_Arabic } from "next/font/google";
 import { DIR, tr, type Lang } from "@/lib/un/i18n/dict";
+import "./federal.css";
 
 // Arabic-capable face, loaded only by the federal screens.
 const arabic = Noto_Sans_Arabic({ subsets: ["arabic"], variable: "--font-arabic" });
@@ -33,9 +34,12 @@ export default function LangShell({ children }: { children: ReactNode }) {
       <div
         dir={DIR[lang]}
         lang={lang}
-        className={`${arabic.variable} ${lang === "ar" ? "[&_*]:font-[family-name:var(--font-arabic)]" : ""}`}
+        className={`fed ${arabic.variable} ${lang === "ar" ? "[&_*]:font-[family-name:var(--font-arabic)]" : ""}`}
       >
-        <div className="mx-auto flex max-w-6xl justify-end px-4 pt-3 sm:px-6">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 pt-3 sm:px-6">
+          <span title={tr(lang, "sim.hint", "Every use case, run and attestation here is fictitious. Sijil is simulated.")} className="rounded-full border border-line px-2.5 py-0.5 font-mono text-[10px] tracking-[0.14em] text-ink-soft uppercase">
+            <span aria-hidden>◇</span> {tr(lang, "sim.badge", "Synthetic data · simulated Sijil")}
+          </span>
           <button
             type="button"
             onClick={() => pick(lang === "en" ? "ar" : "en")}

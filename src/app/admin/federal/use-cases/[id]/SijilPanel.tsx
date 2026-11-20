@@ -79,7 +79,7 @@ export default function SijilPanel({ uc, runs, goals, attestation: a, thresholds
       </header>
 
       <Section
-        eyebrow="Pilot attestation"
+        eyebrow={liveMode ? "Pilot attestation" : "Pilot attestation · simulated"}
         title="Does the pilot pass?"
         aside={
           <span className={`inline-flex items-center gap-2 rounded-full border px-3 py-1 font-mono text-[11px] tracking-widest uppercase ${verifyFailed ? "border-ember/60 text-ember" : "border-lit/50 bg-lit-soft/40 text-lit-deep"}`} title={liveMode ? "Sijil attests approvals and the record chain; accuracy, hallucination and goal alignment are simulated" : "No SIJIL_BASE_URL set; this adapter is simulated"}>

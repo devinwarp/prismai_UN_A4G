@@ -11,12 +11,12 @@ import { compareProcesses, flatEvidence, s1EvidenceAt, type ProcessInput } from 
 import { GATES } from "@/lib/un/policy";
 import { DERIVED_GAPS, RULESETS } from "@/lib/un/rulesets";
 import AdminHeader from "../../AdminHeader";
-import { T } from "../_components/Lang";
+import LangShell, { T } from "../_components/Lang";
+import { VerdictBadge } from "../_components/ui";
 
 export const metadata: Metadata = { title: "Compare business processes", robots: { index: false, follow: false } };
 
 const STEPS = ["T0", "T1", "T2", "T3", "T4"];
-const VERDICT_TONE: Record<string, string> = { NO_GO: "bg-red-100 text-red-900", ESCALATE: "bg-amber-100 text-amber-900", ASSISTANT_ONLY: "bg-amber-50 text-amber-900", GO_SUPERVISED: "bg-emerald-50 text-emerald-900", GO_AUTONOMOUS: "bg-emerald-100 text-emerald-900" };
 const SHORT: Record<string, string> = { "uae-federal": "UAE federal", "eu-ai-act": "EU AI Act", "sg-imda": "Singapore IMDA" };
 const KEY: Record<string, string> = { "uae-federal": "uae", "eu-ai-act": "eu", "sg-imda": "sg" };
 const DEFAULT_PICK = ["UC02", "UC03", "UC06", "UC08", "UC09", "UC13"];
@@ -64,6 +64,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
   return (
     <div className="conduit-bg min-h-dvh">
       <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
+      <LangShell>
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase">Read-only</p>
         <h1 className="font-display mt-2 text-3xl font-medium tracking-tight sm:text-4xl"><T k="compare.title" en="Business processes under one policy" /></h1>
@@ -74,18 +75,30 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
 
         <nav aria-label="Policy layer" className="mt-5">
           <p className="font-mono text-xs text-ink-soft uppercase"><T k="compare.policy" en="Policy layer (country target and rules)" /></p>
-          <ul className="mt-2 flex flex-wrap gap-2 text-sm">
+          <ul className="mt-2 flex flex-wrap gap-2 text-sm" data-tour="jurisdiction">
             {RULESETS.map((r) => (
               <li key={r.id}>
                 <Link href={qs(KEY[r.id])} aria-current={r.id === rs.id ? "page" : undefined}
-                  className={`inline-block rounded-full border px-4 py-1.5 ${r.id === rs.id ? "border-ink bg-ink text-paper" : "border-line hover:bg-paper-deep"}`}>{SHORT[r.id]}</Link>
+                  className={`inline-block rounded-full border px-5 py-2 text-base ${r.id === rs.id ? "border-ink bg-ink text-paper" : "border-line hover:bg-paper-deep"}`}>{SHORT[r.id]}</Link>
               </li>
             ))}
           </ul>
         </nav>
-        <ol className="mt-4 flex flex-wrap items-center gap-2 text-xs" aria-label="How the policy cascades">
-          {["Policy target (" + SHORT[rs.id] + ")", "Entity rules", "Process attributes", "Gates", "Verdict"].map((x, i) => (
-            <li key={x} className="flex items-center gap-2"><span className="rounded-full border border-line bg-card px-3 py-1">{x}</span>{i < 4 && <span aria-hidden className="text-ink-soft rtl:rotate-180">→</span>}</li>
+        <ol className="mt-6 grid gap-y-4 sm:grid-cols-2 lg:grid-cols-5" aria-label="How the policy cascades">
+          {[
+            { k: "casc.1", t: `Policy target (${SHORT[rs.id]})`, h: "The country sets the goal and the rules." },
+            { k: "casc.2", t: "Entity rules", h: "Each entity can add its own human-oversight rules." },
+            { k: "casc.3", t: "Process attributes", h: "Client-facing? Affects rights? Irreversible?" },
+            { k: "casc.4", t: "Checks", h: "Those facts decide which checks are required." },
+            { k: "casc.5", t: "Decision", h: "Evidence against the checks gives the decision." },
+          ].map((x, i) => (
+            <li key={x.k} className="relative flex gap-3 pe-4">
+              <span aria-hidden className="font-display text-3xl leading-none text-lit tabular-nums">{i + 1}</span>
+              <div>
+                <p className="text-base font-medium"><T k={x.k} en={x.t} /></p>
+                <p className="mt-0.5 text-sm text-ink-soft"><T k={`${x.k}.h`} en={x.h} /></p>
+              </div>
+            </li>
           ))}
         </ol>
         <p className="mt-2 text-xs text-ink-soft">
@@ -120,16 +133,22 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
           </form>
         </details>
 
-        <h2 className="font-display mt-8 text-2xl font-medium tracking-tight">Processes under {SHORT[rs.id]}</h2>
-        <p className="mt-1 text-xs text-ink-soft">
-          Autonomy requested for every process: GO_AUTONOMOUS. Evidence: UC02 follows staged scenario S1 up to {step} (synthetic); other processes have {allPass ? "every gate passed" : "no evidence yet"}.
-          {!isUae && ` ${changed} of ${rows.length} verdicts differ from UAE.`}
+        <h2 className="font-display mt-10 text-3xl font-medium tracking-tight">Processes under {SHORT[rs.id]}</h2>
+        {isUae ? (
+          <p className="mt-2 max-w-[68ch] text-base text-ink-soft">This is the baseline. Switch to another policy above to see which decisions change.</p>
+        ) : (
+          <p role="status" className="mt-3 max-w-[68ch] rounded-xl border-2 p-4 text-lg font-medium" style={{ borderColor: changed ? "var(--color-ember)" : "var(--color-line)" }}>
+            <span aria-hidden>{changed ? "▲ " : "= "}</span>{changed ? `${changed} of ${rows.length} decisions change under ${SHORT[rs.id]} compared with UAE.` : `No decision changes under ${SHORT[rs.id]} for these processes.`}
+          </p>
+        )}
+        <p className="mt-2 text-sm text-ink-soft">
+          Every process asks for GO_AUTONOMOUS. UC02 follows staged scenario S1 up to {step} (synthetic); other processes have {allPass ? "every check passed" : "no evidence yet"}.
         </p>
-        <div className="mt-3 overflow-x-auto">
-          <table className="w-full min-w-[60rem] text-start text-sm">
+        <div className="mt-4 overflow-x-auto">
+          <table className="proj w-full min-w-[52rem] border-separate border-spacing-y-2 text-start">
+            <caption className="sr-only">Decision per process under {SHORT[rs.id]}</caption>
             <thead><tr className="font-mono text-xs text-ink-soft uppercase">
-              <th className="py-1 pe-3 text-start">Process</th><th className="px-3 text-start">Attributes</th><th className="px-3 text-start">Gates required</th>
-              <th className="px-3 text-start">Autonomy cap</th><th className="px-3 text-start">Evidence</th><th className="px-3 text-start">Verdict</th><th className="ps-3 text-start">Why</th>
+              <th scope="col" className="px-3 text-start font-normal">Process</th><th scope="col" className="px-3 text-start font-normal">Decision</th><th scope="col" className="px-3 text-start font-normal">Why</th>
             </tr></thead>
             <tbody>
               {rows.map((r) => {
@@ -142,21 +161,29 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
                 if (r.highRisk) note.push(`rights-affecting: high-risk tier${r.addedByAttributes.length ? ", adds " + r.addedByAttributes.join(", ") : ""}`);
                 else if (f.client_facing && r.addedByAttributes.length) note.push(`client-facing: adds ${r.addedByAttributes.join(", ")}`);
                 if (f.irreversible) note.push("irreversible: needs human approval");
+                const cell = `bg-card px-3 py-3 align-top first:rounded-s-xl last:rounded-e-xl ${diff ? "border-y-2 border-ember first:border-s-2 last:border-e-2" : "border-y border-line first:border-s last:border-e"}`;
                 return (
-                  <tr key={r.input.id} className="border-t border-line align-top">
-                    <td className="py-2 pe-3"><span className="font-mono text-xs">{r.input.id}</span> {u.title}<br /><span className="text-xs text-ink-soft">{u.entity}</span></td>
-                    <td className="px-3"><div className="flex flex-wrap gap-1">
-                      {f.client_facing && <span className={chip}>client-facing</span>}{f.affects_rights && <span className={chip}>rights</span>}{f.irreversible && <span className={chip}>irreversible</span>}
-                      {!f.client_facing && !f.affects_rights && !f.irreversible && <span className="text-xs text-ink-soft">none</span>}
-                    </div></td>
-                    <td className="px-3"><div className="flex max-w-[16rem] flex-wrap gap-1">
-                      {r.required.map((g) => <span key={g} title={GATES[g].label} className={`${chip} ${r.addedByAttributes.includes(g) ? "bg-amber-100 font-bold" : ""}`}>{g}</span>)}
-                    </div></td>
-                    <td className="px-3 font-mono text-xs">{r.capped ? "GO_SUPERVISED" : "none"}</td>
-                    <td className="px-3 text-xs">{r.input.id === "UC02" ? `S1 ${step}` : allPass ? "all gates pass" : "no evidence yet"}</td>
-                    <td className="px-3"><span className={`inline-block rounded-md px-2 py-0.5 font-mono text-xs ${VERDICT_TONE[r.decision.verdict] ?? "bg-paper-deep"}`}>{r.decision.verdict}</span>
-                      {diff && <p className="mt-1 text-xs text-amber-900">vs UAE: {r.uae.verdict} → {r.decision.verdict}</p>}</td>
-                    <td className="ps-3 text-xs">{r.decision.reasons[0]}{note.length > 0 && <><br /><span className="text-ink-soft">{note.join("; ")}.</span></>}</td>
+                  <tr key={r.input.id}>
+                    <td className={`${cell} w-[30%]`}><span className="font-mono text-xs">{r.input.id}</span> <span className="font-medium">{u.title}</span><br /><span className="text-sm text-ink-soft">{u.entity}</span></td>
+                    <td className={`${cell} w-[24%]`}>
+                      <VerdictBadge verdict={r.decision.verdict as never} size="lg" />
+                      {diff && <p className="mt-2 text-sm font-medium text-ember"><span aria-hidden>▲ </span>Changed. UAE: <span className="font-mono">{r.uae.verdict}</span></p>}
+                    </td>
+                    <td className={`${cell} text-sm`}>
+                      {r.decision.reasons[0]}
+                      <details className="mt-2">
+                        <summary className="w-fit cursor-pointer text-ink-soft underline underline-offset-2">How it was worked out</summary>
+                        <div className="mt-2 space-y-2">
+                          <p><span className="font-mono text-[11px] text-ink-soft uppercase">Attributes </span>
+                            {f.client_facing && <span className={chip}>client-facing</span>} {f.affects_rights && <span className={chip}>rights</span>} {f.irreversible && <span className={chip}>irreversible</span>}
+                            {!f.client_facing && !f.affects_rights && !f.irreversible && "none"}</p>
+                          <p><span className="font-mono text-[11px] text-ink-soft uppercase">Required checks </span>
+                            {r.required.map((g) => <span key={g} title={GATES[g].label} className={`${chip} me-1 ${r.addedByAttributes.includes(g) ? "bg-ember/15 font-semibold" : ""}`}>{r.addedByAttributes.includes(g) ? "+ " : ""}{g}</span>)}</p>
+                          <p><span className="font-mono text-[11px] text-ink-soft uppercase">Autonomy cap </span><span className="font-mono text-xs">{r.capped ? "GO_SUPERVISED" : "none"}</span> · <span className="text-ink-soft">{r.input.id === "UC02" ? `evidence S1 ${step}` : allPass ? "all checks pass" : "no evidence yet"}</span></p>
+                          {note.length > 0 && <p className="text-ink-soft">{note.join("; ")}.</p>}
+                        </div>
+                      </details>
+                    </td>
                   </tr>
                 );
               })}
@@ -164,9 +191,9 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
           </table>
         </div>
         {rows.length === 0 && <p className="mt-2 text-sm">No processes selected.</p>}
-        <p className="mt-2 text-xs text-ink-soft">Highlighted gates are required because of the process attributes. {rs.notIngested.length > 0 && `Cited by name only, not ingested: ${rs.notIngested.join("; ")}.`} Sources: {cites(Object.values(rs.cites).flat())}{rs.highRisk && cites(rs.highRisk.cites)}</p>
+        <p className="mt-2 text-xs text-ink-soft">Checks marked + are required because of the process attributes. {rs.notIngested.length > 0 && `Cited by name only, not ingested: ${rs.notIngested.join("; ")}.`} Sources: {cites(Object.values(rs.cites).flat())}{rs.highRisk && cites(rs.highRisk.cites)}</p>
 
-        <h2 className="font-display mt-8 text-2xl font-medium tracking-tight">Resulting gaps</h2>
+        <h2 className="font-display mt-10 text-3xl font-medium tracking-tight">Resulting gaps</h2>
         <p className="mt-1 text-xs text-ink-soft">Curated gaps this policy touches, linked to <Link href="/admin/federal/gaps" className="underline">the gap page</Link>, then gaps derived by this comparison (not in kb/gaps.json).</p>
         <ul className="mt-3 flex flex-wrap gap-2 font-mono text-xs">
           {[...rs.gapIds].sort().map((id) => <li key={id}><Link href={`/admin/federal/gaps#${id}`} className="rounded-md bg-paper-deep px-2 py-0.5 underline">{id}</Link></li>)}
@@ -181,6 +208,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
           ))}
         </ul>
       </main>
+      </LangShell>
     </div>
   );
 }
