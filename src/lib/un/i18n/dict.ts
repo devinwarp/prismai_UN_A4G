@@ -1,5 +1,6 @@
 import { VERDICTS } from "../model.ts";
 import { GATES } from "../policy.ts";
+import { LIFECYCLE_AR } from "./lifecycle-ar.ts";
 
 // Lightweight Arabic/English dictionary for the federal admin UI. Pure, no
 // library. Keys not found fall back to the English text passed by the caller,
@@ -253,6 +254,7 @@ export const AR: Record<string, string> = {
   "msg.check": "فحص",
   "msg.pass": "اجتازت الفحوص",
   "msg.fail": "لم تجتز الفحوص",
+  ...LIFECYCLE_AR,
 };
 
 /** Look up a key; fall back to the English text supplied at the call site. */

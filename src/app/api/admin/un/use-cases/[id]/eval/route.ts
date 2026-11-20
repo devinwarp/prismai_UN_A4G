@@ -1,11 +1,13 @@
 import { NextResponse } from "next/server";
 import { bad, notFound, requireAdmin } from "@/lib/api-auth";
-import { evalSetFor } from "@/lib/un/evalset";
+import { activeCases, evalSetFor } from "@/lib/un/evalset";
 import { alignment, runEvalSet } from "@/lib/un/eval-run";
 import { saveEvalRun } from "@/lib/un/eval-store";
 import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { baselineConfig } from "@/lib/un/subject";
+import { configOf, designationOf } from "@/lib/un/tuning";
+import { loadLog } from "@/lib/un/tuning-store";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -20,7 +22,8 @@ export async function POST(_req: Request, { params }: Ctx) {
   if (!uc) return notFound();
   const cases = evalSetFor(uc.ext_id);
   if (!cases.length) return bad(`No eval set for ${uc.ext_id} yet`);
-  const run = runEvalSet(baselineConfig(`${uc.ext_id}-agent`), cases);
+  const log = await loadLog(who.org_id!, id);
+  const run = runEvalSet(configOf(log) ?? baselineConfig(`${uc.ext_id}-agent`), activeCases(cases, designationOf(log)));
   const saved = await saveEvalRun(who.org_id!, id, run);
   if ("error" in saved) return NextResponse.json({ error: saved.error }, { status: 500 });
   return NextResponse.json({ id: saved.id, summary: run.summary, alignment: alignment(run.summary), sha256: run.sha256 });

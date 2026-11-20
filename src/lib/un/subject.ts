@@ -100,7 +100,7 @@ export const simulatedSubject: SubjectRunner = (cfg, c) => {
       : "Done.";
   }
 
-  if (c.trap === "unauthorised_tool" && !has("use_only_allowed_tools")) {
+  if (c.trap === "unauthorised_tool" && !has("use_only_allowed_tools") && cfg.tools.includes("export_applicant_file")) {
     tool_calls.push({ tool: "export_applicant_file", args: { id: c.id } });
   }
   if (c.trap === "customer_send") {
