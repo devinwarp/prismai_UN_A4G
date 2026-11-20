@@ -1,0 +1,97 @@
+{
+ "bfa50eec394d8aa31cfcd29883f6f0a95ca5c78b9becf5f07c3bcd06fc065bb1": {
+  "text": "TRADE NAME CERTIFICATE\nIssued by: Marsa Business Registry\nTrade name: Al Noor Trading\n\nLicence number: TL-482913\n\nValid until: 2027-06-30\n",
+  "confidence": 95,
+  "file": "noor-d1.png"
+ },
+ "2f55ad1366a76c32b036897adad3ba526ed4c675313dce21c4ad72275de6a006": {
+  "text": "TENANCY CONTRACT\nRegistered with Marsa Property Registry\nRegistry reference: PR-77120\n\nTenant: Omar Hassan Al Noor\nPremises: Unit 14, Dock Road, Marsa\nStart date: 2026-01-01\n\nEnd date: 2028-12-31\n",
+  "confidence": 95,
+  "file": "noor-d2.png"
+ },
+ "23bb76aa0c09bb2959c2637b118a2362d40aebecdaad80143a05197bb28f9687": {
+  "text": "NATIONAL IDENTITY CARD\nName: Omar Hassan Al Noor\nDocument type: National ID\n\nNumber: 784-1988-5521-3\n\nExpiry date: 2030-04-12\n",
+  "confidence": 95,
+  "file": "noor-d3.png"
+ },
+ "2e66f150b879e4d6314d02514ec01b275ab8f056edf9631cd616d45ed3c2b57f": {
+  "text": "CERTIFICATE OF INSURANCE\nPublic liability\n\nInsured: Omar Hassan Al Noor\n\nPremises: Unit 14, Dock Road, Marsa\nActivity: Retail and trading\n\nCover: 500,000\n\nValid from: 2026-07-01\n\nValid to: 2027-06-30\n",
+  "confidence": 95,
+  "file": "noor-d4.png"
+ },
+ "d726d54a0fd16bb26af775b0e6566ee880ea1349745e38059dfaeed2bd20498c": {
+  "text": "TRADE NAME CERTIFICATE\nIssued by: Marsa Business Registry\nTrade name: Al Noor Trading\n\nLicence number: TL-482913\n\nValid until: 2026-10-01\n",
+  "confidence": 95,
+  "file": "noor-d1-expired.png"
+ },
+ "aea364bed57361f7a654a46c1c82482bee5a4e063fc654d95baba171e788ba68": {
+  "text": "TRADE NAME CERTIFICATE\nIssued by: Marsa Business Registry\nTrade name: Al Noor Trading\n\nLicence number: TL-482931\n\nValid until: 2027-06-30\n",
+  "confidence": 95,
+  "file": "noor-d1-wrongno.png"
+ },
+ "ec15e743c430652bd383c08e7464ff8b9a010373b2561144a00a8b33c7a4e389": {
+  "text": "TENANCY CONTRACT\nRegistered with Marsa Property Registry\nRegistry reference: PR-77120\n\nTenant: Omar Hassan Al Noor\nPremises: Unit 14, Dock Road, Marsa\nStart date: 2026-01-01\n\nEnd date: 2027-08-31\n",
+  "confidence": 95,
+  "file": "noor-d2-short.png"
+ },
+ "ed08bba7edd568b1e5706722502885fadd4ff5099692e91dbb378d7104d90c19": {
+  "text": "TENANCY CONTRACT\nRegistered with Marsa Property Registry\nRegistry reference: PR-77120\n\nTenant: Omar Hassan Al Noor\nPremises: Unit 15, Dock Road, Marsa\nStart date: 2026-01-01\n\nEnd date: 2028-12-31\n",
+  "confidence": 95,
+  "file": "noor-d2-address.png"
+ },
+ "c30079a8de9152edf2677c8f5a9cf22d1ba36ec307fcbc8bf3ff362a0caf7c8a": {
+  "text": "TENANCY CONTRACT\n\nNot registered\n\nTenant: Omar Hassan Al Noor\nPremises: Unit 14, Dock Road, Marsa\nStart date: 2026-01-01\n\nEnd date: 2028-12-31\n",
+  "confidence": 95,
+  "file": "noor-d2-unreg.png"
+ },
+ "d22965311723e4d9ff25089edaf2620ac25b26f1ec4145a84ee787f49d12a6f1": {
+  "text": "NATIONAL IDENTITY CARD\nName: Omar Hassan Al Noor\nDocument type: National ID\n\nNumber: 784-1988-5521-3\n\nExpiry date: 2026-12-05\n",
+  "confidence": 95,
+  "file": "noor-d3-expiring.png"
+ },
+ "628b976a0088870870f9868a2c4f7d5995fc64cd1efef50e4571b62aa7c80505": {
+  "text": "NATIONAL IDENTITY CARD\nName: Hassan Omar Al Noor\nDocument type: National ID\n\nNumber: 784-1990-1177-2\n\nExpiry date: 2030-04-12\n",
+  "confidence": 95,
+  "file": "noor-d3-other.png"
+ },
+ "7930069f361c2e80cd8b2a8e6c5b86c91ae304ba0e8fcd804d33393a1b5440f8": {
+  "text": "CERTIFICATE OF INSURANCE\nPublic liability\n\nInsured: Omar Hassan Al Noor\n\nPremises: Unit 14, Dock Road, Marsa\nActivity: Retail and trading\n\nCover: 100,000\n\nValid from: 2026-07-01\n\nValid to: 2027-06-30\n",
+  "confidence": 95,
+  "file": "noor-d4-lowcover.png"
+ },
+ "8c014e0a57e2bd35186f20a2ef22b2d44797734cd10648d218b0d43b8ce671f5": {
+  "text": "CERTIFICATE OF INSURANCE\nPublic liability\n\nInsured: Omar Hassan Al Noor\n\nPremises: Unit 14, Dock Road, Marsa\nActivity: Retail and trading\n\nCover: 500,000\n\nValid from: 2025-12-01\n\nValid to: 2026-12-01\n",
+  "confidence": 95,
+  "file": "noor-d4-lapsed.png"
+ },
+ "b190c32af73bd07b620192f1cf673b86eaf65821ae2f50bd32e4c19bbcf983ce": {
+  "text": "",
+  "confidence": 0,
+  "file": "noor-d4-blur.png"
+ },
+ "1c38835bb176f337f97821e0c9e1294e8c3eec844d7f7e82f642d43119398b8e": {
+  "text": "TRADE NAME CERTIFICATE\nIssued by: Marsa Business Registry\nTrade name: Marsa Bakery\n\nLicence number: TL-551207\n\nValid until: 2027-08-31\n",
+  "confidence": 95,
+  "file": "bakery-d1.png"
+ },
+ "6310df7709d0516fd887dd653ea66ee9db8cc92f5aee8579168eaa7d68b288d3": {
+  "text": "TENANCY CONTRACT\nRegistered with Marsa Property Registry\nRegistry reference: PR-80455\n\nTenant: Layla Khalid Mansour\n\nPremises: Shop 3, Harbour Street, Marsa\nStart date: 2025-12-01\n\nEnd date: 2028-11-30\n",
+  "confidence": 95,
+  "file": "bakery-d2.png"
+ },
+ "a743063e6086bba1499e6a8ab753151465e593dc3a88151bb24094bd14df1ad0": {
+  "text": "NATIONAL IDENTITY CARD\nName: Layla Khalid Mansour\nDocument type: National ID\n\nNumber: 784-1991-3340-8\n\nExpiry date: 2031-02-02\n",
+  "confidence": 95,
+  "file": "bakery-d3.png"
+ },
+ "d6c54d0b45a39e43e6a1e3960b41b926a956dcc576e142e4b570e78d2d91386b": {
+  "text": "CERTIFICATE OF INSURANCE\nPublic liability\n\nInsured: Layla Khalid Mansour\n\nPremises: Shop 3, Harbour Street, Marsa\nActivity: Food and hospitality\n\nCover: 750,000\n\nValid from: 2026-03-01\n\nValid to: 2027-02-28\n",
+  "confidence": 95,
+  "file": "bakery-d4.png"
+ },
+ "7b3dda9366d7e5f79a6dd271d0984a32bb08b7446f85b84ac01fae8846d7d6ca": {
+  "text": "BAKERY PRICE LIST\nCroissant: 4\nLoaf: 7\n",
+  "confidence": 95,
+  "file": "menu.png"
+ }
+}
