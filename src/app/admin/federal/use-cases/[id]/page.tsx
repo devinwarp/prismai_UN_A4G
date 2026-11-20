@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -73,6 +74,11 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
     <div className="conduit-bg min-h-dvh">
       <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+        <p className="mb-4 text-sm">
+          <Link href={`/admin/federal/use-cases/${id}/evals`} className="underline underline-offset-4">Pilot evals: expected against actual output</Link>
+          {" · "}
+          <Link href="/admin/federal/evals" className="underline underline-offset-4">All use cases side by side</Link>
+        </p>
         <SijilPanel
           uc={uc}
           runs={runs}
