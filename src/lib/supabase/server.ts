@@ -1,7 +1,10 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
+import { isOffline } from "./offline-flag";
+import { offlineClient } from "./offline";
 
 export async function createClient() {
+  if (isOffline()) return offlineClient() as unknown as ReturnType<typeof createServerClient>;
   const cookieStore = await cookies();
 
   return createServerClient(

@@ -80,7 +80,7 @@ export function RejectBars({ rejects }: { rejects: Record<Criterion, number> }) 
             <div className="flex items-baseline justify-between gap-3 text-sm">
               <span>
                 {c.replaceAll("_", " ")}
-                <span className="ml-2 rounded border border-line px-1.5 py-px font-mono text-[10px] text-ink-soft uppercase">{hard ? "hard · must be 0" : "measure"}</span>
+                <span className="ms-2 rounded border border-line px-1.5 py-px font-mono text-[10px] text-ink-soft uppercase">{hard ? "hard · must be 0" : "measure"}</span>
               </span>
               <span className={`font-mono tabular-nums ${bad ? "font-medium text-ember" : ""}`}>{bad && <span aria-hidden>✕ </span>}{n}</span>
             </div>

@@ -6,7 +6,7 @@
 - **Deadlines:**
   - **T1:** submission, 10 Nov.
   - **T2:** shortlist, 18 Nov. The demo video becomes mandatory here.
-  - **T3:** onsite final in Dubai, 8 Dec.
+  - **T3:** onsite final in Dubai (TDRA), 9 Dec; awards 10 Dec.
 
 Scores are our own estimates against ITU's published criteria. ITU publishes no weights.
 
@@ -14,7 +14,7 @@ Scores are our own estimates against ITU's published criteria. ITU publishes no 
 
 ## 1. Where we are and where we can get to
 
-| # | Criterion (ITU wording) | Now | After T1 (10 Nov) | After T2 (18 Nov) | After T3 (8 Dec) | Main gap |
+| # | Criterion (ITU wording) | Now | After T1 (10 Nov) | After T2 (18 Nov) | After T3 (9 Dec) | Main gap |
 |---|---|---|---|---|---|---|
 | C1 | Knowledge base quality: completeness, accuracy and structure of ingested national material; retrieval under query | **3.0** | 4.0 | 4.5 | **5.0** | 17 sources and 139 chunks, 51% of them NIST; navigation text in chunks; many secondary sources; keyword-only retrieval; DESC not ingested |
 | C2 | Agent capability: relevance and accuracy of agent responses in simulated error scenarios | **3.5** | 4.0 | 4.5 | **5.0** | Agents echo gate status; no exchanges between agents; S2 events inert; S3 has no agents; nothing measures agent accuracy |
@@ -193,7 +193,7 @@ There are two working days to submission. Split the work by what each person is 
 | **Sat 8 Nov – Sun 9 Nov** | I-1 to I-6; C1-1 (DESC, Matrix PDF, Charter) and C1-2 (Y.3172, AI Ready 2025), with C1-4 cleaning and C1-5 metadata; C2-1 (S1), C2-2, C2-3, C2-8; C3-2 and C3-3 (report); C4-4 script; C5-1, C5-2 (README/report); report revisions §8 | Code: Claude (on a branch, as a pull request or patch) plus Shameer review. Report: Shaibi plus Claude |
 | **Mon 10 Nov** | Merge, redeploy, smoke test, run the tests, submit (report, repo, KB). Optional: video v2 if time | Shameer (deploy, final testing and submission) |
 | **11–18 Nov** | C1-3, C1-6 to C1-9; C2-4 to C2-7, C2-9, C2-10; C3-1, C3-4; C4-2, C4-5; C5-3, C5-4, C5-6; **video v3 (live demo)** | Split; video: Shameer records, Shaibi scripts |
-| **19 Nov – 7 Dec** | C4-3 anchoring; C5-5 ITU readiness engine; S4 polish; onsite rehearsal (3 run-throughs, offline fallback recording) | Both |
+| **19 Nov – 8 Dec** | C4-3 anchoring; C5-5 ITU readiness engine; S4 polish; onsite rehearsal (3 run-throughs, offline fallback recording) | Both |
 
 ---
 

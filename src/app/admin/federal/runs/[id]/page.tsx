@@ -6,6 +6,7 @@ import { loadChunks } from "@/lib/un/kb";
 import { loadRun, verifyRun } from "@/lib/un/runs";
 import { SCENARIOS } from "@/lib/un/scenarios";
 import AdminHeader from "../../../AdminHeader";
+import LangShell from "../../_components/Lang";
 import RunView from "./RunView";
 
 export const metadata: Metadata = { title: "Scenario run", robots: { index: false, follow: false } };
@@ -27,6 +28,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
   return (
     <div className="conduit-bg min-h-dvh">
       <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
+      <LangShell>
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <RunView
           runId={id}
@@ -40,6 +42,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
           llmAvailable={Boolean(process.env.LLM_API_KEY ?? process.env.OPENROUTER_API_KEY)}
         />
       </main>
+      </LangShell>
     </div>
   );
 }

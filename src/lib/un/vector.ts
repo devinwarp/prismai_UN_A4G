@@ -5,8 +5,8 @@ import { capPerSource, searchChunks, type Chunk, type Hit, type SearchOpts } fro
 
 // Hybrid retrieval (C1-6): BM25 plus cosine similarity over chunk vectors,
 // fused with reciprocal rank fusion. Vectors are built offline by
-// `python kb/build.py --embed` (ITU's embed_texts, Ollama nomic-embed-text, 768
-// dims) and committed as kb/vectors.json; about a few hundred chunks fit in
+// `node scripts/embed_kb.ts` (nomic-embed-text-v1.5, 768 dims, "search_document: "
+// prefix; metadata in kb/vectors.json "meta") and committed as kb/vectors.json; a few hundred chunks fit in
 // memory, so there is no database. The query is embedded at runtime with
 // transformers.js (nomic-ai/nomic-embed-text-v1.5, prefix "search_query: ").
 // If vectors or the embedder are unavailable, search is BM25 alone and says so.

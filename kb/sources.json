@@ -1071,5 +1071,268 @@
     "where": "UN System White Paper on AI Governance, CEB/2024/1/Add.1 (2024), para. 23, legal effects, PDF p. 16"
    }
   ]
+ },
+ {
+  "id": "gdpr-art22",
+  "title": "Regulation (EU) 2016/679 (GDPR), Article 22 automated individual decision-making: short excerpts only",
+  "url": "https://eur-lex.europa.eu/legal-content/EN/TXT/HTML/?uri=CELEX:32016R0679",
+  "issuer": "European Union (Official Journal)",
+  "jurisdiction": "EU",
+  "instrument_type": "law",
+  "binding": true,
+  "date": "2016-04-27",
+  "version": "Consolidated-as-published OJ text read from EUR-Lex on 2026-11-19 through a browser (EUR-Lex refuses scripted downloads). source_sha256 is the SHA-256 of the page's visible text as rendered, not of a file; later corrigenda were not checked.",
+  "topics": [
+   "automated-decisions",
+   "human-intervention",
+   "data-subject-rights",
+   "recourse"
+  ],
+  "source_sha256": "3ff06289b3e0215065ecab036ee87046c09f5d7d1f9caec71cb8ae340523059c",
+  "excerpts": [
+   {
+    "text": "The data subject shall have the right not to be subject to a decision based solely on automated processing, including profiling, which produces legal effects concerning him or her or similarly significantly affects him or her.",
+    "where": "Regulation (EU) 2016/679 (GDPR), OJ L 119, 4.5.2016, Art. 22(1)"
+   },
+   {
+    "text": "is authorised by Union or Member State law to which the controller is subject and which also lays down suitable measures to safeguard the data subject's rights and freedoms and legitimate interests",
+    "where": "Regulation (EU) 2016/679 (GDPR), OJ L 119, 4.5.2016, Art. 22(2)(b)"
+   },
+   {
+    "text": "the data controller shall implement suitable measures to safeguard the data subject's rights and freedoms and legitimate interests, at least the right to obtain human intervention on the part of the controller,",
+    "where": "Regulation (EU) 2016/679 (GDPR), OJ L 119, 4.5.2016, Art. 22(3), first part"
+   },
+   {
+    "text": "to express his or her point of view and to contest the decision.",
+    "where": "Regulation (EU) 2016/679 (GDPR), OJ L 119, 4.5.2016, Art. 22(3), second part"
+   }
+  ]
+ },
+ {
+  "id": "eu-ai-act-art12",
+  "title": "Regulation (EU) 2024/1689 (AI Act), Article 12 record-keeping: short excerpts only",
+  "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj/eng",
+  "issuer": "European Union (Official Journal)",
+  "jurisdiction": "EU",
+  "instrument_type": "law",
+  "binding": true,
+  "date": "2024-07-12",
+  "version": "Official Journal text read from EUR-Lex on 2026-11-19 through a browser (EUR-Lex refuses scripted downloads). source_sha256 is the SHA-256 of the page's visible text as rendered, not of a file; later amendments were not checked.",
+  "topics": [
+   "audit-log",
+   "record-keeping",
+   "traceability",
+   "high-risk"
+  ],
+  "source_sha256": "90250b7b32dec892822f4a2ccdc7c8de3f4294a2233a46ae0e4fc46641a0a83f",
+  "excerpts": [
+   {
+    "text": "High-risk AI systems shall technically allow for the automatic recording of events (logs) over the lifetime of the system.",
+    "where": "Regulation (EU) 2024/1689 (AI Act), OJ L, 12.7.2024, Art. 12(1)"
+   },
+   {
+    "text": "In order to ensure a level of traceability of the functioning of a high-risk AI system that is appropriate to the intended purpose of the system, logging capabilities shall enable the recording of events relevant for:",
+    "where": "Regulation (EU) 2024/1689 (AI Act), OJ L, 12.7.2024, Art. 12(2), opening"
+   },
+   {
+    "text": "identifying situations that may result in the high-risk AI system presenting a risk within the meaning of Article 79(1) or in a substantial modification;",
+    "where": "Regulation (EU) 2024/1689 (AI Act), OJ L, 12.7.2024, Art. 12(2)(a)"
+   },
+   {
+    "text": "facilitating the post-market monitoring referred to in Article 72; and monitoring the operation of high-risk AI systems referred to in Article 26(5).",
+    "where": "Regulation (EU) 2024/1689 (AI Act), OJ L, 12.7.2024, Art. 12(2)(b) and (c)"
+   },
+   {
+    "text": "recording of the period of each use of the system (start date and time and end date and time of each use);",
+    "where": "Regulation (EU) 2024/1689 (AI Act), OJ L, 12.7.2024, Art. 12(3)(a), for Annex III point 1(a) systems"
+   },
+   {
+    "text": "the identification of the natural persons involved in the verification of the results, as referred to in Article 14(5).",
+    "where": "Regulation (EU) 2024/1689 (AI Act), OJ L, 12.7.2024, Art. 12(3)(d), for Annex III point 1(a) systems"
+   }
+  ]
+ },
+ {
+  "id": "eu-ai-act-inclusion-energy",
+  "title": "Regulation (EU) 2024/1689 (AI Act), accessibility, inclusion and energy provisions (Arts. 16(l), 95(2), Annex XI): short excerpts only",
+  "url": "https://eur-lex.europa.eu/eli/reg/2024/1689/oj/eng",
+  "issuer": "European Union (Official Journal)",
+  "jurisdiction": "EU",
+  "instrument_type": "law",
+  "binding": true,
+  "date": "2024-07-12",
+  "version": "Official Journal text read from EUR-Lex on 2026-11-19 through a browser. source_sha256 is the SHA-256 of the page's visible text as rendered, not of a file. Art. 95 is a voluntary-codes provision; Annex XI applies to general-purpose model providers, not to deployers.",
+  "topics": [
+   "accessibility",
+   "inclusion",
+   "energy",
+   "environmental-sustainability",
+   "vulnerable-groups"
+  ],
+  "source_sha256": "90250b7b32dec892822f4a2ccdc7c8de3f4294a2233a46ae0e4fc46641a0a83f",
+  "excerpts": [
+   {
+    "text": "ensure that the high-risk AI system complies with accessibility requirements in accordance with Directives (EU) 2016/2102 and (EU) 2019/882.",
+    "where": "Regulation (EU) 2024/1689 (AI Act), OJ L, 12.7.2024, Art. 16(l)"
+   },
+   {
+    "text": "assessing and minimising the impact of AI systems on environmental sustainability, including as regards energy-efficient programming and techniques for the efficient design, training and use of AI;",
+    "where": "Regulation (EU) 2024/1689 (AI Act), OJ L, 12.7.2024, Art. 95(2)(b)"
+   },
+   {
+    "text": "facilitating an inclusive and diverse design of AI systems, including through the establishment of inclusive and diverse development teams and the promotion of stakeholders’ participation in that process;",
+    "where": "Regulation (EU) 2024/1689 (AI Act), OJ L, 12.7.2024, Art. 95(2)(d)"
+   },
+   {
+    "text": "assessing and preventing the negative impact of AI systems on vulnerable persons or groups of vulnerable persons, including as regards accessibility for persons with a disability, as well as on gender equality.",
+    "where": "Regulation (EU) 2024/1689 (AI Act), OJ L, 12.7.2024, Art. 95(2)(e)"
+   },
+   {
+    "text": "known or estimated energy consumption of the model. With regard to point (e), where the energy consumption of the model is unknown, the energy consumption may be based on information about computational resources used.",
+    "where": "Regulation (EU) 2024/1689 (AI Act), OJ L, 12.7.2024, Annex XI, Section 1"
+   }
+  ]
+ },
+ {
+  "id": "w3c-wcag22",
+  "title": "Web Content Accessibility Guidelines (WCAG) 2.2: short excerpts only",
+  "url": "https://www.w3.org/TR/WCAG22/",
+  "issuer": "W3C",
+  "jurisdiction": "international",
+  "instrument_type": "standard",
+  "binding": false,
+  "date": "2024-12-12",
+  "version": "W3C Recommendation 12 December 2024 (page title and status line read on 2026-11-19 through a browser). source_sha256 is the SHA-256 of the page's visible text as rendered, not of a file.",
+  "topics": [
+   "accessibility",
+   "inclusion",
+   "disability",
+   "web-content"
+  ],
+  "source_sha256": "d68af876cbc2d6bf766a6b2128dbd042deb0c3192c28f88f6e75c8aeb19a42e4",
+  "excerpts": [
+   {
+    "text": "Web Content Accessibility Guidelines (WCAG) 2.2 defines how to make web content more accessible to people with disabilities.",
+    "where": "W3C, WCAG 2.2, Abstract"
+   },
+   {
+    "text": "These guidelines also make web content more usable by older individuals with changing abilities due to aging and often improve usability for users in general.",
+    "where": "W3C, WCAG 2.2, Abstract"
+   },
+   {
+    "text": "a goal of providing a shared standard for web content accessibility that meets the needs of individuals, organizations, and governments internationally.",
+    "where": "W3C, WCAG 2.2, Abstract"
+   }
+  ]
+ },
+ {
+  "id": "au-continental-ai-strategy",
+  "title": "African Union Continental Artificial Intelligence Strategy (July 2024): short excerpts only",
+  "url": "https://au.int/sites/default/files/documents/44004-doc-EN-_Continental_AI_Strategy_July_2024.pdf",
+  "issuer": "African Union",
+  "jurisdiction": "Africa-regional",
+  "instrument_type": "strategy",
+  "binding": false,
+  "date": "2024-07",
+  "version": "PDF titled Continental AI Strategy, July 2024, downloaded from au.int on 2026-11-19; source_sha256 is the SHA-256 of that PDF. Page numbers not recorded.",
+  "topics": [
+   "global-south",
+   "africa",
+   "public-sector",
+   "regulation",
+   "inclusion",
+   "energy",
+   "sandbox"
+  ],
+  "source_sha256": "c5429f73786c0a0c170a78278016339ab86f914b239290ba1d6623cc07734e3f",
+  "excerpts": [
+   {
+    "text": "The Continental AI Strategy proposes a people-centric, development-oriented and inclusive approach around five focus areas and fifteen policy recommendations.",
+    "where": "AU Continental AI Strategy (2024), Executive Summary"
+   },
+   {
+    "text": "The second action focuses on promoting the adoption of AI in the public sector, with a view to delivering efficient services to citizens, businesses and others.",
+    "where": "AU Continental AI Strategy (2024), Executive Summary, second area of action"
+   },
+   {
+    "text": "Promote agile, forward-looking and risk-based regulations at national and regional levels that foster accountability and transparency in the design and deployment of AI Systems.",
+    "where": "AU Continental AI Strategy (2024), governance actions"
+   },
+   {
+    "text": "Establish regulatory standards for the public procurement of AI systems in Member States to promote fair, just and inclusive AI development and deployment.",
+    "where": "AU Continental AI Strategy (2024), governance actions"
+   },
+   {
+    "text": "Create regulatory sandboxes for AI innovation to facilitate the availability of diverse and inclusive AI use cases and share experience in designing and implementing regulatory sandboxes.",
+    "where": "AU Continental AI Strategy (2024), governance actions"
+   },
+   {
+    "text": "AI systems, particularly those requiring extensive energy consumption for training and operation, contribute to increased CO2 emissions and exacerbate climate change.",
+    "where": "AU Continental AI Strategy (2024), Environmental Risks"
+   },
+   {
+    "text": "AI technologies risk widening gender disparities, including the gender digital divide, affecting job opportunities and reinforcing existing gender biases and discriminations, especially amongst vulnerable women, youth and persons with disabilities as they are already disadvantaged.",
+    "where": "AU Continental AI Strategy (2024), Structural Risks"
+   }
+  ]
+ },
+ {
+  "id": "in-ai-governance-guidelines",
+  "title": "India AI Governance Guidelines (MeitY, November 2025): short excerpts only",
+  "url": "https://static.pib.gov.in/WriteReadData/specificdocs/documents/2025/nov/doc2025115685601.pdf",
+  "issuer": "Ministry of Electronics and Information Technology, Government of India",
+  "jurisdiction": "India",
+  "instrument_type": "guidance",
+  "binding": false,
+  "date": "2025-11-05",
+  "version": "PDF published through the Press Information Bureau, downloaded on 2026-11-19; source_sha256 is the SHA-256 of that PDF. Non-binding policy guidance. Page numbers not recorded.",
+  "topics": [
+   "global-south",
+   "india",
+   "human-oversight",
+   "grievance-redressal",
+   "accountability",
+   "sandbox",
+   "sustainability"
+  ],
+  "source_sha256": "87f6faff2646faefe17a7b80015fca64b4e905f7bce42d3a0958e04da3e0162f",
+  "excerpts": [
+   {
+    "text": "humans should, as far as possible, have final control over AI systems, and human oversight is essential to maintain accountability.",
+    "where": "India AI Governance Guidelines (2025), People First sutra"
+   },
+   {
+    "text": "The Committee recommends that organisations deploying AI systems should establish accessible and effective grievance redressal mechanisms as part of their accountability obligations.",
+    "where": "India AI Governance Guidelines (2025), Grievance redressal"
+   },
+   {
+    "text": "Understandability is fundamental to building trust and should be a core design feature, not an afterthought.",
+    "where": "India AI Governance Guidelines (2025), Understandable by Design sutra"
+   },
+   {
+    "text": "Provide disclosures and explanations that can be understood by the intended user and regulators.",
+    "where": "India AI Governance Guidelines (2025), seven sutras summary"
+   },
+   {
+    "text": "In some contexts, such as high-velocity algorithmic trading, direct human oversight is ineffective, given the speed at which they operate.",
+    "where": "India AI Governance Guidelines (2025), oversight"
+   },
+   {
+    "text": "Especially in critical sectors, regular monitoring and testing, audit trails, and reporting protocols should be implemented.",
+    "where": "India AI Governance Guidelines (2025), oversight"
+   },
+   {
+    "text": "Safe, secure, and robust systems that are able to withstand systemic shocks and are environmentally sustainable.",
+    "where": "India AI Governance Guidelines (2025), Safety, Resilience & Sustainability sutra"
+   },
+   {
+    "text": "Create regulatory sandboxes to enable the development of cutting-edge technologies in constrained environments affording reasonable legal immunities",
+    "where": "India AI Governance Guidelines (2025), recommendations"
+   },
+   {
+    "text": "All other things being equal, responsible innovation should be prioritised over cautionary restraint.",
+    "where": "India AI Governance Guidelines (2025), Innovation over Restraint sutra"
+   }
+  ]
  }
 ]

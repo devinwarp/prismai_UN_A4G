@@ -17,4 +17,5 @@ jobs:
           python-version: "3.12"
       - run: npm ci
       - run: npm test
-      # The KB retrieval evaluation (C1-7) is added here when kb/eval exists.
+      # The KB retrieval evaluation already runs inside `npm test` (tests/un-eval.test.ts, tests/un-vector.test.ts);
+      # `npm run kb:score` prints the full recall@5 / MRR tables (kb/eval/RESULTS.md).

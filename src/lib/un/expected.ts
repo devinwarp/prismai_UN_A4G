@@ -11,7 +11,7 @@ export interface ExpectedRow {
 }
 
 export const expectedVsActual = (steps: Pick<StepResult, "step" | "expected" | "outcome" | "match">[]): ExpectedRow[] =>
-  steps.map((s) => ({ step: s.step, expected: s.expected, actual: s.outcome, match: s.match }));
+  steps.filter((s) => s.expected !== "").map((s) => ({ step: s.step, expected: s.expected, actual: s.outcome, match: s.match }));
 
 const csvCell = (s: string) => (/[",\n\r]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s);
 

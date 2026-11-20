@@ -110,7 +110,7 @@ export default function KbSearch({ sources, sections }: { sources: SourceMeta[];
                       {h.issuer} · {h.jurisdiction} · {s?.instrument_type} · {s?.binding ? "binding" : "not binding"} · {s?.date ?? "undated"}
                       {sections[h.chunk_id] ? ` · ${sections[h.chunk_id]}` : ""}
                     </p>
-                    <blockquote className="mt-3 border-l-2 border-line pl-3 text-sm">{h.quote}</blockquote>
+                    <blockquote className="mt-3 border-l-2 border-line ps-3 text-sm">{h.quote}</blockquote>
                     <p className="mt-3 break-all font-mono text-xs text-ink-soft">
                       {h.chunk_id} · <a href={h.url} className="underline">{h.url}</a>
                       <br />sha256 {h.sha256}
@@ -129,7 +129,7 @@ export default function KbSearch({ sources, sections }: { sources: SourceMeta[];
         Copyrighted sources are held as short attributed excerpts, not full text.
       </p>
       <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-card">
-        <table className="w-full text-left text-xs">
+        <table className="w-full text-start text-xs">
           <caption className="sr-only">Knowledge base sources</caption>
           <thead className="text-ink-soft">
             <tr>{["Source", "Jurisdiction", "Type", "Date", "Chunks", "SHA-256"].map((h) => <th key={h} scope="col" className="px-3 py-2 font-medium">{h}</th>)}</tr>

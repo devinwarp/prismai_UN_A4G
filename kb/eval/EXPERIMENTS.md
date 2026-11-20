@@ -42,3 +42,5 @@ Goal: reach the plan's hybrid recall@5 of 0.85. **Corpus: 26 sources, 364 chunks
 ## What would move it
 
 A larger question set (to tell real differences from noise), a stronger embedding model (the plan fixes ITU's `nomic-embed-text`), or re-ranking the top 10 to 20 with a cross-encoder or an LLM. A stronger model and re-ranking were not tried.
+
+> Note, 19 Nov 2026: the grids above were measured on 281 chunks with partly approximate vectors and were not repeated after the corpus grew to 398 chunks and every vector was re-embedded (see `docs/RETRIEVAL_NOTE.md`). Current numbers are in `RESULTS.md`; no setting was changed on 19 Nov.

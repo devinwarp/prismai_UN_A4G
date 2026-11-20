@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { chatCompletion } from "@/lib/llm";
+import { CHAT_MODEL, chatCompletion } from "@/lib/llm";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bad, requireAdmin } from "@/lib/api-auth";
 import { loadChunks } from "@/lib/un/kb";
 import { headOf, loadRun, storeTraceRows, verifyRun, verifyStoredRows } from "@/lib/un/runs";
+import { addStepMetering, type Usage } from "@/lib/un/metering";
 import { nextStep } from "@/lib/un/scenario";
 import { loadHitlConfig, loadUnUseCases } from "@/lib/un/store";
 import { SCENARIOS } from "@/lib/un/scenarios";
@@ -41,14 +42,18 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const hitl = uc
     ? { config: await loadHitlConfig(who.org_id!), entity: uc.entity, facts: { client_facing: uc.client_facing, affects_rights: uc.affects_rights, irreversible: uc.irreversible } }
     : undefined;
-  const next = await nextStep(sc, row.state, {
+  const usages: (Usage | undefined)[] = [];
+  const t0 = Date.now();
+  const stepped = await nextStep(sc, row.state, {
     hitl,
     now: () => new Date().toISOString(),
     chunks: loadChunks(),
+    model: useLlm ? CHAT_MODEL : undefined,
     llm: useLlm
-      ? (system, user) => chatCompletion({ system, messages: [{ role: "user", content: user }], json: true, maxTokens: 900 })
+      ? (system, user) => chatCompletion({ system, messages: [{ role: "user", content: user }], json: true, maxTokens: 900, onUsage: (u) => usages.push(u) })
       : undefined,
   });
+  const next = { ...stepped, metering: addStepMetering(row.state.metering, usages, (Date.now() - t0) / 1000) };
   // Optimistic guard: a double click must not release two steps.
   const { data, error } = await createAdminClient()
     .from("un_runs")

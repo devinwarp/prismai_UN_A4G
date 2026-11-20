@@ -3,6 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
+import { T, useLang } from "./_components/Lang";
+import { tr } from "@/lib/un/i18n/dict";
+import CountUp from "./_components/CountUp";
+import { Term } from "./_components/Gloss";
+import { StartHere, Tour, TourButton, type StartStep, type TourStep } from "./_components/Coach";
 import HitlEditor from "./HitlEditor";
 import ImportCsv from "./_components/ImportCsv";
 import {
@@ -18,6 +23,13 @@ async function send(url: string, method: string, body: string, type: string) {
   return { ok: res.ok, data };
 }
 
+const GO = [
+  { href: "/admin/federal/scenarios", k: "go.scen", en: "Run a scenario", hint: "Watch evidence arrive, a decision form, a person sign." },
+  { href: "/admin/federal/compare", k: "go.cmp", en: "Compare jurisdictions", hint: "Same processes, three rule sets. What changes?" },
+  { href: "/admin/federal/kb", k: "go.kb", en: "Search the sources", hint: "Every claim cites a passage. Find it here." },
+  { href: "/admin/federal/gaps", k: "go.gaps", en: "Read the gaps", hint: "Where today's rules fall short of agentic AI." },
+];
+
 const NAV: [string, string][] = [
   ["progress", "Progress"],
   ["portfolio", "Portfolio"],
@@ -25,6 +37,17 @@ const NAV: [string, string][] = [
   ["policy", "Policy"],
   ["import", "Import"],
   ["hitl", "Oversight rules"],
+];
+
+const START: StartStep[] = [
+  { n: 1, k: "start.1", en: "Run the staged scenario S1", hintK: "start.1h", hint: "Release evidence step by step and watch the decision change.", href: "/admin/federal/scenarios" },
+  { n: 2, k: "start.2", en: "Sign it and try to tamper with the logbook", hintK: "start.2h", hint: "A person signs the decision. Then edit a copy and see the break caught.", href: "/admin/federal/scenarios" },
+  { n: 3, k: "start.3", en: "Compare jurisdictions", hintK: "start.3h", hint: "Same processes under UAE, EU and Singapore rules: what changes?", href: "/admin/federal/compare" },
+];
+const TOUR: TourStep[] = [
+  { target: "headline", k: "tour.dash.headline", title: "The story in one glance", body: "How much is running, how much is provably compliant, and how far that is from the federal target." },
+  { target: "entry", k: "tour.dash.entry", title: "Where to go next", body: "Run a scenario to see a decision made, compare rule sets, search the sources, or read the gaps." },
+  { target: "mix", k: "tour.dash.mix", title: "Which decisions were reached?", body: "Select a bar to filter the register below. Colour is always paired with a symbol and a word." },
 ];
 
 export default function FederalPanel({
@@ -38,6 +61,8 @@ export default function FederalPanel({
   asOf: string;
 }) {
   const router = useRouter();
+  const lang = useLang();
+  const [tour, setTour] = useState(false);
   const [p, setP] = useState(policy);
   const [savedPolicy, setSavedPolicy] = useState(policy);
   const [policyMsg, setPolicyMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -91,6 +116,15 @@ export default function FederalPanel({
     setBusy(false);
     if (r.ok) { setRowMsg("Updated."); router.refresh(); } else setRowMsg((r.data.errors ?? [r.data.error ?? "Failed"]).join("\n"));
   }
+  const noVerdicts = d.total > 0 && useCases.every((u) => !u.verdict);
+  const unproven = d.deployed - d.compliant;
+  const story = noVerdicts
+    ? tr(lang, "story.none", `None of the ${d.total} use cases has a decision yet. The target needs ${d.targetCount} deployed.`).replace("{n}", String(d.total)).replace("{t}", String(d.targetCount))
+    : d.gap === 0
+      ? tr(lang, "story.met", "The federal target is met.")
+      : unproven > 0
+        ? tr(lang, "story.unproven", `${d.deployed} use cases are running, but only ${d.compliant} are proven compliant. ${d.gap} more must be cleared to reach the target.`).replace("{a}", String(d.deployed)).replace("{b}", String(d.compliant)).replace("{g}", String(d.gap))
+        : tr(lang, "story.gap", `${d.deployed} of ${d.targetCount} needed use cases are cleared to run.`).replace("{a}", String(d.deployed)).replace("{t}", String(d.targetCount));
   const toggle = (v: Verdict) =>
     setP((x) => ({ ...x, counting_verdicts: x.counting_verdicts.includes(v) ? x.counting_verdicts.filter((c) => c !== v) : [...x.counting_verdicts, v] }));
 
@@ -98,11 +132,46 @@ export default function FederalPanel({
     <div className="mt-6 space-y-14">
       <nav aria-label="On this page" className="-mx-1 flex flex-wrap gap-1 text-sm">
         {NAV.filter(([id]) => canEdit || !["policy", "import", "hitl"].includes(id)).map(([id, label]) => (
-          <a key={id} href={`#${id}`} className="rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep">{label}</a>
+          <a key={id} href={`#${id}`} className="rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep"><T k={`nav.${id}`} en={label} /></a>
         ))}
-        <Link href="/admin/federal/kb" className="ml-auto rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep">Knowledge base</Link>
-        <Link href="/admin/federal/gaps" className="rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep">Gaps</Link>
-        <Link href="/admin/federal/scenarios" className="rounded-full bg-ink px-3 py-1 font-medium text-paper hover:opacity-90">Run a staged scenario →</Link>
+        <span className="ms-auto"><TourButton onClick={() => setTour(true)} /></span>
+      </nav>
+
+      <section aria-labelledby="headline-pair" data-tour="headline" className="fx-rise rounded-2xl border-2 border-ink bg-card p-6 sm:p-10">
+        <h2 id="headline-pair" className="sr-only">
+          Deployed {d.deployedPct} percent, compliant {d.compliantPct} percent, target {d.targetPercent} percent
+        </h2>
+        <p className="font-display max-w-[36ch] text-3xl leading-snug font-medium sm:text-4xl">{story}</p>
+        <div className="mt-8 grid gap-6 sm:grid-cols-2 sm:gap-10">
+          <div>
+            <p className="text-lg font-medium text-ink-soft sm:text-xl"><Term id="deployed">{tr(lang, "hl.deployed", "Deployed")}</Term></p>
+            <p className="font-display text-7xl leading-none font-semibold tabular-nums sm:text-8xl lg:text-9xl" aria-hidden><CountUp value={d.deployedPct} id="dep" />%</p>
+            <p className="mt-2 text-base text-ink-soft sm:text-lg">{d.deployed} {tr(lang, "hl.of", "of")} {d.total} {tr(lang, "hl.uc", "use cases")}</p>
+          </div>
+          <div>
+            <p className="text-lg font-medium text-ink-soft sm:text-xl"><Term id="compliant">{tr(lang, "hl.compliant", "Compliant")}</Term></p>
+            <p className="font-display text-7xl leading-none font-semibold tabular-nums sm:text-8xl lg:text-9xl" aria-hidden><CountUp value={d.compliantPct} id="cmp" />%</p>
+            <p className="mt-2 text-base text-ink-soft sm:text-lg">{d.compliant} {tr(lang, "hl.of", "of")} {d.total} {tr(lang, "hl.uc", "use cases")}</p>
+          </div>
+        </div>
+        <div className="mt-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-t border-line pt-5">
+          <p className="max-w-[60ch] text-lg font-medium sm:text-xl">
+            {tr(lang, "hl.target", "Target")}: {d.targetPercent}% {tr(lang, "hl.deployed_l", "deployed")}{deadlineText(policy)} ({d.targetCount} {tr(lang, "hl.of", "of")} {d.total}).{" "}
+            {d.gap === 0 && d.total > 0 ? tr(lang, "hl.met", "Target met.") : `${tr(lang, "hl.gap", "Gap")}: ${d.gap}.`}
+          </p>
+          <Link href="/admin/federal/scenarios" className={`${btnPrimary} px-5 py-2.5 text-base`}>{noVerdicts ? tr(lang, "hl.cta_first", "Run scenario S1: see a decision made") : tr(lang, "hl.cta", "Run a staged scenario")} <span aria-hidden className="rtl:rotate-180">→</span></Link>
+        </div>
+      </section>
+
+      <StartHere steps={START} onTour={() => setTour(true)} />
+
+      <nav aria-label={tr(lang, "go.label", "Where to go")} data-tour="entry" className="grid gap-x-8 gap-y-5 border-y border-line py-5 sm:grid-cols-2 lg:grid-cols-4">
+        {GO.map((g, i) => (
+          <Link key={g.href} href={g.href} className="fx-rise group block" style={{ ["--i" as string]: i + 2 }}>
+            <p className="text-base font-medium underline decoration-line underline-offset-4 group-hover:decoration-ink">{tr(lang, g.k, g.en)} <span aria-hidden className="rtl:rotate-180 inline-block">→</span></p>
+            <p className="mt-1 text-sm text-ink-soft">{tr(lang, `${g.k}.h`, g.hint)}</p>
+          </Link>
+        ))}
       </nav>
 
       <Section id="progress" eyebrow="Headline" title="Progress toward the federal target">
@@ -112,32 +181,32 @@ export default function FederalPanel({
       <Section
         id="portfolio"
         eyebrow="Portfolio"
-        title="Where the use cases stand"
-        lede="Select a bar, legend item or entity to filter the use-case table below."
+        title={tr(lang, "pf.title", "Where do the use cases stand?")}
+        lede={tr(lang, "pf.lede", "Select a bar, legend item or entity to filter the use-case table below.")}
       >
         <div className="grid gap-x-10 gap-y-10 lg:grid-cols-2">
-          <div>
-            <h3 className="mb-3 text-sm font-medium">Verdict mix</h3>
+          <div data-tour="mix">
+            <h3 className="mb-3 text-base font-medium">{tr(lang, "pf.q.mix", "Which decisions have been reached?")}</h3>
             <VerdictMix useCases={useCases} active={verdict} onSelect={pick(setVerdict)} />
           </div>
           <div>
-            <h3 className="mb-3 text-sm font-medium">Lifecycle stage</h3>
+            <h3 className="mb-3 text-base font-medium">{tr(lang, "pf.q.stage", "Where in its life is each one?")}</h3>
             <StagePipeline byStage={d.byStage} />
           </div>
           <div>
-            <h3 className="mb-1 text-sm font-medium">By entity</h3>
+            <h3 className="mb-1 text-base font-medium">{tr(lang, "pf.q.entity", "Which entities are furthest along?")}</h3>
             <p className="mb-2 flex flex-wrap gap-x-4 px-2 font-mono text-[11px] text-ink-soft">
-              <span><span aria-hidden className="mr-1 inline-block h-2 w-2 rounded-full bg-lit" />deployed</span>
-              <span><span aria-hidden className="mr-1 inline-block h-2 w-2 rounded-full" style={{ background: "var(--color-v-sup)" }} />compliant</span>
+              <span><span aria-hidden className="me-1 inline-block h-2 w-2 rounded-full bg-lit" />deployed</span>
+              <span><span aria-hidden className="me-1 inline-block h-2 w-2 rounded-full" style={{ background: "var(--color-v-sup)" }} />compliant</span>
             </p>
             <TallyList rows={d.byEntity} noun="entities" active={entity} onSelect={pick(setEntity)} expanded={showAllEntities} onToggle={() => setShowAllEntities((x) => !x)} />
           </div>
           <div>
-            <h3 className="mb-3 text-sm font-medium">By quadrant</h3>
+            <h3 className="mb-3 text-base font-medium">{tr(lang, "pf.q.quad", "What kinds of use case are they?")}</h3>
             <TallyList rows={d.byQuadrant} noun="quadrants" expanded onToggle={() => {}} limit={4} />
           </div>
         </div>
-        <h3 className="mt-10 mb-3 text-sm font-medium">Quadrant by verdict</h3>
+        <h3 className="mt-10 mb-3 text-base font-medium">{tr(lang, "pf.q.qv", "Which kinds got which decision?")}</h3>
         <QuadrantVerdictMatrix useCases={useCases} />
       </Section>
 
@@ -178,10 +247,16 @@ export default function FederalPanel({
         </div>
         {rowMsg && <p role="status" className="mt-3 text-sm whitespace-pre-wrap">{rowMsg}</p>}
 
+        {noVerdicts && (
+          <p className="mt-4 max-w-[68ch] rounded-xl border border-dashed border-line p-3 text-sm text-ink-soft">
+            {tr(lang, "reg.none", "No use case has a decision yet. A decision appears only after a scenario run is signed by a person.")}{" "}
+            <Link href="/admin/federal/scenarios" className="font-medium text-ink underline underline-offset-2">{tr(lang, "reg.none_cta", "Run one now")}</Link>
+          </p>
+        )}
         <div className="mt-4 relative max-h-[34rem] overflow-auto rounded-2xl border border-line bg-card">
           <table className="w-full min-w-[56rem] text-sm">
             <caption className="sr-only">Use cases with stage, verdict and compliance</caption>
-            <thead className="sticky top-0 z-10 bg-card text-left font-mono text-[11px] tracking-wide text-ink-soft uppercase shadow-[0_1px_0_var(--color-line)]">
+            <thead className="sticky top-0 z-10 bg-card text-start font-mono text-[11px] tracking-wide text-ink-soft uppercase shadow-[0_1px_0_var(--color-line)]">
               <tr>
                 <th scope="col" className="px-4 py-3 font-normal">ID</th>
                 <th scope="col" className="font-normal">Use case</th>
@@ -189,22 +264,22 @@ export default function FederalPanel({
                 <th scope="col" className="font-normal">Oversight</th>
                 <th scope="col" className="font-normal">Stage</th>
                 <th scope="col" className="font-normal">Verdict</th>
-                <th scope="col" className="pr-4 text-center font-normal">Compliant</th>
+                <th scope="col" className="pe-4 text-center font-normal">Compliant</th>
               </tr>
             </thead>
             <tbody>
               {filtered.map((u) => (
                 <tr key={u.id} className="border-t border-line align-middle hover:bg-paper-deep/50">
                   <td className="px-4 py-2.5 font-mono text-xs whitespace-nowrap">{u.ext_id}</td>
-                  <td className="max-w-80 py-2.5 pr-3">
+                  <td className="max-w-80 py-2.5 pe-3">
                     <Link href={`/admin/federal/use-cases/${u.id}`} className="font-medium underline decoration-line underline-offset-2 hover:decoration-ink">{u.title}</Link>
                     <span className="block text-xs text-ink-soft">{u.entity}</span>
                   </td>
-                  <td className="pr-3 whitespace-nowrap">{u.quadrant}</td>
-                  <td className="pr-3 whitespace-nowrap text-xs text-ink-soft">{u.client_facing ? "● client-facing" : "○ internal"}</td>
-                  <td className="pr-3">
+                  <td className="pe-3 whitespace-nowrap">{u.quadrant}</td>
+                  <td className="pe-3 whitespace-nowrap text-xs text-ink-soft">{u.client_facing ? "● client-facing" : "○ internal"}</td>
+                  <td className="pe-3">
                     <span className="relative inline-flex items-center rounded-md border border-line px-2 py-0.5 font-mono text-[11px] focus-within:outline-2 focus-within:outline-lit">
-                      {u.stage}{canEdit && <span aria-hidden className="ml-1 text-ink-soft">▾</span>}
+                      {u.stage}{canEdit && <span aria-hidden className="ms-1 text-ink-soft">▾</span>}
                       {canEdit && (
                         <select aria-label={`Stage for ${u.ext_id}`} disabled={busy} value={u.stage} onChange={(e) => patch(u.id, { stage: e.target.value })} className="absolute inset-0 w-full cursor-pointer opacity-0">
                           {STAGES.map((s) => <option key={s}>{s}</option>)}
@@ -212,17 +287,17 @@ export default function FederalPanel({
                       )}
                     </span>
                   </td>
-                  <td className="pr-3">
+                  <td className="pe-3">
                     <VerdictBadge verdict={u.verdict} />
                   </td>
-                  <td className="pr-4 text-center">
+                  <td className="pe-4 text-center">
                     <span aria-label={`Compliant ${u.ext_id}: ${u.compliant ? "yes" : "no"}`} title="Set only by a passing Sijil attestation">{u.compliant ? "✓" : "–"}</span>
                   </td>
                 </tr>
               ))}
               {!filtered.length && (
                 <tr><td colSpan={7} className="px-4 py-10 text-center text-ink-soft">
-                  {useCases.length ? <>No use case matches. <button type="button" onClick={clear} className="font-medium underline">Clear filters</button></> : "No use cases yet. Import a CSV below (a sample is in data/un-use-cases.csv)."}
+                  {useCases.length ? <>{noVerdicts && !filtering ? null : <>No use case matches. <button type="button" onClick={clear} className="font-medium underline">Clear filters</button></>}</> : "No use cases yet. Import a CSV below (a sample is in data/un-use-cases.csv)."}
                 </td></tr>
               )}
             </tbody>
@@ -313,12 +388,13 @@ export default function FederalPanel({
             id="hitl"
             eyebrow="Configure"
             title="Human oversight rules by entity"
-            lede="A use case that breaks a rule in force for its entity fails the human final approval gate outright; it is never averaged away. Every rule is on unless switched off."
+            lede={<>A use case that breaks a rule in force for its entity fails the final-approval check outright; it is never averaged away. Every <Term id="oversight">oversight</Term> rule is on unless switched off.</>}
           >
             <HitlEditor entities={d.byEntity.map((t) => t.key)} config={hitl} useCases={useCases} />
           </Section>
         </>
       )}
+      <Tour steps={TOUR} open={tour} onClose={() => setTour(false)} />
     </div>
   );
 }

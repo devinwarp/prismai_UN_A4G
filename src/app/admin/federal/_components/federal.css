@@ -1,0 +1,93 @@
+/* Federal screens only (imported by Lang.tsx). Colours come from --color-* tokens.
+   Motion is transform/opacity only, ease-out-quart/quint, and is gated behind
+   prefers-reduced-motion: no-preference so reduced motion gets the final state. */
+
+.fed :is(a, button, summary, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--color-lit);
+  outline-offset: 2px;
+  border-radius: 0.375rem;
+}
+
+/* ---- Glossary tooltip: a real focusable term, hint shown on hover and focus ---- */
+.fed .gloss {
+  position: relative;
+  display: inline;
+  border: 0;
+  background: none;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: help;
+  text-decoration: underline dotted;
+  text-decoration-color: var(--color-ink-soft);
+  text-underline-offset: 3px;
+}
+.fed .gloss-tip {
+  position: absolute;
+  inset-inline-start: 0;
+  top: calc(100% + 0.5rem);
+  z-index: 30;
+  width: max-content;
+  max-width: min(20rem, 80vw);
+  padding: 0.625rem 0.75rem;
+  border: 1px solid var(--color-ink);
+  border-radius: 0.5rem;
+  background: var(--color-card);
+  color: var(--color-ink);
+  font: 400 0.8125rem/1.45 var(--font-sans);
+  letter-spacing: 0;
+  text-transform: none;
+  text-align: start;
+  white-space: normal;
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.fed .gloss:is(:hover, :focus-visible) > .gloss-tip { opacity: 1; visibility: visible; }
+
+/* ---- Pipeline: check -> decide -> sign ---- */
+.fed .pipe-link { position: relative; height: 2px; flex: 1; background: var(--color-line); overflow: hidden; }
+.fed .pipe-link > i { position: absolute; inset: 0; background: var(--color-lit); transform-origin: left center; transform: scaleX(0); }
+.fed .pipe-link[data-on="true"] > i { transform: scaleX(1); }
+html[dir="rtl"] .fed .pipe-link > i, .fed[dir="rtl"] .pipe-link > i { transform-origin: right center; }
+.fed .pipe-dot { transition: none; }
+.fed .pipe-dot[data-state="active"] { box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-lit) 22%, transparent); }
+
+/* ---- Chain of records ---- */
+.fed .chain { position: relative; display: flex; align-items: stretch; gap: 0; overflow-x: auto; padding-block: 0.25rem 0.75rem; scroll-snap-type: x proximity; }
+.fed .chain-link { align-self: center; width: 1.25rem; height: 2px; flex: none; background: var(--color-lit); transform-origin: left center; }
+.fed .chain-link[data-broken="true"] { background: repeating-linear-gradient(90deg, var(--color-ember) 0 3px, transparent 3px 6px); }
+.fed .chain-link[data-dim="true"] { background: var(--color-line); }
+.fed .chain-block { scroll-snap-align: start; flex: none; width: 8.25rem; border: 1px solid var(--color-line); border-radius: 0.5rem; background: var(--color-card); padding: 0.5rem 0.625rem; }
+.fed .chain-block[data-state="ok"] { border-color: color-mix(in srgb, var(--color-lit) 55%, transparent); }
+.fed .chain-block[data-state="broken"] { border: 2px solid var(--color-ember); background: color-mix(in srgb, var(--color-ember) 10%, var(--color-card)); }
+.fed .chain-block[data-state="dim"] { border-style: dashed; color: var(--color-ink-soft); }
+
+/* ---- Coach marks (tour) ---- */
+.fed-coach-ring { position: fixed; z-index: 70; pointer-events: none; border: 2px solid var(--color-lit); border-radius: 0.75rem; box-shadow: 0 0 0 9999px color-mix(in srgb, var(--color-ink) 38%, transparent); }
+.fed-coach { position: fixed; z-index: 71; width: min(22rem, calc(100vw - 2rem)); padding: 1rem 1.125rem; border: 1px solid var(--color-ink); border-radius: 0.75rem; background: var(--color-card); color: var(--color-ink); }
+
+@media (prefers-reduced-motion: no-preference) {
+  @keyframes fx-rise { from { opacity: 0; transform: translateY(10px); } }
+  @keyframes fx-fade { from { opacity: 0; } }
+  @keyframes fx-stamp { 0% { opacity: 0; transform: scale(0.92); } 100% { opacity: 1; transform: scale(1); } }
+  @keyframes fx-ring { 0% { opacity: 0.55; transform: scale(0.6); } 100% { opacity: 0; transform: scale(2.4); } }
+  @keyframes fx-draw { from { transform: scaleX(0); } }
+  @keyframes fx-sheen { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+  .fx-rise { animation: fx-rise 0.55s cubic-bezier(0.165, 0.84, 0.44, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+  .fx-fade { animation: fx-fade 0.4s cubic-bezier(0.25, 1, 0.5, 1) both; }
+  .fx-stamp { animation: fx-stamp 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: 0.15s; }
+  .fx-ring { animation: fx-ring 0.9s cubic-bezier(0.165, 0.84, 0.44, 1) both; animation-delay: 0.1s; }
+  .fx-pulse { animation: fx-sheen 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+  .fx-skel { animation: fx-sheen 1.6s cubic-bezier(0.45, 0, 0.55, 1) infinite; }
+  .fed .gloss-tip { transition: opacity 0.15s cubic-bezier(0.25, 1, 0.5, 1); }
+  .fed .pipe-link > i { transition: transform 0.7s cubic-bezier(0.165, 0.84, 0.44, 1); }
+  .fed .chain-link { animation: fx-draw 0.4s cubic-bezier(0.165, 0.84, 0.44, 1) both; animation-delay: calc(var(--i, 0) * 60ms); }
+  .fed .chain-block { animation: fx-fade 0.4s cubic-bezier(0.25, 1, 0.5, 1) both; animation-delay: calc(var(--i, 0) * 60ms); }
+  .fx-coach { animation: fx-fade 0.25s cubic-bezier(0.25, 1, 0.5, 1) both; }
+}
+
+/* Projector distance: the compare and headline screens get a larger floor. */
+.fed .proj { font-size: 1rem; line-height: 1.5rem; }
+@media (min-width: 1536px) { .fed .proj { font-size: 1.125rem; line-height: 1.75rem; } }

@@ -35,7 +35,8 @@ export async function requireAdmin(): Promise<Caller | NextResponse> {
   const who = await caller();
   if (!who) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   if (who.role !== "admin" || !who.org_id) {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    // Judges and other viewers are read-only: every mutating un route calls this guard.
+    return NextResponse.json({ error: who.role === "viewer" ? "Read-only access (judge/viewer)" : "Forbidden" }, { status: 403 });
   }
   return who;
 }

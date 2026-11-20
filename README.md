@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/devinwarp/prismai_UN_A4G/actions/workflows/ci.yml/badge.svg)](https://github.com/devinwarp/prismai_UN_A4G/actions/workflows/ci.yml)
 
-Entry for the ITU AI for Good Hackathon (UAE). Prism governs the path from an AI
+Entry for the AI for Good Lab Hackathon: United Arab Emirates (ITU). Prism governs the path from an AI
 use case to a deployed, attested agent in government: it configures a policy
 target, imports use cases, has role agents examine each one against a
 knowledge base built with ITU's reference pipeline, lets a deterministic policy
@@ -18,7 +18,7 @@ Technical report: [`docs/report/prism-technical-report.pdf`](docs/report/prism-t
 | Area | Where |
 |---|---|
 | Policy config, use-case CSV import, federal dashboard (deployed % beside compliant %) | `src/lib/un/model.ts`, `src/app/admin/federal/` |
-| Knowledge base (26 sources, 364 chunks, SHA-256 provenance) built with ITU's code | `kb/` |
+| Knowledge base (32 sources, 398 chunks, SHA-256 provenance) built with ITU's code | `kb/` |
 | Eight role agents, typed coordination protocol | `src/lib/un/agents.ts`, `protocol.ts`, `round.ts` |
 | Deterministic policy engine: five hard gates never averaged, client-facing cap at `GO_SUPERVISED` | `src/lib/un/policy.ts` |
 | Staged scenarios S1 (gate engine), S2 (voice contact centre), S3 (federal cascade) and S4 (consumer complaint escalating to a privacy breach) | `src/lib/un/scenario.ts`, `scenarios.ts` |
@@ -78,6 +78,13 @@ npm test                       # unit tests (no database needed)
 Sign in with an email in `ADMIN_EMAILS`, open **Federal**, import
 `data/un-use-cases.csv`, then **Run a staged scenario**.
 
+### Judge access, replay and the offline kit
+
+- **Judges** (read-only): put their emails in `JUDGE_EMAILS`. On first sign-in they become `viewer`s in the demo workspace (`JUDGE_ORG_ID`, else the first admin's). They can open the dashboard, runs, traces, KB explorer and gaps; every mutating `/api/admin/un/*` route calls `requireAdmin()` and answers 403 (a test fails if a new one forgets).
+- **`/replay`** needs no login and no database: S1 to S4 replayed deterministically from the recorded backup `public/replay/backup-run.json` (falls back to a fresh deterministic build). Re-record with `npm run export-replay`.
+- **Fully offline** (no Supabase, no network): `OFFLINE=1 npm run dev`. Data lives in `.data/offline-db.json` (delete it to reset), you are signed in as a seeded admin with the 20 use cases imported, and `OFFLINE_ROLE=viewer` previews the judge view. It also switches on by itself when the Supabase env is absent, but never in production. With `NODE_ENV=production`, `OFFLINE=1` is ignored unless `OFFLINE_ALLOW_PRODUCTION=1` is also set (the offline mode is an open admin session, so it must be a deliberate choice).
+- **Local model with LM Studio**: start its server, then set `LLM_BASE_URL=http://localhost:1234/v1`, `LLM_API_KEY=lm-studio` and `OPENROUTER_MODEL=<the loaded model id>`. Without any model the scenarios still run (deterministic agents).
+
 ### Rebuild the knowledge base
 
 ```bash
@@ -87,13 +94,15 @@ python kb/build.py             # fetch, extract, chunk -> kb/chunks.json
 python kb/build.py --embed     # also embed with Ollama into kb/chroma
 ```
 
-The app retrieves from `kb/chunks.json` by keyword (BM25), so the runtime needs no Python. The chunks are also vectorised with ITU's `embed_texts` and model (`kb/vectors.json`); hybrid search is built but off by default (see `docs/RETRIEVAL_NOTE.md`).
+The app retrieves from `kb/chunks.json` by keyword (BM25), so the runtime needs no Python. The chunks are also vectorised with the same nomic-embed-text-v1.5 model ITU uses, served by transformers.js rather than Ollama (`kb/vectors.json`, `node scripts/embed_kb.ts`); hybrid search is built but off by default (see `docs/RETRIEVAL_NOTE.md`).
 
 ## Connecting a live Sijil node
 
 Optional. By default the Sijil panel is **simulated**. Sijil is a separate
 product under its own licence; this app only calls its read-only HTTP API
 (`/api/verify`, `/api/records`) and contains none of its code.
+
+Sijil is our own attestation service (built by the team lead). It is simulated unless the live adapter is enabled with `SIJIL_BASE_URL`.
 
 1. Get Sijil from its own repository and follow its licence terms.
 2. Python 3.11 venv: `python3.11 -m venv .venv && . .venv/bin/activate`, then
@@ -125,8 +134,8 @@ Not yet run against a real node; the adapter is tested with a mocked `fetch`.
 ## Honest limits
 
 - Sijil is simulated unless `SIJIL_BASE_URL` is set; the live adapter is untested against a real node, and accuracy, hallucination and goal alignment stay simulated either way.
-- Agents were evaluated in their deterministic mode; model-driven mode is built, not yet scored.
-- Retrieval is lexical, so citation relevance is uneven; some steps cite nothing by design.
+- Model-driven mode was scored on S1, S2 and S4 (20 runs each, one model; see `docs/eval/agent-results.md`). Its 20/20 path match is partly by design: an add-only guard stops model messages from changing a gate status the rules did not already address. An earlier version without the guard scored 0% on S2 and 35% on S4 (`docs/eval/agent-results-before-guard.md`).
+- Retrieval is lexical (BM25) by default, so citation relevance is uneven; some steps cite nothing by design. Arabic queries work only through LLM translation.
 - Some sources are secondary (the ITU summaries; the Singapore law-firm summary, now superseded in the gap register by the IMDA framework excerpts); the DESC regulation text is not ingested. Primary global texts (IMDA, EU AI Act Arts. 14, 26, 86 and Annex III, G7 Hiroshima Code, UN System White Paper) are held as short attributed excerpts.
 - Inclusion (Readiness dimension 11) and multilingual service are not addressed.
 
@@ -135,3 +144,15 @@ Not yet run against a real node; the adapter is tested with a mocked `fetch`.
 GNU Affero General Public License v3.0 (see `LICENSE`). Copyright (c) 2026 the PrismAI team (Shameer Thaha, Shaibi Shamsudeen).
 
 If AGPL-3.0 does not suit your use, a separate commercial licence is available from the copyright holders; open an issue on this repository to get in touch.
+
+## Since round one
+
+Updated 19 Nov 2026. The maintainer will fill in each item as it lands.
+
+- TODO: LLM-mode evaluation
+- TODO: live scenario editor
+- TODO: KB re-embedding and new sources
+- TODO: multi-country compare
+- TODO: judge mode and offline kit
+- TODO: Arabic UI
+- TODO: standards note

@@ -27,7 +27,7 @@ async function ChangeHistory({ ext_id }: { ext_id: string }) {
     <section className="mx-auto mt-10 max-w-6xl px-4 sm:px-6" aria-label="Change history">
       <h2 className="text-lg font-semibold">Change history</h2>
       <p className="mt-1 text-sm text-ink-soft">
-        Every change to this use case's stage, verdict or compliant flag is stored with its old and new value in an append-only,
+        Every change to this use case&apos;s stage, verdict or compliant flag is stored with its old and new value in an append-only,
         hash-chained log. History starts when the log was installed.{" "}
         {v ? (v.ok ? `✓ Chain verified: ${v.length} records, intact.` : `✕ Chain broken at record ${v.broken_seq}: ${v.reason}`) : ""}
       </p>
@@ -40,7 +40,7 @@ async function ChangeHistory({ ext_id }: { ext_id: string }) {
               <span className="tabular-nums text-ink-soft">#{r.seq} · {new Date(r.at).toLocaleString("en-GB", DUBAI)} · {r.actor}</span>
               <div>
                 {Object.entries(r.changes).filter(([k]) => !k.startsWith("verdict_") || k === "verdict").map(([k, c]) => (
-                  <span key={k} className="mr-4">{k}: {show(c.from)} → <strong>{show(c.to)}</strong></span>
+                  <span key={k} className="me-4">{k}: {show(c.from)} → <strong>{show(c.to)}</strong></span>
                 ))}
               </div>
               <code className="text-xs text-ink-soft">{r.hash.slice(0, 16)}…</code>

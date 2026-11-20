@@ -112,19 +112,19 @@ export default function ImportCsv({ existingIds }: { existingIds: string[] }) {
                 <span className="font-medium text-ink">{rows.length - updating} new</span>, <span className="font-medium text-ink">{updating} existing</span> (descriptions update; stage and verdict stay).
               </p>
               <div className="relative max-h-56 overflow-auto rounded-lg border border-line">
-                <table className="w-full min-w-[34rem] text-left text-sm">
+                <table className="w-full min-w-[34rem] text-start text-sm">
                   <caption className="sr-only">Preview of the first rows</caption>
                   <thead className="sticky top-0 bg-card font-mono text-[10px] text-ink-soft uppercase">
-                    <tr><th className="px-3 py-2 font-normal">ID</th><th className="font-normal">Entity</th><th className="font-normal">Use case</th><th className="font-normal">Quadrant</th><th className="pr-3 font-normal">New?</th></tr>
+                    <tr><th className="px-3 py-2 font-normal">ID</th><th className="font-normal">Entity</th><th className="font-normal">Use case</th><th className="font-normal">Quadrant</th><th className="pe-3 font-normal">New?</th></tr>
                   </thead>
                   <tbody>
                     {rows.slice(0, 8).map((r) => (
                       <tr key={r.ext_id} className="border-t border-line">
                         <td className="px-3 py-1.5 font-mono text-xs">{r.ext_id}</td>
-                        <td className="max-w-40 truncate pr-2">{r.entity}</td>
-                        <td className="max-w-56 truncate pr-2">{r.title}</td>
-                        <td className="pr-2 whitespace-nowrap">{r.quadrant}</td>
-                        <td className="pr-3 text-xs text-ink-soft">{ids.has(r.ext_id) ? "update" : "new"}</td>
+                        <td className="max-w-40 truncate pe-2">{r.entity}</td>
+                        <td className="max-w-56 truncate pe-2">{r.title}</td>
+                        <td className="pe-2 whitespace-nowrap">{r.quadrant}</td>
+                        <td className="pe-3 text-xs text-ink-soft">{ids.has(r.ext_id) ? "update" : "new"}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -145,7 +145,7 @@ export default function ImportCsv({ existingIds }: { existingIds: string[] }) {
         <summary className="w-fit cursor-pointer text-xs font-medium underline underline-offset-2">Columns this file can have</summary>
         <ul className="mt-2 grid gap-x-6 gap-y-1 text-xs sm:grid-cols-2">
           {COLUMNS.map(([k, d, req]) => (
-            <li key={k}><span className="font-mono text-ink">{k}</span>{req && <span className="ml-1 text-ember" title="Required">*</span>} <span className="text-ink-soft">{d}</span></li>
+            <li key={k}><span className="font-mono text-ink">{k}</span>{req && <span className="ms-1 text-ember" title="Required">*</span>} <span className="text-ink-soft">{d}</span></li>
           ))}
         </ul>
         <p className="mt-2 text-xs text-ink-soft">* required. Column order is free. A sample is in data/un-use-cases.csv.</p>
