@@ -200,7 +200,7 @@ test("C3-2 / C3-3: the report's gap table covers the six ITU categories and ever
   }
 });
 
-test("C5-1 / section 8: the shipped report PDF is the export of the final docx: 5 pages at most, no author, current claims", async (t) => {
+test("C5-1 / section 8: the shipped report PDF is the export of the final docx: 5 pages at most, no template author, current claims", async (t) => {
   const { spawnSync } = await import("node:child_process");
   const { existsSync } = await import("node:fs");
   const py = existsSync(".venv/Scripts/python.exe") ? ".venv/Scripts/python.exe" : "python";
@@ -210,7 +210,8 @@ test("C5-1 / section 8: the shipped report PDF is the export of the final docx: 
   const parts = r.stdout.split("|");
   const text = parts.slice(2).join("|");
   assert.ok(Number(parts[0]) <= 5, `${parts[0]} pages`);
-  assert.equal(parts[1], "");
+  // The ITU template's author ("Meng, Jiaying") must not survive; the team's own names are intended.
+  assert.ok(!/Meng|Jiaying/i.test(parts[1]), `PDF author metadata is the template's: ${parts[1]}`);
   assert.ok(text.includes("HTML cleaning is ours") && text.includes("enables the application of policies") && text.includes("recall@5"));
   assert.ok(!/reused unmodified|policer|Not verified here/.test(text));
 });

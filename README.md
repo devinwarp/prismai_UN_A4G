@@ -82,7 +82,7 @@ Sign in with an email in `ADMIN_EMAILS`, open **Federal**, import
 
 - **Judges** (read-only): put their emails in `JUDGE_EMAILS`. On first sign-in they become `viewer`s in the demo workspace (`JUDGE_ORG_ID`, else the first admin's). They can open the dashboard, runs, traces, KB explorer and gaps; every mutating `/api/admin/un/*` route calls `requireAdmin()` and answers 403 (a test fails if a new one forgets).
 - **`/replay`** needs no login and no database: S1 to S4 replayed deterministically from the recorded backup `public/replay/backup-run.json` (falls back to a fresh deterministic build). Re-record with `npm run export-replay`.
-- **Fully offline** (no Supabase, no network): `OFFLINE=1 npm run dev`. Data lives in `.data/offline-db.json` (delete it to reset), you are signed in as a seeded admin with the 20 use cases imported, and `OFFLINE_ROLE=viewer` previews the judge view. It also switches on by itself when the Supabase env is absent, but never in production.
+- **Fully offline** (no Supabase, no network): `OFFLINE=1 npm run dev`. Data lives in `.data/offline-db.json` (delete it to reset), you are signed in as a seeded admin with the 20 use cases imported, and `OFFLINE_ROLE=viewer` previews the judge view. It also switches on by itself when the Supabase env is absent, but never in production. With `NODE_ENV=production`, `OFFLINE=1` is ignored unless `OFFLINE_ALLOW_PRODUCTION=1` is also set (the offline mode is an open admin session, so it must be a deliberate choice).
 - **Local model with LM Studio**: start its server, then set `LLM_BASE_URL=http://localhost:1234/v1`, `LLM_API_KEY=lm-studio` and `OPENROUTER_MODEL=<the loaded model id>`. Without any model the scenarios still run (deterministic agents).
 
 ### Rebuild the knowledge base

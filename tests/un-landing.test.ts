@@ -82,3 +82,24 @@ test("landing numbers match the evaluation files and README, and the banned name
   assert.equal(COPY.en.proof.length, COPY.ar.proof.length);
   assert.equal(COPY.en.records.length, 6);
 });
+
+test("OFFLINE=1 is ignored in production unless OFFLINE_ALLOW_PRODUCTION=1 is also set", async () => {
+  const { isOffline } = await import("../src/lib/supabase/offline-flag.ts");
+  const keep = { ...process.env };
+  const env = process.env as Record<string, string | undefined>;
+  try {
+    env.OFFLINE = "1";
+    delete env.OFFLINE_ALLOW_PRODUCTION;
+    env.NODE_ENV = "production";
+    assert.equal(isOffline(), false, "production must not open on OFFLINE alone");
+    env.OFFLINE_ALLOW_PRODUCTION = "1";
+    assert.equal(isOffline(), true, "explicit second opt-in");
+    delete env.OFFLINE_ALLOW_PRODUCTION;
+    env.NODE_ENV = "development";
+    assert.equal(isOffline(), true, "dev unchanged");
+  } finally {
+    for (const k of ["OFFLINE", "OFFLINE_ALLOW_PRODUCTION", "NODE_ENV"]) {
+      if (keep[k] === undefined) delete env[k]; else env[k] = keep[k];
+    }
+  }
+});
