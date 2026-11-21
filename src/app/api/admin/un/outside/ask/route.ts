@@ -5,6 +5,7 @@ import { adminMemoryStore } from "@/lib/un/case-memory-store";
 import { cachedOcr } from "@/lib/un/doc-ocr";
 import { NO_REGISTRY, RECORDS, TODAY } from "@/lib/un/fixtures-uc02";
 import { queueingRequestOutside } from "@/lib/un/outside-queue";
+import { translateQuery } from "@/lib/un/query-translate";
 import { searchSop } from "@/lib/un/sop-kb";
 import { createAdminClient } from "@/lib/supabase/admin";
 
@@ -21,6 +22,8 @@ export async function POST(req: Request) {
   const body = (await req.json().catch(() => ({}))) as { question?: unknown };
   const q = typeof body.question === "string" ? body.question.trim() : "";
   if (!q || q.length > 400) return bad("A question of 1 to 400 characters is required");
+  // The SOP is English: an Arabic question is translated (LLM, else the offline glossary) and the agent is asked the English form.
+  const t = await translateQuery(q);
   const db = createAdminClient();
   const agent = await openAgent({
     sopId: SOP, profile: PROFILE, caseId: DEMO_CASE, today: TODAY, store: adminMemoryStore(who.org_id!),
@@ -31,6 +34,6 @@ export async function POST(req: Request) {
     },
   });
   await agent.openCase({ licence_number: RECORDS.noor.licence_number, declared_activity_code: "4711" });
-  const r = await agent.ask(q);
-  return NextResponse.json({ status: r.status, citations: r.citations, quotes: r.answer, person_answer: r.person_answer ?? null });
+  const r = await agent.ask(t.query);
+  return NextResponse.json({ status: r.status, citations: r.citations, quotes: r.answer, person_answer: r.person_answer ?? null, ...(t.from ? { query_translated_from: t.from, query_used: t.query, query_translated_via: t.via ?? "llm" } : {}) });
 }

@@ -16,7 +16,7 @@ export async function GET(request: Request) {
   const asked = (url.searchParams.get("q") ?? "").trim();
   if (!asked) return bad("q is required");
   // Arabic queries are translated to English first (the corpus is English); falls back to the original.
-  const { query: q, from } = await translateQuery(asked);
+  const { query: q, from, via } = await translateQuery(asked);
   const k = Math.min(10, Math.max(1, Number(url.searchParams.get("k")) || 5));
   const chunks = loadChunks();
   const vectors = loadVectors(chunks);
@@ -31,5 +31,5 @@ export async function GET(request: Request) {
     sha256: c.sha256,
     quote: excerpt(c.text, q),
   }));
-  return NextResponse.json({ vector: found.mode === "hybrid" ? "on" : "off", ...(from ? { query_translated_from: from, query_used: q } : {}), hits });
+  return NextResponse.json({ vector: found.mode === "hybrid" ? "on" : "off", ...(from ? { query_translated_from: from, query_used: q, ...(via ? { query_translated_via: via } : {}) } : {}), hits });
 }
