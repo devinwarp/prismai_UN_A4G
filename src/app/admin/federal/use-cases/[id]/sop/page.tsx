@@ -11,7 +11,7 @@ import { checkSopKb } from "@/lib/un/skill-extract";
 import { SAMPLES, profilesOf } from "@/lib/un/sop/data";
 import { assessProfiles, EVIDENCE_KEYS } from "@/lib/un/sop/profiles";
 import LangShell, { T, TV } from "../../../_components/Lang";
-import { btnGhost, card, VerdictBadge } from "../../../_components/ui";
+import { btnGhost, card, scrollRegion, VerdictBadge } from "../../../_components/ui";
 import { AttachButton, AutomateBox } from "./ProfileControls";
 
 export const metadata: Metadata = { title: "SOP and job profiles", robots: { index: false, follow: false } };
@@ -73,9 +73,9 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
                 ))}
               </ul>
             </nav>
-            <div className="mt-4 overflow-x-auto rounded-2xl border border-line bg-card">
+            <div {...scrollRegion("pf-cap")} className="mt-4 overflow-x-auto rounded-2xl border border-line bg-card">
               <table className="w-full min-w-[60rem] text-sm">
-                <caption className="sr-only"><T k="pf.eyebrow" en="SOP and job profiles" /></caption>
+                <caption id="pf-cap" className="sr-only"><T k="pf.eyebrow" en="SOP and job profiles" /></caption>
                 <thead className="font-mono text-[11px] tracking-wide text-ink-soft uppercase shadow-[0_1px_0_var(--color-line)]">
                   <tr>
                     <th scope="col" className={th}><T k="pf.automate" en="Automate" /></th>
@@ -104,7 +104,7 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
                       </td>
                       <td className="px-3 py-2.5 tabular-nums">{r.gates}</td>
                       <td className="px-3 py-2.5 tabular-nums">{r.hitl}</td>
-                      {EVIDENCE_KEYS.map((k) => <td key={k} className={`px-3 py-2.5 ${r.automate ? "" : "opacity-60"}`}><VerdictBadge verdict={r.verdicts[k]} /></td>)}
+                      {EVIDENCE_KEYS.map((k) => <td key={k} className="px-3 py-2.5"><VerdictBadge verdict={r.verdicts[k]} /></td>)}
                     </tr>
                   ))}
                 </tbody>

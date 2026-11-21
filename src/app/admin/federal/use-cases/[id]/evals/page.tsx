@@ -13,7 +13,7 @@ import { loadLog } from "@/lib/un/tuning-store";
 import { CaseText, FindingText, ReasonText } from "../../../_components/EvalText";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import AgentRuntimePanel from "../../../_components/AgentRuntimePanel";
-import { card } from "../../../_components/ui";
+import { card, scrollRegion } from "../../../_components/ui";
 import EvalRunButton from "./EvalRunButton";
 
 export const metadata: Metadata = { title: "Pilot evals", robots: { index: false, follow: false } };
@@ -125,9 +125,9 @@ export default async function EvalsPage({ params }: { params: Promise<{ id: stri
 
                   <section className="mt-8" aria-label="Cases">
                     <h2 className="text-lg font-semibold"><T k="ev.h.cases" en="Expected output against actual output" /></h2>
-                    <div className="mt-3 overflow-x-auto rounded-2xl border border-line bg-card">
+                    <div {...scrollRegion("ev-cases-cap")} className="mt-3 overflow-x-auto rounded-2xl border border-line bg-card">
                       <table className="w-full min-w-[56rem] text-start text-sm">
-                        <caption className="sr-only"><T k="ev.h.cases" en="Expected output against actual output" /></caption>
+                        <caption id="ev-cases-cap" className="sr-only"><T k="ev.h.cases" en="Expected output against actual output" /></caption>
                         <thead className="border-b border-line text-xs text-ink-soft uppercase">
                           <tr>
                             <th scope="col" className="p-3 text-start"><T k="ev.th.case" en="Case" /></th>
