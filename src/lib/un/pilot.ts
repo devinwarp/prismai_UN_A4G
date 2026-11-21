@@ -33,6 +33,8 @@ export interface PilotRun {
   passed: boolean;
   /** The answer, canonicalised or hashed, so repetitions can be compared. */
   answer: string;
+  /** A short readable form of the output, for a reviewer or a judge. */
+  summary?: string;
   latency_ms: number | null;
   cost: number | null;
   /** A claim that no cited passage supports. null: the run made no claim. */

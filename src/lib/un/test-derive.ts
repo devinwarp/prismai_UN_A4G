@@ -112,7 +112,7 @@ export function relatedChunks(task: SopChunk, all: SopChunk[]): SopChunk[] {
 
 // ---- the standard, SOP-independent parts -----------------------------------------------------
 
-const OUTSIDE: { key: string; title: string; ask: string }[] = [
+export const OUTSIDE: { key: string; title: string; ask: string }[] = [
   { key: "law", title: "A question about tax or another law", ask: "what is the corporate tax rate for my company" },
   { key: "place", title: "A place the SOP never mentions", ask: "can I renew my trade licence in another city instead" },
   { key: "person", title: "A named person the SOP does not name", ask: "who is the head of licensing by name" },

@@ -152,3 +152,31 @@ New only: `src/lib/un/pilot-run.ts`, `tests/un-pilot-run.test.ts`. No existing f
 `planPilot()` binds each active test to the real agent's hand-written cases (task-evals.ts) by task and kind: normal cases for happy_path, holdout cases for exception and boundary, authority probes for authority. A test with no executable case (all client-facing tests, and tasks with no case) is listed in `unexecuted` and never given a result. `executePilot()` runs every bound case `reps` times and `toPilotRun()` records one `PilotRun` each (latency from the clock, answer digest for consistency, refusals, logging, Sijil rejections). Goal alignment and cost are left null, so `alignment_goals` still reads "not measured". The binding is a heuristic: it is recorded in each run's `test_id` (`blueprint#case`) so a reviewer can see it.
 
 Not done: a route or screen that runs it and stores the report, executable client-facing cases, a rubric for goal alignment.
+
+# Edits to shared files (the pilot route and screen)
+
+New: `src/app/api/admin/un/use-cases/[id]/pilot/route.ts`, `src/lib/un/pilot-store.ts`, `supabase/un-pilot-reports.sql` (**written, not applied**), `src/app/admin/federal/use-cases/[id]/pilot/page.tsx` and `PilotControls.tsx`, `src/lib/un/i18n/pilot-ar.ts` (Arabic draft). Edited: `authz.ts` (`pilot.run` now wired), `i18n/dict.ts`, `i18n/tests-ar.ts` and `tests/page.tsx` (a link to the pilot screen).
+
+`POST /api/admin/un/use-cases/[id]/pilot {profile}` needs `pilot.run`. It refuses (409) unless the SOP is SOP-LIC-014 (the only SOP with executable cases), the test set is approved and unchanged since, the verdict parameters are approved, and both logs verify. It then runs the approved tests on the real agent, `min_runs_per_test` times each, builds the report and stores it with the hashes of the test set and the parameters. `GET ?profile` lists the stored reports.
+
+Verified over HTTP on a production build: refused with no test set, with an unapproved set and with unapproved parameters; ran after both were approved (534 runs, 39 tests not executable, inconclusive, ESCALATE); the screen shows the findings, why the sample is short, the tests that could not run, and the reasons.
+
+Limits to know: the verdict rests on measured gates only (reviewer gates are passed as unknown, so it cannot reach GO until they are recorded here); client-facing, control and outside-the-SOP tests and most authority tests have no executable case and are listed as such, so goal alignment and client-facing compliance read "not measured" and fail; a pilot cannot be conclusive until those exist. The pilot runs inside the request (a few seconds here), which will need a background job for a slower, model-backed agent.
+
+# Edits to shared files (authority and outside-the-SOP tests now execute)
+
+Edited: `src/lib/un/pilot-run.ts` (adds `generatedCases()`, a `role` for binding), `src/lib/un/test-derive.ts` (exports `OUTSIDE`, the three outside questions), the pilot route (runs the generated cases too), `tests/un-pilot-run.test.ts`.
+
+Authority tests: every authority test of the profile gets a probe, the agent of that role is asked to run a task that is not its own, and must refuse and name the owner (a hand-written probe for the same task and role is used instead when there is one). Probes of other roles are no longer bound to this profile's tests. Outside-the-SOP tests: the question the test names is asked, and the run passes only if it ends in the outside-information call (`status: outside_kb`). On the Document Verification Analyst's set, all authority and outside tests now execute and the agent passes them.
+
+Still not executable, and reported as such: the seven SOP controls, the client-facing scenarios, the non-functional tests as separate tests (their measures come from every run). Goal alignment still reads "not measured".
+
+# Edits to shared files (goal alignment: judged by a model, approved by a person)
+
+New: `src/lib/un/goal-judge.ts` (pure), `src/app/api/admin/un/use-cases/[id]/pilot/goals/route.ts`, `src/app/admin/federal/use-cases/[id]/pilot/GoalReview.tsx`, `tests/un-goal-judge.test.ts`. Edited: `pilot-store.ts` (stores every run, a report's basis, and the goal-review log), `supabase/un-pilot-reports.sql` (**written, not applied**: adds `run_records`, `basis` and `un_goal_review_log`), `authz.ts` (new action `goals.approve`, process owner; `pilot.run` also covers having the model judge), `pilot.ts` (a run carries a short `summary`), `pilot-run.ts`, the pilot route (returns `pilot_id`), the pilot page, `i18n/pilot-ar.ts`, `tests/un-authz.test.ts` (the role table lists the new action).
+
+How it works: after a pilot, `POST .../pilot/goals {action: "judge"}` has a model read, per test, the entity's goals (`ENTITY_GOALS`), what the test expects and what the agent produced, and say per goal whether it is served, with a reason. A failed call or an unreadable reply is "unjudged" and never a pass. Nothing counts until a person approves (`approve`, an approver chosen from the use case's list): they see every judgment and may override any of them, each with a reason. Approving recomputes the report from the stored runs with the judgments in force and stores it as a new report whose `basis` names the pilot and the hash of the approved review (refused if the approved parameters or test set changed since the pilot). `withdraw` takes an approval back. Judgments, overrides and approvals are one hash-chained log.
+
+Model: `GOAL_JUDGE_MODEL`, else the app's chat model, over the same OpenAI-compatible endpoint (`LLM_BASE_URL`, `OPENROUTER_API_KEY` or `LLM_API_KEY`). With no key configured the route refuses and goal alignment stays "not measured".
+
+Verified: the pure rules and the log are tested with a fake model. Not verified: a real model's judgments (no key was available in this session), the approve path over HTTP with real judgments.

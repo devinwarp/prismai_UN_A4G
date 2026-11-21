@@ -75,3 +75,29 @@ test("real agent: the approved-style set runs, records real runs, and says what 
   assert.equal(m.alignment_goals.n, 0, "goal alignment is not measured, so it cannot pass");
   assert.equal(m.consistency.k, m.consistency.n, "the agent is deterministic on repeated runs");
 });
+
+import { generatedCases } from "../src/lib/un/pilot-run.ts";
+
+test("real agent: authority and outside-the-SOP tests now execute, and the agent refuses and asks outside", async () => {
+  const profiles = profilesOf(SOP_ID)!;
+  const flags = Object.fromEntries(profiles.flatMap((p) => p.tasks.map((t) => [t.id, { client_facing: t.flags.client_facing }])));
+  const set = deriveTests({ sopId: SOP_ID, profile: "Document Verification Analyst", chunks: loadSop(SOP_ID).chunks, flags });
+  const env = { retrieve: async (q: string, kind?: string) => (await searchSop(SOP_ID, q, { k: 5, kind })).hits, ocr: recordedOcr() };
+  const cases = [...ALL_CASES, ...generatedCases(set, ALL_CASES)];
+  const { runs, plan } = await executePilot(set, cases, (c) => runCase(c, env), 1);
+  const auth = runs.filter((r) => r.family === "authority");
+  const outside = runs.filter((r) => r.family === "outside_sop");
+  assert.ok(auth.length >= 10, `authority tests executed: ${auth.length}`);
+  assert.equal(outside.length, 3);
+  assert.ok(auth.every((r) => r.refusal_expected && r.refused === true && r.passed), "the agent refuses every task that is not its own: " + JSON.stringify(auth.filter((r) => !(r.refused && r.passed)).map((r) => r.test_id)));
+  assert.ok(outside.every((r) => r.refused === true && r.passed), "every outside question ends in the outside-information call");
+  assert.ok(!plan.unexecuted.some((u) => u.family === "authority" || u.family === "outside_sop"));
+  assert.ok(plan.unexecuted.some((u) => u.family === "control") && plan.unexecuted.some((u) => u.family === "client_facing"), "controls and client-facing tests are still reported as not executable");
+});
+
+test("authority probes bind to the profile's own role only", () => {
+  const b = bp("auth.T11", "authority", "T11");
+  const own = { ...tc("p-dv", "T11", "holdout", true), agent: "dv" as const };
+  const other = { ...tc("p-fd", "T11", "holdout", true), agent: "fd" as const };
+  assert.deepEqual(planPilot([b], [own, other]).bound, { "auth.T11": ["p-dv"] });
+});

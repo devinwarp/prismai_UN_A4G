@@ -76,11 +76,11 @@ cp .env.example .env.local     # fill in Supabase, OPENROUTER_API_KEY, ADMIN_EMA
 #   Lifecycle (optional, for the pilot, gates, tuning and outside-queue screens; pgvector must be enabled):
 #   supabase/un-agent-lifecycle.sql, un-agent-runtime.sql, un-gates.sql, un-profiles.sql,
 #   un-sop-kb.sql, un-outside-queue.sql, then un-log-guards.sql
-#   (un-roles.sql, un-test-sets.sql and un-verdict-params.sql are written but NOT applied; see docs/un-shared-edits.md)
+#   (un-roles.sql, un-test-sets.sql and un-verdict-params.sql and un-pilot-reports.sql are written but NOT applied; see docs/un-shared-edits.md)
 #   Country and knowledge base screen (optional): supabase/un-country.sql, after un-log-guards.sql
 npm ci
 npm run dev                    # http://localhost:3000 -> /admin/federal
-npm test                       # 416 tests (415 pass, 1 skipped without PyMuPDF), no database needed
+npm test                       # 426 tests (425 pass, 1 skipped without PyMuPDF), no database needed
 ```
 
 Sign in with an email in `ADMIN_EMAILS`, open **Federal**, import

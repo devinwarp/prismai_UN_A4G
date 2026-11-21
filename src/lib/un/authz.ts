@@ -33,7 +33,8 @@ export const ACTIONS = {
   "run.sign": def("Sign a scenario run's verdict", true, ["process_owner"]),
   "tuning.run": def("Run pilot evals and tuning cycles", true, ["operator"], true),
   "tuning.propose": def("Propose a change to rules, glossary, settings or questions", true, ["test_author", "operator"]),
-  "pilot.run": def("Run the approved pilot tests", true, ["operator"]),
+  "pilot.run": def("Run the approved pilot tests and have the model judge goal alignment", true, ["operator"], true),
+  "goals.approve": def("Approve, override or withdraw the model's goal-alignment judgments of a pilot", true, ["process_owner"], true),
   // production
   "deploy": def("Deploy an approved agent version", true, ["operator"], true),
   "watchdog.window": def("Run a production monitoring window", true, ["operator"], true),

@@ -14,7 +14,7 @@ const allowed = (s: Subject, a: ActionId, uc: string | undefined = UC02) => can(
 const EXPECTED: Record<RoleId, ActionId[]> = {
   platform_admin: ["view", "users.manage"],
   governance_admin: ["view", "gate.catalogue.change", "policy.edit"],
-  process_owner: ["view", "gate.add", "gate.waive", "tuning.approve", "run.sign", "reinstate", "scenario.propose", "scenario.edit", "scenario.approve"],
+  process_owner: ["view", "gate.add", "gate.waive", "tuning.approve", "run.sign", "reinstate", "scenario.propose", "scenario.edit", "scenario.approve", "goals.approve"],
   test_author: ["view", "tuning.propose", "scenario.propose"],
   operator: ["view", "tuning.run", "tuning.propose", "pilot.run", "deploy", "watchdog.window"],
   viewer: ["view"],

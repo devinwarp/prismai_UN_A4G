@@ -81,7 +81,7 @@ export default async function TestsPage({ params, searchParams }: { params: Prom
         <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase"><T k="ts.eyebrow" en="Pilot tests and parameters" /></p>
         <h1 className="font-display mt-2 text-3xl font-medium tracking-tight sm:text-4xl"><TV k="ts.h1" en="How {uc} is tested before it runs" v={{ uc: uc.ext_id }} /></h1>
         <p className="mt-3 max-w-[68ch] text-base text-ink-soft"><T k="ts.lede" en="The tests come from the skill of each job profile. The process owner adds, changes or retires scenarios and sets the thresholds; a person approves both, and the pilot is judged only against what was approved." /></p>
-        <p className="mt-3"><Link className="text-sm underline" href={`/admin/federal/use-cases/${id}/sop`}><T k="ts.back" en="Back to the SOP and job profiles" /></Link></p>
+        <p className="mt-3 flex flex-wrap gap-4"><Link className="text-sm underline" href={`/admin/federal/use-cases/${id}/sop`}><T k="ts.back" en="Back to the SOP and job profiles" /></Link><Link className="text-sm underline" href={`/admin/federal/use-cases/${id}/pilot${current ? `?profile=${encodeURIComponent(current.name)}` : ""}`}><T k="ts.pilot" en="Pilot and verdict" /></Link></p>
 
         {!sopId || profiles.length === 0 ? (
           <section className={`${card} mt-6`}><p className="text-sm font-medium"><T k="ts.none" en="Attach an SOP and tick Automate on a job profile first: tests are written for the agent that will do its work." /></p></section>
