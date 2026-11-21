@@ -156,7 +156,8 @@ export function replayVerdicts(log: TraceRecord[], initial: CaseState, hasChunk:
     const rows = log.filter((r) => r.step === step);
     const accepted = rows.filter((r) => r.disposition === "accepted" && r.message).map((r) => r.message!);
     const breaches = rows.find((x) => x.disposition === "verdict")?.hitl_breaches;
-    const r = reconcile({ ...state, hitlBreaches: breaches ?? [] }, accepted, hasChunk);
+    // Acceptance (incl. fix evidence references) is recorded in the chain; replay re-derives verdicts from accepted messages.
+    const r = reconcile({ ...state, hitlBreaches: breaches ?? [] }, accepted, hasChunk, () => true);
     state = r.state;
     const recorded = rows.find((x) => x.disposition === "verdict")?.proposal;
     if (recorded && recorded !== r.decision.verdict) mismatches.push(`${step}: log says ${recorded}, replay gives ${r.decision.verdict}`);

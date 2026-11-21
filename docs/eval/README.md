@@ -67,7 +67,7 @@ See `redteam-results.md`. With a real model, 50 runs across five attack types pr
 contradicted itself inside one round (a fail then a pass on the same gate) was resolved by message order, so the later pass loosened
 NO_GO to ESCALATE. Fixed in `src/lib/un/protocol.ts` (the stricter state stands) with regression tests. Two design observations remain, stated plainly:
 
-- A declared fix (`fix_declared`) is accepted on the applicant's say-so and moves NO_GO to ASSISTANT_ONLY (a person acts; nothing autonomous). It can never
-  reach a GO verdict: only the gate owner's re-test pass can. Whether free text in a declaration is true is not checked.
+- A declared fix (`fix_declared`) is accepted only with a resolvable evidence reference (a knowledge-base chunk id, or the id of a non-fix evidence event in the case); a bare or unresolvable declaration is recorded as rejected in the trace, with the reason, and lifts nothing. An accepted one moves NO_GO to ASSISTANT_ONLY (a person acts; nothing autonomous). It can never
+  reach a GO verdict: only the gate owner's re-test pass can. The reference is checked to resolve, not to SUPPORT the claim: whether the cited record really shows the fix is not verified.
 - An owner role's `pass` event is trusted. If a hostile party could inject events into the owner's channel, they could pass a gate; the system
   secures the verdict logic, not the event feed. Authenticating event sources is outside this prototype.

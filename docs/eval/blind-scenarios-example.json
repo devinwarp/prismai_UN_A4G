@@ -34,7 +34,8 @@
           "step": "T3",
           "expected": "ASSISTANT_ONLY",
           "events": [
-            { "id": "B-EX1-T3-fix", "recipients": ["innovator"], "summary": "Owner switched on logging for queue changes", "gate": "audit_log", "status": "fix_declared" }
+            { "id": "B-EX1-T3-record", "recipients": ["innovator"], "summary": "Change record CR-7: logging switched on for queue changes" },
+            { "id": "B-EX1-T3-fix", "recipients": ["innovator"], "summary": "Owner switched on logging for queue changes", "gate": "audit_log", "status": "fix_declared", "links": ["B-EX1-T3-record"] }
           ]
         },
         {

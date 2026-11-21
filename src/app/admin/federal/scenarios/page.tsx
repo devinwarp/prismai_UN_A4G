@@ -44,7 +44,7 @@ export default async function ScenariosPage() {
               <div className="min-w-0 flex-1 basis-72">
                 <p className="flex flex-wrap items-center gap-2 font-mono text-xs text-ink-soft">
                   <span className="rounded-md bg-paper-deep px-2 py-0.5 font-medium text-ink">{s.id}</span>
-                  <span>{s.kind === "gate" ? <T k="sc.kind.gate" en="One use case: a decision at each step" /> : <T k="sc.kind.fed" en="Whole portfolio: the dashboard at each step" />}</span>
+                  <span>{s.kind === "gate" ? <T k="sc.kind.gate" en="One use case: a decision at each step" /> : <T k="sc.kind.fed" en="Whole portfolio: a sandbox copy of the dashboard at each step (not the live register)" />}</span>
                   {idx === 0 && <span className="rounded-full border border-lit/50 px-2 py-0.5 text-lit-deep"><T k="sc.first" en="Start with this one" /></span>}
                 </p>
                 <p className="font-display mt-2 text-xl">{s.title}</p>

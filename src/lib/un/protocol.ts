@@ -66,18 +66,25 @@ export interface Reconciled {
  * - only the gate's owner may fail or pass it (mandate);
  * - the applicant (innovator) may only declare a fix;
  * - fail and pass need evidence; any claim needs evidence or a KB citation
- *   ("uncited claims rejected"); cited chunks must exist. */
-export function refusal(m: AgentMessage, hasChunk: (id: string) => boolean): string | null {
+ *   ("uncited claims rejected"); cited chunks must exist;
+ * - a declared fix must carry an evidence reference that resolves: a knowledge-base chunk
+ *   id or the id of a (non-fix) evidence event in this case. Retrieval-attached `kb` ids do
+ *   not count, they are not the applicant's reference. Resolving is not the same as
+ *   supporting: the reference is not checked to prove the claim. */
+export function refusal(m: AgentMessage, hasChunk: (id: string) => boolean, hasEvent: (id: string) => boolean = () => false): string | null {
   if (m.kb.some((id) => !hasChunk(id))) return "cites a knowledge-base chunk that does not exist";
   if (m.type === "PROPOSE") {
     return m.from === "innovator" && m.requested ? null : "only the innovator proposes, and must state the autonomy requested";
   }
   if (!m.gate || !m.status) return null; // chatter, requests and escalations change no gate
   if (!GATES[m.gate]) return "unknown gate";
-  if (!m.evidence.length && !m.kb.length) return "uncited claim: no evidence and no knowledge-base citation";
   if (m.status === "fix_declared") {
-    return m.from === "innovator" ? null : "only the innovator declares a fix";
+    if (m.from !== "innovator") return "only the innovator declares a fix";
+    if (!m.evidence.length) return "declared fix has no evidence reference (a chunk id or an evidence event id); a bare declaration is not accepted";
+    const bad = m.evidence.find((id) => !hasChunk(id) && !hasEvent(id));
+    return bad ? `declared fix cites ${bad}, which is neither a knowledge-base chunk nor an evidence event in this case` : null;
   }
+  if (!m.evidence.length && !m.kb.length) return "uncited claim: no evidence and no knowledge-base citation";
   if (m.from !== GATES[m.gate].owner) return `${m.from} does not own gate ${m.gate} (owner: ${GATES[m.gate].owner})`;
   if (m.status === "pass" && !m.evidence.length) return "a pass needs evidence, not only a policy citation";
   if (m.status === "unknown") return "unknown is not a claim";
@@ -89,6 +96,7 @@ export function reconcile(
   state: CaseState,
   msgs: AgentMessage[],
   hasChunk: (id: string) => boolean,
+  hasEvent: (id: string) => boolean = () => false,
 ): Reconciled {
   const next: CaseState = { ...state, gates: { ...state.gates } };
   const accepted: AgentMessage[] = [];
@@ -99,7 +107,7 @@ export function reconcile(
       rejected.push({ msg: m, why: "about a different use case" });
       continue;
     }
-    const why = refusal(m, hasChunk);
+    const why = refusal(m, hasChunk, hasEvent);
     if (why) {
       rejected.push({ msg: m, why });
       continue;

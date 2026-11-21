@@ -174,8 +174,10 @@ test("C2-3: a linked event only links events its recipient was shown", () => {
   for (const sc of [S1, S2, S4]) {
     const shown = new Map<string, Set<string>>();
     for (const st of sc.steps) {
-      for (const e of st.events) for (const l of (e as { links?: string[] }).links ?? []) for (const r of e.recipients) assert.ok(shown.get(r)?.has(l), `${e.id} links ${l} which ${r} never saw`);
-      for (const e of st.events) for (const r of e.recipients) shown.set(r, (shown.get(r) ?? new Set()).add(e.id));
+      for (const e of st.events) {
+        for (const l of (e as { links?: string[] }).links ?? []) for (const r of e.recipients) assert.ok(shown.get(r)?.has(l), `${e.id} links ${l} which ${r} never saw`);
+        for (const r of e.recipients) shown.set(r, (shown.get(r) ?? new Set()).add(e.id));
+      }
     }
   }
 });

@@ -129,6 +129,8 @@ async function gateStep(sc: GateScenario, run: RunState, env: RunEnv, adhoc?: { 
     { state: { ...run.state!, hitlBreaches: breaches }, title: sc.title, requested: !adhoc && run.next === 0 ? sc.requested : undefined, thread: run.thread!, events: def.events },
     deps,
     (id) => byId.has(id),
+    // A declared fix may cite any earlier or current event that is not itself a fix declaration.
+    (id) => [...run.steps.flatMap((s) => s.events), ...def.events].some((e) => e.id === id && e.status !== "fix_declared"),
   );
   const verdictMsg = r.thread[r.thread.length - 1];
   const before = run.log.length;
@@ -158,6 +160,8 @@ export interface AdhocInput {
   gate?: GateId;
   status?: GateStatus;
   recipients: RoleId[];
+  /** For fix_declared: the evidence reference(s), a chunk id or an event id of this run. A bare declaration is rejected and logged. */
+  evidence?: string[];
   /** Optional expected verdict; without it the step is logged but not scored. */
   expected?: string;
 }
@@ -173,6 +177,7 @@ export function adhocError(input: AdhocInput): string | null {
   if (Boolean(input.gate) !== Boolean(input.status)) return "Gate and status go together: set both or neither";
   if (input.gate && !Object.hasOwn(GATES, input.gate)) return "Unknown gate";
   if (input.status && !["pass", "fail", "fix_declared"].includes(input.status)) return "Status must be pass, fail or fix_declared";
+  if (input.evidence !== undefined && (!Array.isArray(input.evidence) || input.evidence.length > 10 || !input.evidence.every((x) => typeof x === "string" && x.length <= 120))) return "Evidence references must be a short list of ids";
   if (input.expected && !(VERDICTS as readonly string[]).includes(input.expected)) return "Unknown expected verdict";
   return null;
 }
@@ -188,7 +193,7 @@ export async function adhocStep(sc: Scenario, run: RunState, input: AdhocInput, 
   const n = run.steps.filter((s) => s.adhoc).length;
   if (n >= MAX_ADHOC) throw new Error(`at most ${MAX_ADHOC} ad-hoc steps per run`);
   const step = `A${n + 1}`;
-  const ev: RoutedEvent = { id: `${sc.id}-${step}-adhoc`, type: input.gate ? "gate_evidence" : "context", summary: input.summary.trim(), recipients: input.recipients, gate: input.gate, status: input.status };
+  const ev: RoutedEvent = { id: `${sc.id}-${step}-adhoc`, type: input.gate ? "gate_evidence" : "context", summary: input.summary.trim(), recipients: input.recipients, gate: input.gate, status: input.status, ...(input.evidence?.length ? { links: input.evidence } : {}) };
   return gateStep(sc, run, env, { step, events: [ev], expected: input.expected ?? "" });
 }
 

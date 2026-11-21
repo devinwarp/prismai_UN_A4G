@@ -66,7 +66,7 @@ function ruleBased(role: RoleId, ctx: AgentContext, deps: AgentDeps, kb: string[
     if (!e.gate || !e.status) continue;
     if (role === "innovator" && e.status === "fix_declared") {
       out.push({ ...base, msg_id: deps.nextId(), type: "POSITION_UPDATE", gate: e.gate, status: "fix_declared",
-        reason: e.summary, evidence: [e.id] });
+        reason: e.summary, evidence: e.links ?? [] }); // a fix cites its evidence reference (links), never its own event
     } else if (ROLES[role].gates.includes(e.gate) && e.status !== "fix_declared") {
       const challenge = e.status === "fail";
       out.push({ ...base, to: challenge ? [...ALL, ...affectedBy(role, ctx.clientFacing)] : ALL, msg_id: deps.nextId(), type: challenge ? "CHALLENGE" : "EVIDENCE",
@@ -80,7 +80,7 @@ const SYSTEM = (role: RoleId) => `You are the ${ROLES[role].label} agent in a go
 Mandate: ${ROLES[role].mandate}
 You may only fail or pass these gates: ${ROLES[role].gates.join(", ") || "(none)"}.
 Reply with JSON: {"messages":[{"type":one of ${MSG_TYPES.join("|")},"gate":optional gate id,"status":optional "fail"|"pass"|"fix_declared","reason":"one or two sentences","evidence":["event ids you were shown"],"kb":["chunk ids you were shown"]}]}
-Rules: cite only event ids and chunk ids you were given. Never claim anything about events you were not shown. A pass needs an event as evidence. No message if nothing in your mandate is affected.
+Rules: cite only event ids and chunk ids you were given. Never claim anything about events you were not shown. A pass needs an event as evidence. A fix_declared needs, as evidence, the id of an event (not a fix declaration) or a chunk id that you were shown; without one it is rejected and lifts nothing. No message if nothing in your mandate is affected.
 Gates: ${Object.entries(GATES).map(([k, g]) => `${k} (${g.label})`).join("; ")}.`;
 
 /** One agent turn. Falls back to deterministic mode if the model call or its

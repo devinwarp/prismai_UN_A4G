@@ -30,7 +30,7 @@ A JSON file: `{"scenarios": [ ... ]}`. See `blind-scenarios-example.json` for a 
 | `events[].id` | event | Unique across the whole file. |
 | `events[].recipients` | event | Who sees it: any of `innovator` (applicant), `policy_adviser`, `security`, `privacy`, `compliance`, `frontline`, `finance`. An agent never sees an event not sent to it. |
 | `events[].summary` | event | What happened, in plain words (up to 600 characters). Real text, not a code. |
-| `events[].gate` and `events[].status` | event | Optional, together. The gate the event is evidence about and what it shows: `pass`, `fail`, or `fix_declared` (the applicant says it is fixed, not yet re-tested). Leave both out for background context. |
+| `events[].gate` and `events[].status` | event | Optional, together. The gate the event is evidence about and what it shows: `pass`, `fail`, or `fix_declared` (the applicant says it is fixed, not yet re-tested; it must carry `links` to an evidence event id or knowledge-base chunk id, otherwise the engine rejects it and lifts nothing). Leave both out for background context. |
 
 Gates: `approved_infrastructure`, `audit_log`, `data_lawful` (always); `human_final_approval`, `ai_disclosure` (client-facing only);
 `hallucination_rate`, `fee_accuracy`, `no_commercial_promotion`, `purpose_limitation` (added when an event about them arrives). Each gate is

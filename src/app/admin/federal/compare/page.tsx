@@ -21,7 +21,9 @@ const STEPS = ["T0", "T1", "T2", "T3", "T4"];
 const SHORT: Record<string, string> = { "uae-federal": "UAE federal", "eu-ai-act": "EU AI Act", "sg-imda": "Singapore IMDA" };
 const KEY: Record<string, string> = { "uae-federal": "uae", "eu-ai-act": "eu", "sg-imda": "sg" };
 const DEFAULT_PICK = ["UC02", "UC03", "UC06", "UC08", "UC09", "UC13"];
-const DEFAULT_RIGHTS = ["UC09", "UC13"];
+// Fallback only: the rights flag now lives in data/un-use-cases.csv (affects_rights column).
+// This list applies solely to a use case whose row carries no such column (an old CSV).
+const FALLBACK_RIGHTS = ["UC09", "UC13"];
 const many = (v: string | string[] | undefined) => (Array.isArray(v) ? v : v ? [v] : []);
 const one = (v: string | string[] | undefined) => (Array.isArray(v) ? v[0] : v);
 
@@ -38,7 +40,8 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
   const submitted = one(sp.f) === "1";
   const ids = new Set(all.map((u) => u.ext_id));
   const pick = (submitted ? many(sp.uc) : [...DEFAULT_PICK, ...sop.map((u) => u.ext_id)]).filter((x) => ids.has(x));
-  const rightsSet = new Set(submitted ? many(sp.rights) : DEFAULT_RIGHTS);
+  const dataRights = (u: { ext_id: string; affects_rights?: boolean }) => u.affects_rights ?? FALLBACK_RIGHTS.includes(u.ext_id);
+  const rightsSet = new Set(submitted ? many(sp.rights) : all.filter(dataRights).map((u) => u.ext_id));
   const jKey = one(sp.j) ?? "uae";
   const rs = RULESETS.find((r) => KEY[r.id] === jKey) ?? RULESETS[0];
   const step = STEPS.includes(one(sp.step) ?? "") ? one(sp.step)! : "T1";
@@ -47,7 +50,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
 
   const inputs: ProcessInput[] = chosen.map((u) => {
     const ev = u.ext_id === "UC02" ? s1EvidenceAt(step) : { gates: flatEvidence(allPass), hitlUnmet: [] };
-    return { id: u.ext_id, entity: u.entity, facts: { client_facing: u.client_facing, affects_rights: rightsSet.has(u.ext_id) || u.affects_rights, irreversible: u.irreversible }, requested: "GO_AUTONOMOUS", ...ev };
+    return { id: u.ext_id, entity: u.entity, facts: { client_facing: u.client_facing, affects_rights: rightsSet.has(u.ext_id), irreversible: u.irreversible }, requested: "GO_AUTONOMOUS", ...ev };
   });
   const rows = compareProcesses(rs, inputs);
   const isUae = rs.id === "uae-federal";

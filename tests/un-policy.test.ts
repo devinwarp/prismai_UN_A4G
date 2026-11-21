@@ -45,7 +45,7 @@ test("S1 verdict path: ESCALATE, NO_GO, NO_GO, ASSISTANT_ONLY, GO_SUPERVISED", (
   let s: CaseState = { ext_id: "UC02", clientFacing: true, requested: "ASSISTANT_ONLY", gates: {} };
   const path: string[] = [];
   const step = (msgs: AgentMessage[]) => {
-    const r = reconcile(s, msgs, has);
+    const r = reconcile(s, msgs, has, (id) => id.startsWith("evt_"));
     assert.deepEqual(r.rejected, []);
     s = r.state;
     path.push(r.decision.verdict);

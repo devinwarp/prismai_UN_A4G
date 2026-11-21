@@ -74,7 +74,7 @@ export function coordinate(state: CaseState, thread: AgentMessage[], round: Agen
 /** One coordinator round: each recipient runs on its own events (fixed order,
  * so message ids are stable), the coordinator applies the messages, the
  * policy engine decides, and a VERDICT message records why. */
-export async function runRound(input: RoundInput, deps: AgentDeps, hasChunk: (id: string) => boolean): Promise<RoundResult> {
+export async function runRound(input: RoundInput, deps: AgentDeps, hasChunk: (id: string) => boolean, hasEvent?: (id: string) => boolean): Promise<RoundResult> {
   const active = ORDER.filter((r) => input.events.some((e) => e.recipients.includes(r)));
   const msgs: AgentMessage[] = [];
   for (const role of active) {
@@ -96,9 +96,12 @@ export async function runRound(input: RoundInput, deps: AgentDeps, hasChunk: (id
       )),
     );
   }
-  const first = reconcile(input.state, msgs, hasChunk);
+  // Evidence a declared fix may cite: any case event that is not itself a fix declaration (default: this round's).
+  const evidenceIds = new Set(input.events.filter((e) => e.status !== "fix_declared").map((e) => e.id));
+  const has = hasEvent ?? ((id: string) => evidenceIds.has(id));
+  const first = reconcile(input.state, msgs, hasChunk, has);
   const extra = coordinate(first.state, input.thread, first.accepted, deps.nextId);
-  const r = extra.length ? reconcile(input.state, [...msgs, ...extra], hasChunk) : first;
+  const r = extra.length ? reconcile(input.state, [...msgs, ...extra], hasChunk, has) : first;
   const verdict: AgentMessage = {
     msg_id: deps.nextId(),
     from: "coordinator",

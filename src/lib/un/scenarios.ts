@@ -29,8 +29,10 @@ export const S1: GateScenario = {
       ev("S1-T2-hitl", ["compliance"], "The agent sends customer messages directly, without an officer releasing them", "human_final_approval", "fail", { rule: "client_facing_final_approval", met: false }),
     ] },
     { step: "T3", expected: "ASSISTANT_ONLY", events: [
-      ev("S1-T3-hosting-fix", ["innovator"], "Owner moved the model to approved hosting", "approved_infrastructure", "fix_declared"),
-      ev("S1-T3-hitl-fix", ["innovator"], "Owner restored officer release of every customer message", "human_final_approval", "fix_declared", { rule: "client_facing_final_approval", met: true }),
+      ev("S1-T3-hosting-record", ["innovator"], "Change record attached by the owner: owner moved the model to approved hosting"),
+      { ...ev("S1-T3-hosting-fix", ["innovator"], "Owner moved the model to approved hosting", "approved_infrastructure", "fix_declared"), links: ["S1-T3-hosting-record"] },
+      ev("S1-T3-hitl-record", ["innovator"], "Change record attached by the owner: owner restored officer release of every customer message"),
+      { ...ev("S1-T3-hitl-fix", ["innovator"], "Owner restored officer release of every customer message", "human_final_approval", "fix_declared", { rule: "client_facing_final_approval", met: true }), links: ["S1-T3-hitl-record"] },
     ] },
     { step: "T4", expected: "GO_SUPERVISED", events: [
       ev("S1-T4-hosting-retest", ["security"], "Re-test passed: the endpoint is on certified infrastructure", "approved_infrastructure", "pass"),
@@ -71,7 +73,8 @@ export const S2: GateScenario = {
     ] },
     { step: "T1", expected: "ASSISTANT_ONLY", events: [
       ev("S2-T1-alert", ["compliance"], "Sijil alert: hallucination rate 6.1% over the last 3 runs, above the 1% threshold"),
-      ev("S2-T1-contain", ["innovator"], "Owner restricted fee answers to the retrieved fee table; the agent now drafts and an officer sends", "hallucination_rate", "fix_declared"),
+      ev("S2-T1-contain-record", ["innovator"], "Change record attached by the owner: owner restricted fee answers to the retrieved fee table; the agent now drafts and an officer sends"),
+      { ...ev("S2-T1-contain", ["innovator"], "Owner restricted fee answers to the retrieved fee table; the agent now drafts and an officer sends", "hallucination_rate", "fix_declared"), links: ["S2-T1-contain-record"] },
     ] },
     { step: "T2", expected: "NO_GO", events: [
       ev("S2-T2-complaint", ["frontline"], "Complaint logged: the assistant quoted a licence fee that does not exist"),
@@ -82,8 +85,10 @@ export const S2: GateScenario = {
       ev("S2-T3-disclosure", ["compliance"], "Re-test against the new requirement: the call opening says it is an AI assistant but does not say its answers may be inaccurate", "ai_disclosure", "fail"),
     ] },
     { step: "T4", expected: "ASSISTANT_ONLY", events: [
-      ev("S2-T4-fee-fix", ["innovator"], "Owner limited fee answers to the fee table and retuned retrieval", "fee_accuracy", "fix_declared"),
-      ev("S2-T4-disclosure-fix", ["innovator"], "Owner added to the call opening that answers may be inaccurate and an officer should confirm fees", "ai_disclosure", "fix_declared"),
+      ev("S2-T4-fee-record", ["innovator"], "Change record attached by the owner: owner limited fee answers to the fee table and retuned retrieval"),
+      { ...ev("S2-T4-fee-fix", ["innovator"], "Owner limited fee answers to the fee table and retuned retrieval", "fee_accuracy", "fix_declared"), links: ["S2-T4-fee-record"] },
+      ev("S2-T4-disclosure-record", ["innovator"], "Change record attached by the owner: owner added to the call opening that answers may be inaccurate and an officer should confirm fees"),
+      { ...ev("S2-T4-disclosure-fix", ["innovator"], "Owner added to the call opening that answers may be inaccurate and an officer should confirm fees", "ai_disclosure", "fix_declared"), links: ["S2-T4-disclosure-record"] },
     ] },
     { step: "T5", expected: "GO_SUPERVISED", events: [
       ev("S2-T5-fee", ["compliance"], "Re-test passed: every fee quoted in 40 test calls matched the fee table", "fee_accuracy", "pass"),
@@ -151,8 +156,10 @@ export const S4: GateScenario = {
       ev("S4-T3-kb", ["policy_adviser"], "Knowledge base: processing must be fair, transparent and lawful, for a specific and clear purpose and never later in a manner incompatible with it; the data subject may object to automated processing including profiling and the controller includes the human element in review; AI systems should be fair, transparent and accountable, respect privacy with the minimum intrusion necessary, and keep human oversight. Guardrails now permanent for this entity: no inferred sensitive attributes for any commercial purpose, and referral to human oversight"),
     ] },
     { step: "T4", expected: "ASSISTANT_ONLY", events: [
-      ev("S4-T4-promo-fix", ["innovator"], "Owner removed the promotions module from the assistant", "no_commercial_promotion", "fix_declared"),
-      ev("S4-T4-purpose-fix", ["innovator"], "Owner blocked the use of inferred attributes from fines and permit data", "purpose_limitation", "fix_declared"),
+      ev("S4-T4-promo-record", ["innovator"], "Change record attached by the owner: owner removed the promotions module from the assistant"),
+      { ...ev("S4-T4-promo-fix", ["innovator"], "Owner removed the promotions module from the assistant", "no_commercial_promotion", "fix_declared"), links: ["S4-T4-promo-record"] },
+      ev("S4-T4-purpose-record", ["innovator"], "Change record attached by the owner: owner blocked the use of inferred attributes from fines and permit data"),
+      { ...ev("S4-T4-purpose-fix", ["innovator"], "Owner blocked the use of inferred attributes from fines and permit data", "purpose_limitation", "fix_declared"), links: ["S4-T4-purpose-record"] },
     ] },
     { step: "T5", expected: "GO_SUPERVISED", events: [
       ev("S4-T5-promo", ["compliance"], "Re-test passed: no promotion of paid third-party products in 60 test chats", "no_commercial_promotion", "pass"),
