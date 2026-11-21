@@ -19,7 +19,7 @@ import { Term } from "../../_components/Gloss";
 import { Tour, TourButton, type TourStep } from "../../_components/Coach";
 import { Pipeline, VerdictHero } from "./RunParts";
 import RunMetering from "./RunMetering";
-import { GateChip, Section, VerdictBadge, STATUS_META, btnGhost, btnPrimary, card, field } from "../../_components/ui";
+import { GateChip, scrollRegion, Section, VerdictBadge, STATUS_META, btnGhost, btnPrimary, card, field } from "../../_components/ui";
 
 const isVerdict = (s: string): s is Verdict => (VERDICTS as readonly string[]).includes(s);
 const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai" });
@@ -401,8 +401,8 @@ export default function RunView({
       <RunMetering metering={state.metering} />
 
       <Section eyebrow={tr(lang, "tl.eyebrow", "Timeline")} title={tr(lang, "tl.title", "Step by step")} lede={tr(lang, "tl.lede", "Each step releases new events to only some of the agents. The outcome is the decision the policy engine reaches from what has been shown so far.")}>
-        <div className="relative overflow-x-auto pb-2">
-        <ol className="flex gap-2" aria-label="Run progress">
+        <div {...scrollRegion("rv-prog")} className="relative overflow-x-auto pb-2">
+        <ol id="rv-prog" className="flex gap-2" aria-label="Run progress">
           {slots.map((s, i) => (
             <li key={i} className="min-w-[8.5rem] flex-1">
               <a href={s ? `#step-${s.step}` : undefined} aria-current={s && i === state.steps.length - 1 ? "step" : undefined} className={`block rounded-xl border p-2.5 text-center ${s ? "border-line bg-card hover:border-ink-soft" : "border-dashed border-line text-ink-soft"} ${s && i === state.steps.length - 1 ? "outline-2 outline-offset-2 outline-ink" : ""}`}>
@@ -418,9 +418,9 @@ export default function RunView({
         </div>
 
         {showGates && (
-          <div className="relative mt-6 overflow-x-auto">
+          <div {...scrollRegion("rv-gates")} className="relative mt-6 overflow-x-auto">
             <table className="w-full min-w-[28rem] border-separate border-spacing-1 text-sm">
-              <caption className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">Gate status after each step</caption>
+              <caption id="rv-gates" className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">Gate status after each step</caption>
               <thead>
                 <tr>
                   <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">Gate</th>
@@ -449,9 +449,9 @@ export default function RunView({
         )}
 
         {expected.length > 0 && (
-          <div className="relative mt-8 overflow-x-auto">
+          <div {...scrollRegion("rv-exp")} className="relative mt-8 overflow-x-auto">
             <table className="w-full min-w-[28rem] border-separate border-spacing-y-1 text-sm">
-              <caption className="mb-2 flex flex-wrap items-center justify-between gap-3 text-start">
+              <caption id="rv-exp" className="mb-2 flex flex-wrap items-center justify-between gap-3 text-start">
                 <span className="font-mono text-[11px] tracking-widest text-ink-soft uppercase">Expected vs actual · {matchSummary(expected)}</span>
                 <button type="button" onClick={downloadExpected} className="text-xs underline underline-offset-2">Download CSV</button>
               </caption>
@@ -475,9 +475,9 @@ export default function RunView({
         )}
 
         {know.length > 1 && (
-          <div className="relative mt-8 overflow-x-auto">
+          <div {...scrollRegion("rv-know")} className="relative mt-8 overflow-x-auto">
             <table className="w-full min-w-[40rem] border-separate border-spacing-1 text-sm">
-              <caption className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">What each agent knows after each step</caption>
+              <caption id="rv-know" className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">What each agent knows after each step</caption>
               <thead>
                 <tr>
                   <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">Step</th>
