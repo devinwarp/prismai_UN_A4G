@@ -9,7 +9,7 @@ import { fileKbStore } from "../src/lib/un/kb-store.ts";
 import { DEFAULT_REACT_CONFIG, RANGES, validateConfig, validateSkillLines, withTunedRules, type ReactConfig } from "../src/lib/un/react-config.ts";
 import { reactAnswer, rewrite } from "../src/lib/un/react-sop.ts";
 import { searchSop } from "../src/lib/un/sop-kb.ts";
-import { CASES } from "../src/lib/un/task-evals.ts";
+import { ALL_CASES } from "../src/lib/un/task-evals.ts";
 import { runQuestions, SEED_QUESTIONS, validateQuestions } from "../src/lib/un/tuning-bank.ts";
 import { proposeFixes } from "../src/lib/un/tuning-fix.ts";
 import { decide, editBank, fixMiss, loadState, propose, PROFILES, runBank, runTasks, skillFromTuner, SOP_ID } from "../src/lib/un/tuning-service.ts";
@@ -193,7 +193,7 @@ test("a tuned skill still refuses a task outside its profile (authority stays in
 test("per-task evals run as a library call and are stored; tuner proposals become skill versions", async () => {
   const c = fresh();
   const rows = await runTasks(c, "ana");
-  assert.equal(rows.length, CASES.length);
+  assert.equal(rows.length, ALL_CASES.length);
   assert.ok(rows.every((r) => r.verdict === "correct"));
   const v = await skillFromTuner(c, { profile: PROFILES[0], actor: "ana" });
   assert.equal(v.target, `skill:${PROFILES[0]}`);
