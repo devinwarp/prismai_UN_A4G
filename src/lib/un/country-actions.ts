@@ -124,7 +124,13 @@ export async function indexOfCountry(d: Deps, state: CountryState, id: string): 
   const info = indexInfo(s, d.vectors);
   const pol = state.policies[id];
   // a live-built scope: the staged chunks carry their own vectors (stored when built), the corpus chunks use kb/vectors.json
-  if (pol && info.vectors) info.vectors = { ...info.vectors, have: info.vectors.have + (pol.vectors?.have ?? 0), built: pol.vectors ? pol.at.slice(0, 10) : info.vectors.built };
+  // Count each chunk once: a staged chunk may also be in kb/vectors.json, so adding the live count to the file count double-counts.
+  if (pol && info.vectors) {
+    const c = countryOf(id);
+    const live = pol.vectors && c ? new Set((await stagedChunks(d, c)).map((x) => x.chunk_id)) : new Set<string>();
+    const inFile = new Set(d.vectors?.ids ?? []);
+    info.vectors = { ...info.vectors, have: s.filter((x) => inFile.has(x.chunk_id) || live.has(x.chunk_id)).length, built: pol.vectors ? pol.at.slice(0, 10) : info.vectors.built };
+  }
   return info;
 }
 

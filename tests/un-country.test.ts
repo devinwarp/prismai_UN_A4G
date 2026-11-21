@@ -97,6 +97,8 @@ async function fullFlow(store: CountryStore) {
   assert.ok(pol.run.cited.some((c) => c.source_id.startsWith("eu-ai-act-art")), "the live-built EU sources are cited");
   assert.equal((await A.addPolicy(d, "admin@x", "EU")).ok, false);
   assert.ok(await store.getBlob("vectors:EU"));
+  const eu = await A.indexOfCountry(d, (await A.loadState(d)).state, "EU");
+  assert.ok(eu?.vectors && eu.vectors.have <= eu.vectors.of, "the vector count can never exceed the chunk count (a chunk is counted once)");
   const on = await A.onboardCompany(d, "admin@x", { sample: "sg-mbla", country: "SG" });
   assert.ok(on.ok);
   if (!on.ok) return;
