@@ -8,6 +8,8 @@ import { analyzeSop } from "./reference.ts";
 import type { SopAnalysis, SopInput, SyntheticBaseline } from "./types.ts";
 
 // Server-only: reads the synthetic baseline and the three fixture SOPs.
+// One SOP per use case: UC02 attaches to SOP-LIC-014. The older licence-renewal sample was removed from this list
+// (it described the same process); its text lives on as an analyzer test fixture in tests/fixtures/sop/.
 const root = () => process.cwd();
 
 export function loadBaseline(): SyntheticBaseline {
@@ -16,11 +18,10 @@ export function loadBaseline(): SyntheticBaseline {
 
 const ENTITY = "Marsa Public Services Authority";
 export const SAMPLES = [
-  { sop_id: "licence-renewal", file: "sop/sop-uc02-licence-renewal.md", title: "Trade licence renewal and permit pre-check (SOP)", departments: ["Licensing"] },
+  // Shaibi's SOP for UC02 (also the agent runtime's SOP): the one SOP UC02 attaches to, and the default on the intake page.
+  { sop_id: "SOP-LIC-014", file: "sops/uc02-trade-licence-renewal-sop.md", title: "Trade licence renewal (SOP-LIC-014)", departments: ["Licensing"] },
   { sop_id: "records-archive", file: "sop/sop-records-archive.md", title: "Monthly archive of internal inspection records (SOP)", departments: ["Records"] },
   { sop_id: "fee-waiver", file: "sop/sop-fee-waiver-decision.md", title: "Late-fee waiver and penalty decision (SOP)", departments: ["Licensing", "Finance"] },
-  // Shaibi's SOP for UC02 (also the agent runtime's SOP). One SOP per use case: this is the one UC02 attaches to.
-  { sop_id: "SOP-LIC-014", file: "sops/uc02-trade-licence-renewal-sop.md", title: "Trade licence renewal (SOP-LIC-014)", departments: ["Licensing"] },
 ] as const;
 
 export function sampleInput(sop_id: string, baseline = loadBaseline()): SopInput | null {

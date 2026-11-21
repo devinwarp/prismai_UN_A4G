@@ -35,6 +35,19 @@ New code lives in `src/lib/un/` (react-config, tuning-bank, tuning-fix, tuning-v
 - `src/lib/un/i18n/dict.ts`: spreads `TUNING_AR` (draft Arabic).
 - `src/app/admin/federal/FederalPanel.tsx`: one entry in `GO` linking the tuning screen.
 - `src/app/admin/federal/use-cases/[id]/tuning/page.tsx`: a "real agent" section for UC02.
+# Edits to shared files (gate approvers and sample cleanup)
+
+New: `src/lib/un/approvers.ts` (the pure approver rules), `src/lib/un/approvers-store.ts` (looks up a use case's approvers from its attached SOP), `tests/un-approvers.test.ts`, `tests/helpers-sop-fixture.ts`, `tests/fixtures/sop/analyzer-licence-renewal.md` (moved from `data/sop/`).
+
+Files that existed before and were edited:
+- `src/lib/un/gates.ts`: gate-log entries carry `approver` and `approver_source`; `acceptanceOf` treats a gate added to a use case with no approver as unsigned.
+- `src/app/api/admin/un/gates/route.ts` and `src/app/api/admin/un/use-cases/[id]/gates/route.ts`: an approver is required and must be on the allowed list, never free text. A waiver's approver is the same kind of selection. Org-wide catalogue changes are approved by a governance role; there is no process owner to default to.
+- `src/app/admin/federal/gates/GateForm.tsx`, `src/app/admin/federal/gates/page.tsx`, `src/app/admin/federal/use-cases/[id]/GateActions.tsx`, `UseCaseGates.tsx` and `page.tsx`, `src/lib/un/i18n/gates-ar.ts`: approver selection and display, with draft Arabic for the new strings.
+- `src/lib/supabase/offline.ts`: `path.resolve` instead of `path.join`, so an absolute `OFFLINE_DB` (the tests use a temp folder) works on Windows. This fixed the test "ticks persist in the offline store and a re-tick updates the same row" on Windows.
+- `src/lib/un/sop/data.ts`: the older `licence-renewal` sample is no longer offered, because it described the same process as SOP-LIC-014. SOP-LIC-014 is now first in the list, so it is the default on the intake page. The old text moved to `tests/fixtures/sop/` and only the analyzer tests use it. This supersedes the "fourth sample" and "four samples" lines above: the product has three samples, and `tests/un-sop.test.ts` runs on those three plus the fixture.
+- `tests/un-sop.test.ts`, `tests/un-profiles.test.ts`, `tests/un-wiring.test.ts`: retargeted to the fixture, and the shared added-gate fixture now carries an approver.
+- `data/sop-baseline.json` still has a `licence-renewal` volume entry; only the fixture uses it.
+
 # Edits to shared files (agent-runtime area)
 
 Files that existed before the agent-runtime work and were edited. Everything else is new.

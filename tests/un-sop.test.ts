@@ -1,18 +1,20 @@
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, readdirSync, rmSync } from "node:fs";
+import { existsSync, readFileSync, rmSync } from "node:fs";
 import test from "node:test";
 import { compareProcesses, flatEvidence } from "../src/lib/un/compare.ts";
 import { applicableRules } from "../src/lib/un/hitl.ts";
 import { parseUseCases, QUADRANTS } from "../src/lib/un/model.ts";
 import { RULESETS } from "../src/lib/un/rulesets.ts";
 import { parseBaseline } from "../src/lib/un/sop/baseline.ts";
-import { inputFromBody, loadBaseline, loadSamples } from "../src/lib/un/sop/data.ts";
+import { inputFromBody, loadBaseline, loadSamples, SAMPLES } from "../src/lib/un/sop/data.ts";
 import { llmAnalyzer } from "../src/lib/un/sop/llm.ts";
 import { toUseCase } from "../src/lib/un/sop/promote.ts";
 import { analyzeSop, ruleAnalyzer } from "../src/lib/un/sop/reference.ts";
 import { offlineClient } from "../src/lib/supabase/offline.ts";
+import { LEGACY_LICENCE_RENEWAL, legacyLicenceRenewal } from "./helpers-sop-fixture.ts";
 
-const samples = loadSamples();
+// the three product samples plus the older licence-renewal text, kept only as an analyzer fixture
+const samples = [legacyLicenceRenewal(), ...loadSamples()];
 const by = (id: string) => samples.find((s) => s.input.sop_id === id)!;
 
 test("the synthetic baseline validates, and bad files are refused with every problem listed", () => {
@@ -25,7 +27,7 @@ test("the synthetic baseline validates, and bad files are refused with every pro
 });
 
 test("all four fixtures parse: numbered, bulleted and headed prose", () => {
-  assert.deepEqual(samples.map((s) => [s.input.sop_id, s.analysis.steps.length]), [["licence-renewal", 13], ["records-archive", 7], ["fee-waiver", 12], ["SOP-LIC-014", 152]]);
+  assert.deepEqual(samples.map((s) => [s.input.sop_id, s.analysis.steps.length]), [["licence-renewal", 13], ["SOP-LIC-014", 152], ["records-archive", 7], ["fee-waiver", 12]]);
   for (const { input, analysis } of samples) {
     const lines = input.text.split("\n");
     for (const s of analysis.steps) {
@@ -126,8 +128,9 @@ test("promoted rows get a verdict under every rule set; the waiver is rights-esc
 });
 
 test("fixtures and baseline are fictitious: no real organisations, the fictitious authority is named, XXD only", () => {
-  const files = readdirSync("data/sop").map((f) => `data/sop/${f}`).concat("data/sop-baseline.json");
-  assert.ok(files.length >= 4);
+  // every SOP the product offers, the older analyzer fixture, and the baseline
+  const files = SAMPLES.map((x) => `data/${x.file}`).concat(LEGACY_LICENCE_RENEWAL, "data/sop-baseline.json");
+  assert.ok(files.length >= 5);
   for (const f of files) {
     const t = readFileSync(f, "utf8");
     assert.doesNotMatch(t, /\b(dubai|abu dhabi|sharjah|emirates|dewa|etisalat|du\b|barakah|prism\.infinite|\.gov|\.ae\b|AED|USD|EUR)\b/i, f);

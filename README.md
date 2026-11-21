@@ -78,7 +78,7 @@ cp .env.example .env.local     # fill in Supabase, OPENROUTER_API_KEY, ADMIN_EMA
 #   un-sop-kb.sql, un-outside-queue.sql, then un-log-guards.sql
 npm ci
 npm run dev                    # http://localhost:3000 -> /admin/federal
-npm test                       # 178 tests (177 pass, 1 skipped without PyMuPDF), no database needed
+npm test                       # 332 tests (331 pass, 1 skipped without PyMuPDF), no database needed
 ```
 
 Sign in with an email in `ADMIN_EMAILS`, open **Federal**, import

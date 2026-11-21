@@ -9,5 +9,6 @@ import { supabaseKbStore, type SupabaseLike } from "./kb-store-supabase";
 export function appKbStore(orgId: string): KbStore {
   if (process.env.UN_KB_STORE === "supabase") return supabaseKbStore(createAdminClient() as unknown as SupabaseLike, orgId);
   const db = process.env.OFFLINE_DB ?? ".data/offline-db.json";
-  return fileKbStore(path.join(process.cwd(), db.replace(/\.json$/, "") + ".kb.json"));
+  // resolve, not join: OFFLINE_DB may be an absolute path, and join would glue it onto the working directory
+  return fileKbStore(path.resolve(process.cwd(), db.replace(/\.json$/, "") + ".kb.json"));
 }

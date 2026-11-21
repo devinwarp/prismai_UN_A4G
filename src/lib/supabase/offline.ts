@@ -14,7 +14,8 @@ type Result = { data: unknown; error: { message: string } | null };
 
 export const OFFLINE_ORG = "00000000-0000-4000-8000-000000000001";
 export const OFFLINE_USER = { id: "00000000-0000-4000-8000-000000000002", email: "offline@example.invalid" };
-const FILE = () => path.join(process.cwd(), process.env.OFFLINE_DB ?? ".data/offline-db.json");
+// resolve, not join: OFFLINE_DB may be an absolute path (tests use a temp folder), and join would glue it onto the working directory
+const FILE = () => path.resolve(process.cwd(), process.env.OFFLINE_DB ?? ".data/offline-db.json");
 
 let mem: Db | null = null;
 
