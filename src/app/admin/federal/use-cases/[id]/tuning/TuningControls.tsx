@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { tr } from "@/lib/un/i18n/dict";
+import { runBlockedReason, type ApprovalState } from "@/lib/un/tuning";
 import { useLang } from "../../../_components/Lang";
 import { btnGhost, btnPrimary, field } from "../../../_components/ui";
 
@@ -29,20 +30,22 @@ function useCall(): { busy: boolean; error: string | null; call: Call } {
 }
 
 /** Run a tuning cycle; reset the demo. */
-export function TuningControls({ useCaseId, canRun }: { useCaseId: string; canRun: boolean }) {
+export function TuningControls({ useCaseId, canRun, state }: { useCaseId: string; canRun: boolean; state: ApprovalState }) {
   const lang = useLang();
   const { busy, error, call } = useCall();
   const base = `/api/admin/un/use-cases/${useCaseId}/tuning`;
+  const blocked = runBlockedReason(state);
   return (
     <div>
       <div className="flex flex-wrap items-center gap-3">
-        <button type="button" className={btnPrimary} disabled={busy} onClick={() => call("POST", base)}>
+        <button type="button" className={btnPrimary} disabled={busy || !!blocked} aria-describedby={blocked ? "tune-blocked" : undefined} onClick={() => call("POST", base)}>
           {busy ? tr(lang, "tu.running", "Running…") : tr(lang, "tu.run", "Run a tuning cycle")}
         </button>
         <button type="button" className={btnGhost} disabled={busy || !canRun} onClick={() => call("DELETE", base)}>
           {tr(lang, "tu.reset", "Reset the demo")}
         </button>
       </div>
+      {blocked && <p id="tune-blocked" className="mt-2 text-sm text-ink-soft">{tr(lang, state === "approved" ? "tu.blocked.approved" : "tu.blocked.ready", blocked)}</p>}
       {error && <p role="alert" className="mt-2 text-sm" style={{ color: "var(--color-v-nogo)" }}>{error}</p>}
     </div>
   );

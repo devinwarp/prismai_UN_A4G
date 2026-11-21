@@ -170,7 +170,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
             <p className="mt-8 text-sm text-ink-soft"><TV k="ev.nocases" en="No eval set exists for {uc} yet. Eval sets are defined for UC01 and UC02." v={{ uc: uc.ext_id }} /></p>
           ) : (
             <>
-              {canEdit && <div className="mt-6"><TuningControls useCaseId={id} canRun={log.length > 0} /></div>}
+              {canEdit && <div className="mt-6"><TuningControls useCaseId={id} canRun={log.length > 0} state={state} /></div>}
 
               <section className={`${card} mt-6`} aria-label="Current agent">
                 <h2 className="text-lg font-semibold"><T k="tu.state.title" en="Current agent" />{cfg ? <> · <TV k="tu.state.version" en="Agent version {v}" v={{ v: cfg.version }} /></> : null}</h2>
