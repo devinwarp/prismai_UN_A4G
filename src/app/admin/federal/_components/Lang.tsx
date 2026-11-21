@@ -18,8 +18,9 @@ export function T({ k, en }: { k: string; en: string }) {
 
 /** Translated text with {name} placeholders filled from v. */
 export function TV({ k, en, v, one }: { k: string; en: string; v: Record<string, string | number>; one?: string }) {
+  const lang = useLang();
   const n = typeof v.n === "number" ? v.n : undefined;
-  return <>{(n === undefined ? tr(useLang(), k, en) : trN(useLang(), k, en, n, one)).replace(/\{(\w+)\}/g, (_, n: string) => String(v[n] ?? ""))}</>;
+  return <>{(n === undefined ? tr(lang, k, en) : trN(lang, k, en, n, one)).replace(/\{(\w+)\}/g, (_, n: string) => String(v[n] ?? ""))}</>;
 }
 
 /** Wraps a federal page: language toggle (remembered per browser), dir and font. */
