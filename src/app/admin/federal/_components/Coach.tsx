@@ -91,18 +91,28 @@ export function Tour({ steps, open, onClose }: { steps: TourStep[]; open: boolea
 
   useEffect(() => { if (open) pop.current?.focus(); }, [open, i]);
 
+  // Keys are handled by a listener on the dialog node (not a JSX handler) so the dialog role stays non-interactive for jsx-a11y.
+  useEffect(() => {
+    const node = pop.current;
+    if (!open || !node) return;
+    const n = live.length;
+    const shut = () => { setI(0); onClose(); };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") shut();
+      else if (e.key === "ArrowRight") { if (i >= n - 1) shut(); else setI(i + 1); }
+      else if (e.key === "ArrowLeft") setI(Math.max(0, i - 1));
+    };
+    node.addEventListener("keydown", onKey);
+    return () => node.removeEventListener("keydown", onKey);
+  });
+
   if (!open || !s) return null;
   const last = i >= live.length - 1;
   const close = () => { setI(0); onClose(); };
-  const onKey = (e: React.KeyboardEvent) => {
-    if (e.key === "Escape") close();
-    else if (e.key === "ArrowRight") { if (last) close(); else setI(i + 1); }
-    else if (e.key === "ArrowLeft") setI(Math.max(0, i - 1));
-  };
   return (
     <>
       {box && <div aria-hidden className="fed-coach-ring" style={{ top: box.r.top - 6, left: box.r.left - 6, width: box.r.width + 12, height: box.r.height + 12 }} />}
-      <div ref={pop} role="dialog" aria-label={tr(lang, "tour.label", "Guided tour")} tabIndex={-1} onKeyDown={onKey} className="fed-coach fx-coach" style={{ top: box?.top ?? 80, left: box?.left ?? 16 }}>
+      <div ref={pop} role="dialog" aria-label={tr(lang, "tour.label", "Guided tour")} tabIndex={-1} className="fed-coach fx-coach" style={{ top: box?.top ?? 80, left: box?.left ?? 16 }}>
         <p className="font-mono text-[11px] tracking-[0.2em] text-ink-soft uppercase">{i + 1} / {live.length}</p>
         <p className="font-display mt-1 text-xl font-medium">{tr(lang, `${s.k}.t`, s.title)}</p>
         <p className="mt-1.5 text-sm text-ink-soft">{tr(lang, `${s.k}.b`, s.body)}</p>

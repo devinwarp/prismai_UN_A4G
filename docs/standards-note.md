@@ -1,6 +1,6 @@
 # Candidate ITU-T input: a five-step deployment verdict and a hash-chained agent trace record
 
-Status: draft for discussion. Author: [AUTHOR NAME, AFFILIATION]. Date: [DATE]. Source: the Prism hackathon implementation (`src/lib/un/model.ts`, `trace.ts`, `signature.ts`), synthetic data only.
+Status: draft for discussion. Author: Shameer Thaha, Shaibi Shamsudeen (PrismAI team). Date: 21 Nov 2026. Source: the Prism hackathon implementation (`src/lib/un/model.ts`, `trace.ts`, `signature.ts`), synthetic data only.
 
 ## 1. Problem
 
@@ -77,7 +77,7 @@ It is chained like any record and references the verdict record in `derived_from
 
 ## 6. Related work
 
-Signed, append-only transparency services for supply-chain and agent execution evidence are being developed in the IETF around SCITT (Supply Chain Integrity, Transparency and Trust). See the Internet-Draft on agent execution evidence using SCITT: [DRAFT NAME AND NUMBER, AUTHOR TO FILL IN AFTER CHECKING THE IETF DATATRACKER]. The trace record here could be registered as a SCITT signed statement, with the transparency service supplying the external anchoring and non-repudiation that a hash chain alone does not.
+Signed, append-only transparency services for supply-chain and agent execution evidence are being developed in the IETF around SCITT (Supply Chain Integrity, Transparency and Trust). See the Internet-Draft on agent execution evidence using SCITT: the team lead's own Internet-Draft, "Agent Execution Evidence: A SCITT Profile for Verifiable Records of AI Agent Runs" (`draft-thaha-scitt-agent-execution-evidence-02`, individual submission, not adopted by the working group; https://datatracker.ietf.org/doc/draft-thaha-scitt-agent-execution-evidence/). Prism's trace record and Sijil's attestation are the practical counterpart of that profile; this note proposes the verdict vocabulary that sits on top of it.. The trace record here could be registered as a SCITT signed statement, with the transparency service supplying the external anchoring and non-repudiation that a hash chain alone does not.
 
 ## 7. Limitations
 

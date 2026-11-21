@@ -25,6 +25,9 @@ Technical report: [`docs/report/prism-technical-report.pdf`](docs/report/prism-t
 | Hash-chained reasoning traces, verifier, replay, trace viewer | `src/lib/un/trace.ts`, `src/app/admin/federal/runs/` |
 | Sijil panel: runs, attestation, rejects per criterion, auto-filed pilot reports | `src/lib/un/sijil.ts`, `src/app/admin/federal/use-cases/` |
 | Per-entity human-in-the-loop rules (breach = hard-gate failure) | `src/lib/un/hitl.ts`, `src/app/admin/federal/HitlEditor.tsx` |
+| SOP intake: analyse a text or markdown procedure, promote it to a governed use case | `src/lib/un/sop/`, `src/app/admin/federal/sop/` |
+| Evaluation: LLM mode (two models), red team, citation-support sample, blind-scenario how-to | `docs/eval/README.md`, `scripts/eval_agents.ts` |
+| Accessibility lint and draft standards note | `docs/accessibility-check.md`, `docs/standards-note.md` |
 
 ## Architecture, in ITU-T Y.3172 terms
 
@@ -72,7 +75,7 @@ cp .env.example .env.local     # fill in Supabase, OPENROUTER_API_KEY, ADMIN_EMA
 #   supabase/seed-entities.sql   (after importing the use cases)
 npm ci
 npm run dev                    # http://localhost:3000 -> /admin/federal
-npm test                       # unit tests (no database needed)
+npm test                       # 178 tests (177 pass, 1 skipped without PyMuPDF), no database needed
 ```
 
 Sign in with an email in `ADMIN_EMAILS`, open **Federal**, import
@@ -139,7 +142,11 @@ Not yet run against a real node; the adapter is tested with a mocked `fetch`.
 - Fairness and bias are not evaluated: the engine gates AI use cases, it does not assess people. The Arabic evaluation is 10 queries and model-dependent. See `docs/eval/README.md` for what the evaluation does and does not show.
 - Retrieval is lexical (BM25) by default, so citation relevance is uneven; some steps cite nothing by design. Arabic queries work only through LLM translation.
 - Some sources are secondary (the ITU summaries; the Singapore law-firm summary, now superseded in the gap register by the IMDA framework excerpts); the DESC regulation text is not ingested. Primary global texts (IMDA, EU AI Act Arts. 14, 26, 86 and Annex III, G7 Hiroshima Code, UN System White Paper) are held as short attributed excerpts.
-- Inclusion (Readiness dimension 11) and multilingual service are not addressed.
+- A red team (50 runs, 0 permissive flips) found and fixed one real engine bug; a false `fix_declared` is still accepted on the applicant's word (it can reach `ASSISTANT_ONLY`, never a GO verdict) and owner-role events are trusted (event-source authentication is out of scope).
+- Citation support (4% whole claim, 59% source link only) was labelled by a model, not a person; human labels are pending.
+- The database triggers and the change log are tested as SQL text only; the suite runs no database. The 2-of-20 deployed and compliant figure exists only in the hosted demo database, not in the shipped seed.
+- SOP intake reads plain text or markdown only (no PDF or Word); its parser is regex-based, and its savings come from a synthetic baseline, not a measurement.
+- Inclusion (Readiness dimension 11) is partly addressed (Arabic and English with right-to-left layout, disclosure gate, a static accessibility lint); no user testing or digital-divide testing has been done.
 
 ## Licence
 
@@ -149,12 +156,13 @@ If AGPL-3.0 does not suit your use, a separate commercial licence is available f
 
 ## Since round one
 
-Updated 19 Nov 2026. The maintainer will fill in each item as it lands.
+Updated 21 Nov 2026.
 
-- TODO: LLM-mode evaluation
-- TODO: live scenario editor
-- TODO: KB re-embedding and new sources
-- TODO: multi-country compare
-- TODO: judge mode and offline kit
-- TODO: Arabic UI
-- TODO: standards note
+- LLM-mode evaluation with a red team: S1, S2, S4 at 20 runs each, a second model, five attack types at 10 runs each, a citation-support sample (`docs/eval/`, `scripts/eval_agents.ts`).
+- Live scenario editor: a judge supplies an event that runs through the same gates (`src/app/admin/federal/scenarios/`, `src/lib/un/scenario.ts`).
+- KB re-embedding and new sources: 32 sources (398 chunks), 26 through ITU's pipeline functions and 6 later excerpts added with a sync script (`kb/`, `docs/RETRIEVAL_NOTE.md`).
+- Multi-country compare: one process under UAE, EU AI Act and Singapore rule sets, simplified demos and not legal advice (`src/app/admin/federal/compare/`, `src/lib/un/rulesets.ts`).
+- Judge mode and offline kit: read-only judges, public `/replay`, `OFFLINE=1` (`docs/final/judge-access.md`, `src/lib/un/replay.ts`).
+- Arabic UI with right-to-left layout and a static accessibility lint, 0 errors and 0 warnings (`src/lib/un/i18n/dict.ts`, `docs/accessibility-check.md`).
+- SOP intake: a text or markdown procedure is analysed by a deterministic reference analyzer against a synthetic baseline (fictional unit XXD), and can be promoted to a governed use case (`src/lib/un/sop/`, `src/app/admin/federal/sop/`, `data/sop/`).
+- Standards note: a draft ITU-T input on the five-step verdict and the trace record (`docs/standards-note.md`).
