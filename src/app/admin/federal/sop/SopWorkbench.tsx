@@ -178,14 +178,14 @@ export default function SopWorkbench({ samples, canEdit }: { samples: Doc[]; can
           </div>
           <div className="lg:sticky lg:top-4 lg:self-start">
             <h3 className="font-mono text-[11px] tracking-[0.22em] text-ink-soft uppercase">{t("sop.source", "Source text")}</h3>
-            <pre dir="ltr" tabIndex={0} aria-label={t("sop.source", "Source text")} className="mt-2 max-h-[34rem] overflow-auto rounded-xl border border-line bg-card py-2 font-mono text-[12.5px] leading-6 whitespace-pre-wrap">
+            <div dir="ltr" role="textbox" aria-readonly="true" aria-multiline="true" tabIndex={0} aria-label={t("sop.source", "Source text")} className="mt-2 max-h-[34rem] overflow-auto rounded-xl border border-line bg-card py-2 font-mono text-[12.5px] leading-6 whitespace-pre-wrap">
               {lines.map((l, i) => (
                 <span key={i} className={`flex gap-3 px-3 ${lit.has(i + 1) ? "bg-lit-soft text-ink" : "text-ink-soft"}`}>
                   <span aria-hidden className="w-8 shrink-0 text-end tabular-nums select-none">{lit.has(i + 1) ? "▸" : ""}{i + 1}</span>
                   <span className="min-w-0 break-words">{l || " "}</span>
                 </span>
               ))}
-            </pre>
+            </div>
           </div>
         </div>
 

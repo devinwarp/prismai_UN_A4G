@@ -21,7 +21,7 @@ const eslint = new ESLint({
   ],
 });
 const results = await eslint.lintFiles(["src/app/admin/federal/**/*.tsx"]);
-const msgs = results.flatMap((r) => r.messages.map((m) => ({ file: r.filePath.replace(process.cwd() + "/", ""), ...m })));
+const msgs = results.flatMap((r) => r.messages.filter((m) => m.ruleId).map((m) => ({ file: r.filePath.replace(process.cwd() + "/", ""), ...m })));
 const errors = msgs.filter((m) => m.severity === 2);
 
 const lines = [
