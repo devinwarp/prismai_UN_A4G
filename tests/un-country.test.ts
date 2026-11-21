@@ -239,3 +239,19 @@ test("a Chunk typed SOP keeps the company out of the corpus: a run's SOP chunks 
   assert.ok("corpus" in r && r.corpus.sop_chunks > 50 && r.corpus.policy_sources >= 15);
   const _c: Chunk[] = corpus; void _c;
 });
+
+test("reset at the starting state is a no-op (no log entry); a repeated or concurrent reset logs once", async () => {
+  const store = memoryStore();
+  const { d } = mk(store);
+  const r0 = await A.resetDemo(d, "a");
+  assert.ok(r0.ok && r0.noop === true);
+  assert.equal((await A.loadState(d)).entries.length, 0, "a no-op reset appends nothing");
+  assert.ok((await A.switchCountry(d, "a", "SG")).ok);
+  const n = (await A.loadState(d)).entries.length;
+  const [x, y, z] = await Promise.all([A.resetDemo(d, "a", "org"), A.resetDemo(d, "a", "org"), A.resetDemo(d, "a", "org")]);
+  assert.ok(x.ok && y.ok && z.ok);
+  assert.equal((await A.loadState(d)).entries.length, n + 1, "three simultaneous requests log one reset");
+  const again = await A.resetDemo(d, "a");
+  assert.ok(again.ok && again.noop === true);
+  assert.equal((await A.loadState(d)).entries.length, n + 1, "a later request is a no-op");
+});

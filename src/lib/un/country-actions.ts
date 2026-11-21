@@ -9,7 +9,7 @@ import type { HitlFacts } from "./hitl.ts";
 import type { Chunk } from "./kb.ts";
 import { chunkSop, retrievablePart, sopMetaFrom, type SopChunk, type SopMeta } from "./sop-kb.ts";
 import { deriveProfiles } from "./sop/profiles.ts";
-import { sopLines } from "./country.ts";
+import { sopLines, START_STATE } from "./country.ts";
 import { slug, toUseCase } from "./sop/promote.ts";
 import { ruleAnalyzer } from "./sop/reference.ts";
 import type { SyntheticBaseline } from "./sop/types.ts";
@@ -269,8 +269,25 @@ export async function recordRun(d: Deps, actor: string, company: string, country
 
 /** Returns the demo to its starting state: no live-built scope, no new company. Deletes only what this feature wrote
  * (its blobs and the use case rows of the companies it created) and appends a `reset` entry; the log is never shortened. */
-export async function resetDemo(d: Deps, actor: string): Promise<Ok<{ removed: { blobs: string[]; use_cases: string[] } }> | Fail> {
+export type ResetResult = Ok<{ removed: { blobs: string[]; use_cases: string[] }; noop?: true }> | Fail;
+const resetting = new Map<string, Promise<ResetResult>>();
+
+/** `key` (the organisation) lets a repeated or double-clicked request join the one in flight instead of logging twice
+ * (ponytail: in-process only; across instances the store's append-only check still refuses the second write). */
+export async function resetDemo(d: Deps, actor: string, key?: string): Promise<ResetResult> {
+  const inflight = key ? resetting.get(key) : undefined;
+  if (inflight) { const r = await inflight; return r.ok ? { ok: true, removed: { blobs: [], use_cases: [] }, noop: true } : r; }
+  const p = doReset(d, actor);
+  if (key) resetting.set(key, p);
+  try { return await p; } finally { if (key) resetting.delete(key); }
+}
+
+async function doReset(d: Deps, actor: string): Promise<ResetResult> {
   const { entries, state } = await loadState(d);
+  const start = START_STATE();
+  // already at the starting state: nothing to undo, so no log entry
+  if (!Object.keys(state.policies).length && !Object.keys(state.companies).length && !Object.keys(state.runs).length && !state.switches.length
+    && state.active.company === start.active.company && state.active.country === start.active.country) return { ok: true, removed: { blobs: [], use_cases: [] }, noop: true };
   const blobs = [...Object.keys(state.policies).map((k) => `vectors:${k}`), ...Object.keys(state.companies).map((k) => `sop:${k}`)];
   const ucs = Object.values(state.companies).map((c) => c.ext_id);
   for (const k of blobs) await d.store.delBlob(k);
