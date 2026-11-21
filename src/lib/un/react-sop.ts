@@ -1,5 +1,6 @@
 import { bestSentence, type Chunk, type Hit } from "./kb.ts";
 import { loadSop, searchSopForAgent, type SopChunk } from "./sop-kb.ts";
+import { DEFAULT_REACT_CONFIG, termRegex, type GlossaryEntry, type ReactConfig, type RouteRule } from "./react-config.ts";
 
 // ReAct (Thought, Action, Observation) over one SOP's knowledge base.
 //
@@ -18,7 +19,9 @@ import { loadSop, searchSopForAgent, type SopChunk } from "./sop-kb.ts";
 // reasoner can replace it through the same `Reasoner` interface; the guarantee above is
 // enforced by the loop, not trusted to the reasoner.
 
-export const MIN_OVERLAP = 2;
+// The thresholds, glossary and routing are data (react-config.ts); the defaults reproduce the
+// constants that used to live here.
+export const MIN_OVERLAP = DEFAULT_REACT_CONFIG.minOverlap;
 
 export type Action =
   | { tool: "search_sop"; query: string; kind?: string }
@@ -52,41 +55,21 @@ export interface ReactResult {
   evidence: Chunk[];
 }
 
-const GLOSSARY: [RegExp, string][] = [
-  [/\b(permit|permits|permission)\b/g, "licence"],
-  [/\blicense\b/g, "licence"],
-  [/\b(papers|paperwork|docs|paper)\b/g, "documents"],
-  [/\b(tenancy|rental|rent contract|tenancy agreement)\b/g, "lease"],
-  [/\b(extend|extension|prolong|re-?new(?:al)?)\b/g, "renew"],
-  [/\b(foreigner|expat|expatriate|overseas)\b/g, "non-national"],
-  [/\b(commercial|business)\b/g, "trade"],
-  [/\b(hand in|hand over|bring|upload|send in|provide)\b/g, "submit"],
-  [/\b(late charge|penalty fee|surcharge|extra charge)\b/g, "late fee"],
-  [/\b(cost|price|charge|charged|how much)\b/g, "fee"],
-  [/\b(ran out|lapsed|ended|has expired|run out)\b/g, "expired"],
-  [/\b(sign off|signs off|allowed to approve|authori[sz]e|authorises)\b/g, "approve decide"],
-  [/\b(waiting|pending|stalled)\b/g, "on hold"],
-  [/\b(answer|response|turnaround|how long)\b/g, "timings working days"],
-];
-
-export function rewrite(question: string): string {
+export function rewrite(question: string, glossary: GlossaryEntry[] = DEFAULT_REACT_CONFIG.glossary): string {
   let q = question.toLowerCase().replace(/[?.,]/g, " ");
-  for (const [re, to] of GLOSSARY) q = q.replace(re, to);
+  for (const g of glossary) q = q.replace(termRegex(g.from), g.to);
   return q.replace(/\s+/g, " ").trim();
 }
 
-function kindFor(q: string): string | undefined {
-  if (/\b(documents?|lease|insurance|identity|translation|submit|upload|file type|format)\b/.test(q)) return "required-documents";
-  if (/\b(fee|fees|late fee|pay|payment)\b/.test(q)) return "fees";
-  if (/\b(approve|decide|reject|appeal)\b/.test(q)) return "decision-rule";
-  return undefined;
+function kindFor(q: string, routes: RouteRule[] = DEFAULT_REACT_CONFIG.routes): string | undefined {
+  return routes.find((r) => r.terms.length && termRegex(r.terms, "").test(q))?.kind;
 }
 
 const words = (t: string) => t.toLowerCase().match(/[a-z0-9]{3,}/g) ?? [];
 
 /** Terms found in more than `share` of the SOP's chunks ("licence", "renew", "applicant"):
  * they say what the SOP is about, not what a passage answers, so they cannot count as support. */
-export function commonTerms(chunks: { text: string }[], share = 0.2): Set<string> {
+export function commonTerms(chunks: { text: string }[], share = DEFAULT_REACT_CONFIG.commonShare): Set<string> {
   const df = new Map<string, number>();
   for (const c of chunks) for (const w of new Set(words(c.text))) df.set(w, (df.get(w) ?? 0) + 1);
   return new Set([...df].filter(([, n]) => n > share * chunks.length).map(([w]) => w));
@@ -109,10 +92,10 @@ export const keywords = (q: string) => words(q).filter((w) => !FILLER.has(w)).jo
  * of passage), (2) at least one of those terms is rare in this SOP, so the match is not just
  * "licence" and "renewal", and (3) the chunk is not the document-control table unless the
  * question is about the document itself. */
-export function groundedHits(hits: Hit[], query: string, common: Set<string> = new Set(), narrowed = false): { hit: Hit; overlap: number }[] {
+export function groundedHits(hits: Hit[], query: string, common: Set<string> = new Set(), narrowed = false, cfg: Pick<ReactConfig, "minOverlap" | "overlapShare" | "maxNeed"> = DEFAULT_REACT_CONFIG): { hit: Hit; overlap: number }[] {
   const terms = [...new Set(words(query).filter((w) => !FILLER.has(w)))];
   const rare = terms.filter((w) => !common.has(w));
-  const need = narrowed ? MIN_OVERLAP : Math.min(4, Math.max(MIN_OVERLAP, Math.ceil(terms.length * 0.4)));
+  const need = narrowed ? cfg.minOverlap : Math.min(cfg.maxNeed, Math.max(cfg.minOverlap, Math.ceil(terms.length * cfg.overlapShare)));
   const aboutDoc = /\b(version|document id|review cycle|who owns (the|this) (sop|document|procedure)|document owner)\b/.test(query.toLowerCase());
   return hits
     .filter((h) => aboutDoc || !h.chunk.topics.includes("overview"))
@@ -128,16 +111,16 @@ export function groundedHits(hits: Hit[], query: string, common: Set<string> = n
 const searchedQueries = (s: ReactState) => s.steps.flatMap((x) => (x.action.tool === "search_sop" ? [x.action.query] : []));
 
 /** Search, rewrite with the glossary, split a compound question, then ask for outside information. */
-export const ruleReasoner: Reasoner = (s) => {
+export const makeRuleReasoner = (cfg: ReactConfig = DEFAULT_REACT_CONFIG): Reasoner => (s) => {
   const tried = searchedQueries(s);
   const last = s.steps[s.steps.length - 1];
   if (last?.action.tool === "search_sop" && s.supported.size) {
     return { thought: "The search returned passages that support an answer. I will cite them.", action: { tool: "finish", citations: [...s.supported.keys()].slice(0, 3) } };
   }
   if (!tried.length) return { thought: "Search the SOP for the question as asked.", action: { tool: "search_sop", query: s.question } };
-  const rw = rewrite(s.question);
+  const rw = rewrite(s.question, cfg.glossary);
   if (!tried.includes(rw)) {
-    return { thought: "The first search did not support an answer. The question may use different words from the SOP, so rewrite it with SOP terms and narrow to the likely kind of passage.", action: { tool: "search_sop", query: rw, kind: kindFor(rw) } };
+    return { thought: "The first search did not support an answer. The question may use different words from the SOP, so rewrite it with SOP terms and narrow to the likely kind of passage.", action: { tool: "search_sop", query: rw, kind: kindFor(rw, cfg.routes) } };
   }
   const kw = keywords(s.question);
   if (kw && !tried.includes(kw)) {
@@ -154,7 +137,11 @@ export const ruleReasoner: Reasoner = (s) => {
   };
 };
 
+export const ruleReasoner: Reasoner = makeRuleReasoner();
+
 export interface ReactOptions {
+  /** glossary, routing and thresholds; defaults to DEFAULT_REACT_CONFIG */
+  config?: ReactConfig;
   retrieve?: Retrieve;
   reasoner?: Reasoner;
   maxSteps?: number;
@@ -164,10 +151,11 @@ export interface ReactOptions {
 
 export async function reactAnswer(sopId: string, question: string, opts: ReactOptions = {}): Promise<ReactResult> {
   const retrieve: Retrieve = opts.retrieve ?? (async (q, kind) => (await searchSopForAgent(sopId, q, { k: 5, kind })).hits);
-  const reason = opts.reasoner ?? ruleReasoner;
-  const max = opts.maxSteps ?? 6;
+  const cfg = opts.config ?? DEFAULT_REACT_CONFIG;
+  const reason = opts.reasoner ?? makeRuleReasoner(cfg);
+  const max = opts.maxSteps ?? cfg.maxSteps;
   const sop = loadSop(sopId).chunks;
-  const common = commonTerms(sop);
+  const common = commonTerms(sop, cfg.commonShare);
   const names = unknownNames(question, sop);
   const s: ReactState = { question, steps: [], retrieved: new Map(), supported: new Map() };
   const outside = async (thought: string, why: string): Promise<ReactResult> => {
@@ -182,7 +170,7 @@ export async function reactAnswer(sopId: string, question: string, opts: ReactOp
     if (action.tool === "search_sop") {
       const hits = await retrieve(action.query, action.kind);
       for (const h of hits) s.retrieved.set(h.chunk.chunk_id, h.chunk);
-      const g = groundedHits(hits, action.query, common, !!action.kind);
+      const g = groundedHits(hits, action.query, common, !!action.kind, cfg);
       for (const x of g) if (!s.supported.has(x.hit.chunk.chunk_id)) s.supported.set(x.hit.chunk.chunk_id, action.query);
       s.steps.push({
         thought, action,

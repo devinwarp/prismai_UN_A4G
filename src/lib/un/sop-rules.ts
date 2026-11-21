@@ -1,6 +1,7 @@
 import type { Chunk } from "./kb.ts";
 import { reactAnswer, type OutsideRequest, type Retrieve } from "./react-sop.ts";
 import type { DocRules } from "./doc-ocr.ts";
+import type { ReactConfig } from "./react-config.ts";
 
 // The figures the licence-renewal agent applies are not in its code: it reads each one out of the
 // SOP passage it retrieved (through the ReAct loop) and remembers which chunk it came from. Edit
@@ -50,11 +51,11 @@ const PROBES = {
 
 const body = (c: Chunk) => c.text.split("\n").slice(1).join("\n");
 
-export async function loadRules(sopId: string, retrieve: Retrieve, requestOutside?: (r: OutsideRequest) => Promise<string> | string): Promise<Rules> {
+export async function loadRules(sopId: string, retrieve: Retrieve, requestOutside?: (r: OutsideRequest) => Promise<string> | string, config?: ReactConfig): Promise<Rules> {
   const cited: Record<string, string[]> = {};
   const got: Record<string, unknown> = {};
   const ask = async (name: string, query: string, read: (t: string) => unknown) => {
-    const r = await reactAnswer(sopId, query, { retrieve, requestOutside });
+    const r = await reactAnswer(sopId, query, { retrieve, requestOutside, config });
     const value = r.status === "answered" ? r.evidence.map((c) => read(body(c))).find((v) => v !== null) ?? null : null;
     if (value === null) {
       const req: OutsideRequest = r.outside ?? { question: query, reason: "The cited passages do not state this figure.", tried: r.steps.flatMap((s) => (s.action.tool === "search_sop" ? [s.action.query] : [])) };
@@ -65,7 +66,7 @@ export async function loadRules(sopId: string, retrieve: Retrieve, requestOutsid
     return value;
   };
   for (const [name, p] of Object.entries(PROBES)) got[name] = await ask(name, p.query, p.read as (t: string) => unknown);
-  const sub = await reactAnswer(sopId, "how to submit documents: portal, counter, reply to the notice email", { retrieve, requestOutside });
+  const sub = await reactAnswer(sopId, "how to submit documents: portal, counter, reply to the notice email", { retrieve, requestOutside, config });
   if (sub.status !== "answered") throw new OutsideInformationRequired(sub.outside!);
   return { ...(got as Omit<Rules, "cited" | "submitChunk">), cited, submitChunk: sub.citations[0] };
 }

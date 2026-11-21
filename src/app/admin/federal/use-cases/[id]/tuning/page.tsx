@@ -8,6 +8,8 @@ import { loadUseCase } from "@/lib/un/sijil-store";
 import type { SubjectConfig } from "@/lib/un/subject";
 import { approvalState, configOf, verifyChain, type Advisory, type LogEntry, type Proposal } from "@/lib/un/tuning";
 import { loadLog } from "@/lib/un/tuning-store";
+import { appKbStore } from "@/lib/un/kb-store-app";
+import { realAgentEvals } from "@/lib/un/tuning-service";
 import { RuleSentence, RuleText } from "../../../_components/EvalText";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card } from "../../../_components/ui";
@@ -133,6 +135,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
   const chain = verifyChain(log);
   const canEdit = profile.role === "admin";
   const last = log[log.length - 1];
+  const real = uc.ext_id === "UC02" ? await realAgentEvals({ store: appKbStore(profile.org_id) }) : null;
   const approver = last?.kind === "approval" ? String(last.payload.signer) : "";
 
   return (
@@ -147,6 +150,16 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
           <p className="mt-2 rounded-lg border border-line px-3 py-2 text-sm font-medium">
             <T k="ev.sim" en="Simulated demo data: the agent, its outputs and the Sijil gate are all simulated, and the entity is fictitious. No model produced these outputs." /> <T k="tu.sim" en="Simulated: the optimiser is rule-based and the agent it tunes is simulated." />
           </p>
+          {real && (
+            <section className={`${card} mt-4`} aria-label="Real agent">
+              <h2 className="text-lg font-semibold"><T k="tu2.title" en="The real agent, on the same screen" /></h2>
+              <p className="mt-1 text-sm">
+                {real.error ? <TV k="tn.t.error" en="The agent could not open under these settings: {e}" v={{ e: real.error }} /> : <TV k="tu2.line" en="The licence-renewal agent (the code the pilot uses), under settings v{v}: {k} of {n} per-task eval cases correct, {h} of {m} of them held out." v={{ v: real.version, k: real.rows.filter((r) => r.verdict === "correct").length, n: real.rows.length, h: real.rows.filter((r) => r.split === "holdout" && r.verdict === "correct").length, m: real.rows.filter((r) => r.split === "holdout").length }} />}
+              </p>
+              <p className="mt-1 text-xs text-ink-soft"><T k="tu2.sim" en="Still simulated on this page: the optimiser and the subject agent in the tuning cycle below. The score above is the real agent, run live on synthetic documents with recorded OCR and keyword retrieval." /></p>
+              <p className="mt-2 text-sm"><Link href="/admin/federal/tuning" className="underline underline-offset-4"><T k="tu2.link" en="Tune the real agent: glossary, settings, rules and approval" /></Link></p>
+            </section>
+          )}
           <p className="mt-3 text-sm">
             <Link href={`/admin/federal/use-cases/${id}/evals`} className="underline underline-offset-4"><T k="ev.link.evals" en="Pilot evals: expected against actual output" /></Link>
             {" · "}

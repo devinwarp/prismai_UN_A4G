@@ -27,6 +27,7 @@ async function send(url: string, method: string, body: string, type: string) {
 
 const GO = [
   { href: "/admin/federal/sop", k: "go.sop", en: "Start from a procedure", hint: "Read a SOP, see what could be automated and what it risks." },
+  { href: "/admin/federal/tuning", k: "go.tune", en: "Tune the agent", hint: "Edit glossary, settings and rules as versions a person approves." },
   { href: "/admin/federal/scenarios", k: "go.scen", en: "Run a scenario", hint: "Watch evidence arrive, a decision form, a person sign." },
   { href: "/admin/federal/compare", k: "go.cmp", en: "Compare jurisdictions", hint: "Same processes, three rule sets. What changes?" },
   { href: "/admin/federal/kb", k: "go.kb", en: "Search the sources", hint: "Every claim cites a passage. Find it here." },

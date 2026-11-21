@@ -2,6 +2,7 @@ import { CaseMemory, type CaseState, type MemoryStore } from "./case-memory.ts";
 import { addDays, daysBetween, DOC_CODE, DOC_LABEL, DOC_TYPES, readDocument, verifyDocument, type DocType, type Finding, type LicenceRecord, type OcrEngine } from "./doc-ocr.ts";
 import type { Registry, Payment } from "./fixtures-uc02.ts";
 import { reactAnswer, type OutsideRequest, type ReactResult, type Retrieve } from "./react-sop.ts";
+import { withTunedRules, type ReactConfig } from "./react-config.ts";
 import { extractSkill, loadSop, type SkillFile } from "./sop-kb.ts";
 import { loadRules, type Rules } from "./sop-rules.ts";
 
@@ -19,6 +20,8 @@ export interface Tools {
   retrieve: Retrieve;
   /** The required outside-information tool. */
   requestOutside?: (r: OutsideRequest) => Promise<string> | string;
+  /** The approved glossary, routing and thresholds of the ReAct loop (tuned from the front end); the defaults when absent. */
+  react?: ReactConfig;
 }
 
 export interface CaseRequest { licence_number: string; declared_activity_code: string; reply_to?: string }
@@ -86,7 +89,7 @@ export class Agent {
 
   /** Answer an applicant's question from the SOP, or make the required outside-information call. */
   async ask(question: string): Promise<ReactResult> {
-    const r = await reactAnswer(this.sopId, question, { retrieve: this.tools.retrieve, requestOutside: this.tools.requestOutside });
+    const r = await reactAnswer(this.sopId, question, { retrieve: this.tools.retrieve, requestOutside: this.tools.requestOutside, config: this.tools.react });
     if (r.status === "outside_kb") await this.memory.write("outside_request", this.actor, { question, tried: r.outside?.tried ?? [] });
     return r;
   }
@@ -233,13 +236,13 @@ export class Agent {
   }
 }
 
-export interface OpenOptions { sopId: string; profile: string; caseId: string; today: string; tools: Tools; store: MemoryStore; actorClock?: () => string }
+export interface OpenOptions { sopId: string; profile: string; caseId: string; today: string; tools: Tools; store: MemoryStore; actorClock?: () => string; /** person-approved rule lines appended to the skill */ skillRules?: string[] }
 
 /** Open an agent for one job profile and one case. Refuses if the SOP is not vectorised, and
  * throws OutsideInformationRequired if the SOP cannot supply a figure the agent needs. */
 export async function openAgent(o: OpenOptions): Promise<Agent> {
-  const skill = extractSkill(o.sopId, o.profile);
-  const rules = await loadRules(o.sopId, o.tools.retrieve, o.tools.requestOutside);
+  const skill = withTunedRules(extractSkill(o.sopId, o.profile), o.skillRules ?? []);
+  const rules = await loadRules(o.sopId, o.tools.retrieve, o.tools.requestOutside, o.tools.react);
   const memory = new CaseMemory(o.caseId, o.store, o.actorClock);
   await memory.open();
   return new Agent({ sopId: o.sopId, profile: o.profile, caseId: o.caseId, skill, rules, tools: o.tools, memory, today: o.today });

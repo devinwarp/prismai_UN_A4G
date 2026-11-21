@@ -3,6 +3,7 @@ import { GATES } from "../policy.ts";
 import { JOURNEY_AR } from "./journey-ar.ts";
 import { LIFECYCLE_AR } from "./lifecycle-ar.ts";
 import { GATES_AR } from "./gates-ar.ts";
+import { TUNING_AR } from "./tuning-ar.ts";
 
 // Lightweight Arabic/English dictionary for the federal admin UI. Pure, no
 // library. Keys not found fall back to the English text passed by the caller,
@@ -306,6 +307,7 @@ export const AR: Record<string, string> = {
   ...LIFECYCLE_AR,
   ...GATES_AR,
   ...JOURNEY_AR,
+  ...TUNING_AR,
 };
 
 /** Look up a key; fall back to the English text supplied at the call site. */
