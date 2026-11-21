@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { governanceApprovers } from "@/lib/un/approvers";
 import { catalogOf, replayGov, verifyGov } from "@/lib/un/gates";
 import { loadGovLog } from "@/lib/un/gates-store";
 import { GATES } from "@/lib/un/policy";
@@ -90,7 +91,7 @@ export default async function GatesPage() {
 
             <Section id="add" eyebrow={<T k="gt.eyebrow" en="Governance" />} title={<T k="gt.s.add" en="Add or change a gate" />}>
               {canEdit ? (
-                <div className={card}><GateForm custom={Object.fromEntries(Object.entries(gov.custom).map(([id, c]) => [id, c.def]))} /></div>
+                <div className={card}><GateForm custom={Object.fromEntries(Object.entries(gov.custom).map(([id, c]) => [id, c.def]))} approvers={governanceApprovers()} /></div>
               ) : (
                 <p className="text-sm text-ink-soft"><T k="gt.viewer" en="Adding and changing gates needs an administrator. Viewers and judges can read everything here." /></p>
               )}
@@ -111,8 +112,8 @@ export default async function GatesPage() {
                     return (
                       <li key={e.seq} className="rounded-2xl border border-line bg-card p-4 text-sm">
                         <p className="font-mono text-[11px] tracking-wide text-ink-soft uppercase">#{e.seq} · <T k={`gt.k.${e.kind}`} en={KIND_EN[e.kind]} /> · {new Date(e.at).toLocaleString("en-GB", DUBAI)} · {e.actor}</p>
-                        {(e.kind === "gate_added" || e.kind === "gate_changed") && <p className="mt-1"><span className="font-mono">{String(e.payload.gate)}</span> {e.payload.reason ? `· ${String(e.payload.reason)}` : ""}</p>}
-                        {e.kind === "use_case_gate" && <p className="mt-1"><span className="font-mono">{String(e.payload.ext_id)}</span> + <span className="font-mono">{String(e.payload.gate)}</span> · {String(e.payload.reason)}</p>}
+                        {(e.kind === "gate_added" || e.kind === "gate_changed") && <p className="mt-1"><span className="font-mono">{String(e.payload.gate)}</span> {e.payload.reason ? `· ${String(e.payload.reason)}` : ""}{e.payload.signed_off_by ? <> · <TV k="gt.waiver.by" en="approved by {who}" v={{ who: String(e.payload.signed_off_by) }} /></> : null}</p>}
+                        {e.kind === "use_case_gate" && <p className="mt-1"><span className="font-mono">{String(e.payload.ext_id)}</span> + <span className="font-mono">{String(e.payload.gate)}</span> · {String(e.payload.reason)}{e.payload.approver ? <> · <TV k="gt.waiver.by" en="approved by {who}" v={{ who: String(e.payload.approver) }} /></> : null}</p>}
                         {e.kind === "waiver" && <p className="mt-1"><span className="font-mono">{String(e.payload.ext_id)}</span> − <span className="font-mono">{String(e.payload.gate)}</span> · <TV k="gt.waiver.by" en="approved by {who}" v={{ who: String(e.payload.approver) }} /> · {String(e.payload.reason)}</p>}
                         {e.kind === "rerun" && <p className="mt-1">{runs.map((r) => <Link key={r.run_id} href={`/admin/federal/runs/${r.run_id}`} className="me-3 underline">{r.ext_id}</Link>)}</p>}
                         <code className="mt-1 block text-xs text-ink-soft">{e.hash.slice(0, 16)}…</code>

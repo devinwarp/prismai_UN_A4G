@@ -1,4 +1,5 @@
 import Link from "next/link";
+import type { Approver } from "@/lib/un/approvers";
 import { evidenceFor, metricEvidence, type Effective } from "@/lib/un/gates";
 import type { GateStatus } from "@/lib/un/policy";
 import { T, TV } from "../../_components/Lang";
@@ -8,8 +9,8 @@ import { GateActions } from "./GateActions";
 const chip = "inline-flex items-center rounded-md bg-paper-deep px-1.5 py-0.5 font-mono text-[11px]";
 
 /** The effective gates of one use case: what applies, why, the evidence so far, and the governance actions. */
-export default function UseCaseGates({ useCaseId, ext, eff, runGates, canEdit }: {
-  useCaseId: string; ext: string; eff: Effective; runGates: Partial<Record<string, GateStatus>>; canEdit: boolean;
+export default function UseCaseGates({ useCaseId, ext, eff, runGates, canEdit, approvers }: {
+  useCaseId: string; ext: string; eff: Effective; runGates: Partial<Record<string, GateStatus>>; canEdit: boolean; approvers: Approver[];
 }) {
   const ev = evidenceFor(eff, ext, runGates);
   const candidates = Object.entries(eff.catalog).filter(([id]) => !eff.gates.some((g) => g.id === id)).map(([id, d]) => ({ id, label: d.label }));
@@ -44,6 +45,7 @@ export default function UseCaseGates({ useCaseId, ext, eff, runGates, canEdit }:
                   </th>
                   <td className="pe-3 py-2.5 text-xs text-ink-soft">
                     {g.reason}
+                    {g.source === "use_case" && <span className="mt-1 block text-ink">{g.addedApprover ? <TV k="gt.uc.approvedby" en="Added with approval from {who}" v={{ who: g.addedApprover }} /> : <T k="gt.uc.approvedby.none" en="Added with no approver recorded (before approvers were required)" />}</span>}
                     {g.waiver && <span className="mt-1 block text-ink"><TV k="gt.uc.waived" en="Waived. Approved by {who}: {why}" v={{ who: g.waiver.approver, why: g.waiver.reason }} /></span>}
                   </td>
                   <td className="pe-4 py-2.5">
@@ -57,7 +59,7 @@ export default function UseCaseGates({ useCaseId, ext, eff, runGates, canEdit }:
         </table>
       </div>
       {canEdit ? (
-        <GateActions useCaseId={useCaseId} candidates={candidates} waivable={eff.gates.filter((g) => !g.waiver).map((g) => ({ id: g.id, label: g.label }))} />
+        <GateActions useCaseId={useCaseId} candidates={candidates} waivable={eff.gates.filter((g) => !g.waiver).map((g) => ({ id: g.id, label: g.label }))} approvers={approvers} />
       ) : (
         <p className="mt-3 text-sm text-ink-soft"><T k="gt.viewer" en="Adding and changing gates needs an administrator. Viewers and judges can read everything here." /></p>
       )}

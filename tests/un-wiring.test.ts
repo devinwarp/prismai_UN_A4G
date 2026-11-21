@@ -18,7 +18,7 @@ const log = (...es: [GovEntry["kind"], Record<string, unknown>][]) => {
 };
 const facts = { client_facing: true, affects_rights: false, irreversible: false };
 const allPass: GateState = Object.fromEntries(Object.keys(GATES).map((g) => [g, "pass"]));
-const added = log(["gate_added", { gate: "latency_p50", def, signed_off_by: "a" }], ["use_case_gate", { ext_id: "UC02", gate: "latency_p50", reason: "r", source: "requirement" }]);
+const added = log(["gate_added", { gate: "latency_p50", def, signed_off_by: "a" }], ["use_case_gate", { ext_id: "UC02", gate: "latency_p50", reason: "r", source: "requirement", approver: "Head of Licensing", approver_source: "process_owner" }]);
 const accept = (gov: ReturnType<typeof replayGov>, gates: GateState, f = facts) => acceptanceOf(effectiveGates({ ext: "UC02", facts: f, gov }), "UC02", gates, gov);
 
 const sop = { attached: true, profiles: 4, ticked: 2, kbOk: true, skills: 2 };

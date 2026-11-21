@@ -84,17 +84,14 @@ Run with `OFFLINE=1` (file store `.data/offline-db.json`, auto-signed-in admin).
 - **Retrieval numbers come from small question sets** written by the person who tuned the glossary. Read them as a first measurement.
 - **Not in the technical report.** The report does not mention any of this, so it does not support these features as written.
 
-## 6. Not built: next owner Shameer
+## 6. Status after the merge into main (21 November 2026)
 
-Handed over after this branch is committed. Plan page: https://claude.ai/artifact/LDY5tP1vfXCpiLsqTjsv53 (does not yet include the Automate checkbox, the unit-of-assessment question or the items marked *).
+This branch was merged into `main` together with the gates, journey bar, tuning screen, outside queue, model reasoner and SOP intake work (PR #19). The plan page (https://claude.ai/artifact/LDY5tP1vfXCpiLsqTjsv53) holds the full, current status. In short:
 
-- **Intake:** the `SopAnalyzer` that reads an SOP and finds tasks and risk flags; two more fictitious SOPs; the Automate checkbox on each job profile; passing the ticked profiles' flags into `decide()` (flags are hand-fed from Annex A today); extracting a skill automatically when Automate is ticked (extraction works from the command line).
-- **Governance:** gates are still nine fixed ones, not configurable per rule set and use case; governance settings are not stored as data; the journey bar on the use-case pages.
-- **The agent:** an LLM reasoner and an LLM-backed agent in place of the rule-based executor*; D5 and D6 document checks; evals for the other profiles' tasks (T01 to T03, T14 to T20 are not automated); wiring the per-task evals into the lifecycle screens and the Sijil call counts.
-- **Screens and storage:** the retrieval-tuning screen*; the outside-request queue so a person can answer `request_outside_information`*; the Supabase tables for the SOP KB* (pgvector, `vector(768)`); applying `un-agent-lifecycle.sql` and `un-agent-runtime.sql`.
-- **Phase 2 and the three fixes:** the private-engine adapter; the adversarial scenario set; the human check of cited passages; the second-model rerun.
-- **Also open:** the SOP's forged-document escalation has no task id and no eval; several SOP rules were invented for the demo (60 days early, 15 working days on hold, 14-day fee notice, 250,000 cover, 10 MB uploads) and need review; SOP search is English only, and Arabic emails and notices are handed to a person rather than drafted.
-- **Merge:** `main` has not moved from fc33cfc since this branch was cut. When the other branch lands, pull, resolve conflicts (likely in `offline.ts`, `i18n/dict.ts`, `_components/Lang.tsx`, `use-cases/[id]/page.tsx`), and re-run tsc, lint, tests and an app check.
+- **Built since this doc was first written:** SOP intake with an analyzer and the Automate checkbox (per-profile assessment, most restrictive verdict); gates per rule set and per use case, held as data, add-only, with waivers; the journey bar; front-end tuning of the agent's settings, glossary, skill rules and question bank; the outside-request queue; a model reasoner behind ReAct; D5, D6 and a heuristic forged-document check; 117 per-task evals.
+- **Decisions settled on 21 November:** ticked profiles roll up by the most restrictive verdict; a task whose output reaches the applicant is client-facing even when a person releases it (pinned by `tests/un-approvers.test.ts`); a use case adds gates and never removes a rule-set gate; every gate change needs an approver chosen from a list, never typed. Until the org chart is built the list is the process owner (the default, read from the SOP's document control) and the SOP's job titles, or a short list of governance roles for org-wide gate changes and for a use case with no SOP.
+- **Gate approvals written before that change** have no approver recorded. A gate added to a use case without one shows as unsigned, so stage 2 of the journey bar asks for it.
+- **Still open:** the org chart itself; the Phase 2 private-engine adapter; two more fictitious SOPs, and PDF input for SOP intake; the human labels for the citation check and blind scenarios from outside the team; real Sijil counts and real metric-gate measurements (both simulated); enforced takedown; retrieval from the database instead of files; the technical report predates the lifecycle merge; the Arabic strings need a native-speaker review; several SOP rules were invented for the demo (60 days early, 15 working days on hold, a 14-day fee notice, 250,000 cover, 10 MB uploads).
 
 ## 7. Commits
 

@@ -1,4 +1,5 @@
 import { GATES, decide, type Decision, type GateState, type GateStatus, type Requested } from "./policy.ts";
+import type { ApproverSource } from "./approvers.ts";
 import type { GateDef, GateId } from "./governance.ts";
 import { metricStatus, parseGateDef, simulatedMetric } from "./governance.ts";
 import type { HitlFacts } from "./hitl.ts";
@@ -14,9 +15,11 @@ import { appendEntry, verifyChain, type ChainEntry } from "./tuning.ts";
 export type GovKind = "gate_added" | "gate_changed" | "use_case_gate" | "waiver" | "rerun";
 export type GovEntry = ChainEntry<GovKind>;
 
-export interface CustomGate { def: GateDef; version: number; by: string; at: string; signed_off_by: string }
-export interface AddedGate { gate: GateId; reason: string; source: "requirement" | "task" | "admin"; by: string; at: string }
-export interface Waiver { gate: GateId; approver: string; reason: string; by: string; at: string }
+/** `signed_off_by` is the approver chosen from the governance list (see approvers.ts); `by` is who made the change. */
+export interface CustomGate { def: GateDef; version: number; by: string; at: string; signed_off_by: string; approver_source: ApproverSource | "" }
+/** `approver` is empty only on entries written before approvers were required. */
+export interface AddedGate { gate: GateId; reason: string; source: "requirement" | "task" | "admin"; by: string; at: string; approver: string; approver_source: ApproverSource | "" }
+export interface Waiver { gate: GateId; approver: string; approver_source: ApproverSource | ""; reason: string; by: string; at: string }
 export interface GovState {
   custom: Record<GateId, CustomGate>;
   /** keyed by use case ext id */
@@ -36,13 +39,13 @@ export function replayGov(entries: GovEntry[]): GovState {
       const parsed = parseGateDef(p.def, { custom: true });
       if (!parsed.ok) continue;
       const id = str(p.gate);
-      g.custom[id] = { def: parsed.def, version: (g.custom[id]?.version ?? 0) + 1, by: e.actor, at: e.at, signed_off_by: str(p.signed_off_by) };
+      g.custom[id] = { def: parsed.def, version: (g.custom[id]?.version ?? 0) + 1, by: e.actor, at: e.at, signed_off_by: str(p.signed_off_by), approver_source: str(p.approver_source) as ApproverSource | "" };
     } else if (e.kind === "use_case_gate") {
       const ext = str(p.ext_id);
       const list = (g.added[ext] ??= []);
-      if (!list.some((a) => a.gate === p.gate)) list.push({ gate: str(p.gate), reason: str(p.reason), source: p.source as AddedGate["source"], by: e.actor, at: e.at });
+      if (!list.some((a) => a.gate === p.gate)) list.push({ gate: str(p.gate), reason: str(p.reason), source: p.source as AddedGate["source"], by: e.actor, at: e.at, approver: str(p.approver), approver_source: str(p.approver_source) as ApproverSource | "" });
     } else if (e.kind === "waiver") {
-      (g.waivers[str(p.ext_id)] ??= []).push({ gate: str(p.gate), approver: str(p.approver), reason: str(p.reason), by: e.actor, at: e.at });
+      (g.waivers[str(p.ext_id)] ??= []).push({ gate: str(p.gate), approver: str(p.approver), approver_source: str(p.approver_source) as ApproverSource | "", reason: str(p.reason), by: e.actor, at: e.at });
     }
   }
   return g;
@@ -58,6 +61,8 @@ export interface EffectiveGate {
   /** Why this gate applies to this use case. */
   reason: string;
   waiver?: { approver: string; reason: string; at: string };
+  /** For a gate this use case added: who approved adding it ("" on entries from before approvers were required). */
+  addedApprover?: string;
 }
 export interface Effective {
   ruleset: RuleSet["id"];
@@ -95,7 +100,7 @@ export function effectiveGates(o: { ext: string; facts: HitlFacts; ruleset?: Rul
   for (const a of gov.added[o.ext] ?? []) {
     if (!catalog[a.gate] || gates.some((x) => x.id === a.gate)) continue;
     own.push(a.gate);
-    gates.push({ id: a.gate, label: catalog[a.gate].label, category: catalog[a.gate].category, source: "use_case", reason: `Added for this use case from a ${a.source}: ${a.reason} (${a.by})`, ...waiverOf(a.gate) });
+    gates.push({ id: a.gate, label: catalog[a.gate].label, category: catalog[a.gate].category, source: "use_case", reason: `Added for this use case from a ${a.source}: ${a.reason} (${a.by})`, addedApprover: a.approver, ...waiverOf(a.gate) });
   }
   const waived = gates.filter((x) => x.waiver).map((x) => x.id);
   return {
@@ -124,11 +129,11 @@ export function approvalBlockers(e: Effective, gates: GateState): { id: GateId; 
 }
 
 /** Is the use case's risk flags-and-gates stage settled? Every effective gate that is not waived has passing
- * evidence (`lacking` otherwise), and every waiver and admin-added gate carries a named sign-off (`unsigned`
- * otherwise). Feeds stage 2 of the journey bar; approvalBlockers() is the same test applied at approval. */
+ * evidence (`lacking` otherwise), and every waiver, admin-added gate and gate added to this use case carries a
+ * named approver (`unsigned` otherwise). Feeds stage 2 of the journey bar; approvalBlockers() is the same test applied at approval. */
 export function acceptanceOf(e: Effective, ext: string, runGates: GateState, gov: GovState): { accepted: boolean; lacking: GateId[]; unsigned: GateId[] } {
   const lacking = approvalBlockers(e, evidenceFor(e, ext, runGates)).map((b) => b.id);
-  const unsigned = e.gates.filter((g) => (g.waiver && !g.waiver.approver.trim()) || (gov.custom[g.id] && !gov.custom[g.id].signed_off_by.trim())).map((g) => g.id);
+  const unsigned = e.gates.filter((g) => (g.waiver && !g.waiver.approver.trim()) || (gov.custom[g.id] && !gov.custom[g.id].signed_off_by.trim()) || (g.source === "use_case" && !(g.addedApprover ?? "").trim())).map((g) => g.id);
   return { accepted: !lacking.length && !unsigned.length, lacking, unsigned };
 }
 

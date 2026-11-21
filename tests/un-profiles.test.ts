@@ -7,6 +7,8 @@ import { offlineClient } from "../src/lib/supabase/offline.ts";
 import { checkSopKb, writeSkill } from "../src/lib/un/skill-extract.ts";
 import { RULESETS, SG_IMDA, UAE_FEDERAL } from "../src/lib/un/rulesets.ts";
 import { profilesOf } from "../src/lib/un/sop/data.ts";
+import { deriveProfiles } from "../src/lib/un/sop/profiles.ts";
+import { legacyLicenceRenewal } from "./helpers-sop-fixture.ts";
 import { assessProfiles, mostRestrictive, type JobProfile } from "../src/lib/un/sop/profiles.ts";
 
 const SOP = "data/sops/uc02-trade-licence-renewal-sop.md";
@@ -82,7 +84,8 @@ test("the same profiles are assessable under every rule set", () => {
 });
 
 test("generic SOPs: profiles come from actors, grouped by their steps, applicants excluded", () => {
-  const p = profilesOf("licence-renewal")!;
+  const fx = legacyLicenceRenewal();
+  const p = deriveProfiles(fx.analysis, fx.input.text);
   assert.ok(p.length >= 2 && p.every((x) => x.tasks.length > 0));
   assert.ok(!p.some((x) => /applicant/i.test(x.name)));
   assert.equal(profilesOf("nope"), null);

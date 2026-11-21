@@ -11,6 +11,7 @@ import SijilPanel from "./SijilPanel";
 import UseCaseGates from "./UseCaseGates";
 import LangShell from "../../_components/Lang";
 import { effectiveGates } from "@/lib/un/gates";
+import { approversForUseCase } from "@/lib/un/approvers-store";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { loadRun } from "@/lib/un/runs";
 
@@ -96,7 +97,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
       </main>
       <LangShell>
         <div className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
-          <UseCaseGates useCaseId={id} ext={uc.ext_id} eff={eff} runGates={verdictRun?.state.state?.gates ?? {}} canEdit={profile.role === "admin"} />
+          <UseCaseGates useCaseId={id} ext={uc.ext_id} eff={eff} runGates={verdictRun?.state.state?.gates ?? {}} canEdit={profile.role === "admin"} approvers={await approversForUseCase(profile.org_id, id)} />
         </div>
       </LangShell>
       <ChangeHistory ext_id={uc.ext_id} />

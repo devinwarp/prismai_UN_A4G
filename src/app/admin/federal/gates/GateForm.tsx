@@ -4,13 +4,14 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { tr } from "@/lib/un/i18n/dict";
 import { CATEGORIES, EVIDENCE_SOURCES, FLAGS, RULESET_IDS, ROLE_IDS, type GateDef } from "@/lib/un/governance";
+import type { Approver } from "@/lib/un/approvers";
 import { useLang } from "../_components/Lang";
 import { btnGhost, btnPrimary, field } from "../_components/ui";
 
-const blank = { gate: "", label: "", owner: "compliance", category: "functional", evidence: "reviewer", requires: [] as string[], rulesets: [] as string[], reason: "", mname: "", mop: "<=", mthreshold: "", munit: "" };
+const blank = { gate: "", label: "", owner: "compliance", category: "functional", evidence: "reviewer", requires: [] as string[], rulesets: [] as string[], reason: "", approver: "", mname: "", mop: "<=", mthreshold: "", munit: "" };
 
 /** Add an administrator-defined gate, or change one added earlier. Admin only: the API refuses everyone else. */
-export function GateForm({ custom }: { custom: Record<string, GateDef> }) {
+export function GateForm({ custom, approvers }: { custom: Record<string, GateDef>; approvers: Approver[] }) {
   const lang = useLang();
   const router = useRouter();
   const [f, setF] = useState(blank);
@@ -22,12 +23,12 @@ export function GateForm({ custom }: { custom: Record<string, GateDef> }) {
   const toggle = (k: "requires" | "rulesets", v: string) => set(k, f[k].includes(v) ? f[k].filter((x) => x !== v) : [...f[k], v]);
   const load = (id: string) => {
     const g = custom[id];
-    setF(g ? { gate: id, label: g.label, owner: g.owner, category: g.category, evidence: g.evidence, requires: g.requires ?? [], rulesets: g.rulesets ?? [], reason: "", mname: g.metric?.name ?? "", mop: g.metric?.op ?? "<=", mthreshold: g.metric ? String(g.metric.threshold) : "", munit: g.metric?.unit ?? "" } : blank);
+    setF(g ? { gate: id, label: g.label, owner: g.owner, category: g.category, evidence: g.evidence, requires: g.requires ?? [], rulesets: g.rulesets ?? [], reason: "", approver: "", mname: g.metric?.name ?? "", mop: g.metric?.op ?? "<=", mthreshold: g.metric ? String(g.metric.threshold) : "", munit: g.metric?.unit ?? "" } : blank);
   };
   const submit = async () => {
     setBusy(true); setError(null); setDone(null);
     const body = {
-      gate: f.gate, label: f.label, owner: f.owner, category: f.category, evidence: f.evidence, requires: f.requires, rulesets: f.rulesets, reason: f.reason,
+      gate: f.gate, label: f.label, owner: f.owner, category: f.category, evidence: f.evidence, requires: f.requires, rulesets: f.rulesets, reason: f.reason, approver: f.approver,
       ...(f.evidence === "metric" ? { metric: { name: f.mname, op: f.mop, threshold: Number(f.mthreshold), unit: f.munit } } : {}),
     };
     const res = await fetch("/api/admin/un/gates", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
@@ -106,10 +107,18 @@ export function GateForm({ custom }: { custom: Record<string, GateDef> }) {
         <label className={lbl} htmlFor="gf-reason">{tr(lang, "gt.f.reason", "Reason for the change")}</label>
         <textarea id="gf-reason" className={field} rows={2} value={f.reason} onChange={(e) => set("reason", e.target.value)} maxLength={500} required={changing} />
       </div>
+      <div className="sm:col-span-2">
+        <label className={lbl} htmlFor="gf-app">{tr(lang, "gt.uc.approver", "Approver")}</label>
+        <select id="gf-app" className={field} value={f.approver} required onChange={(e) => set("approver", e.target.value)}>
+          <option value="">{tr(lang, "gt.ap.choose", "Choose the approver")}</option>
+          {approvers.map((a) => <option key={a.title} value={a.title}>{a.title} ({tr(lang, `gt.ap.${a.source}`, a.source)})</option>)}
+        </select>
+        <p className="mt-1 text-xs text-ink-soft">{tr(lang, "gt.ap.h.gov", "Changes to the gate catalogue belong to no single process, so a governance role approves them.")}</p>
+      </div>
       <div className="flex flex-wrap items-center gap-3 sm:col-span-2">
         <button type="submit" className={btnPrimary} disabled={busy}>{changing ? tr(lang, "gt.f.save", "Sign off and save the change") : tr(lang, "gt.f.add", "Sign off and add the gate")}</button>
         <button type="button" className={btnGhost} disabled={busy} onClick={() => setF(blank)}>{tr(lang, "gt.f.clear", "Clear")}</button>
-        <span className="text-xs text-ink-soft">{tr(lang, "gt.f.note", "Your sign-in is recorded as the sign-off in the gate log.")}</span>
+        <span className="text-xs text-ink-soft">{tr(lang, "gt.f.note", "The approver you choose is the sign-off in the gate log; your sign-in is recorded as who made the change.")}</span>
       </div>
       {error && <p role="alert" className="text-sm sm:col-span-2" style={{ color: "var(--color-v-nogo)" }}>{error}</p>}
       {done && <p role="status" className="text-sm sm:col-span-2">{done}</p>}
