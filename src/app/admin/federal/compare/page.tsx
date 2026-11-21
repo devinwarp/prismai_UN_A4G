@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
 import Link from "next/link";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -16,6 +17,7 @@ import { DERIVED_GAPS, RULESETS } from "@/lib/un/rulesets";
 import AdminHeader from "../../AdminHeader";
 import LangShell, { T, TV } from "../_components/Lang";
 import { VerdictBadge } from "../_components/ui";
+import { ArOnly, En, GateList, Gx, Ltr, Rs, TX, Vd } from "../_components/b-bits";
 
 export const metadata: Metadata = { title: "Compare business processes", robots: { index: false, follow: false } };
 
@@ -68,20 +70,21 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
     return `?${q}`;
   };
   const chunk = new Map(loadChunks().map((k) => [k.chunk_id, k]));
-  const cites = (ids: string[]) => ids.map((id) => <span key={id} title={chunk.get(id)?.text} className="me-1 rounded bg-paper-deep px-1 font-mono text-[11px]">{id}</span>);
+  const cites = (ids: string[]) => ids.map((id) => <span key={id} dir="ltr" title={chunk.get(id)?.text} className="me-1 rounded bg-paper-deep px-1 font-mono text-[11px]">{id}</span>);
   const gaps = DERIVED_GAPS.filter((g) => g.ruleset === rs.id);
   const chip = "rounded-md bg-paper-deep px-1.5 py-0.5 font-mono text-[11px]";
+
 
   return (
     <div className="conduit-bg min-h-dvh">
       <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
       <LangShell>
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-        <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase">Read-only</p>
+        <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase"><T k="gt.readonly" en="Read-only" /></p>
         <h1 className="font-display mt-2 text-3xl font-medium tracking-tight sm:text-4xl"><T k="compare.title" en="Business processes under one policy" /></h1>
         <p role="note" className="mt-3 max-w-[68ch] rounded-xl border border-dashed border-line p-3 text-sm">
-          The rule sets are <strong>simplified demo encodings, not legal advice</strong>. They map a few ingested provisions onto
-          Prism&apos;s gate vocabulary. <Link href="/admin/federal" className="underline">Back to the dashboard</Link>
+          <T k="ub.cmp.n1" en="The rule sets are " /><strong><T k="ub.cmp.nb" en="simplified demo encodings, not legal advice" /></strong><T k="ub.cmp.n2" en=". They map a few ingested provisions onto Prism's gate vocabulary." />{" "}
+          <Link href="/admin/federal" className="underline"><T k="sop.back" en="Back to the dashboard" /></Link>
         </p>
 
         <nav aria-label="Policy layer" className="mt-5">
@@ -90,14 +93,14 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
             {RULESETS.map((r) => (
               <li key={r.id}>
                 <Link href={qs(KEY[r.id])} aria-current={r.id === rs.id ? "page" : undefined}
-                  className={`inline-block rounded-full border px-5 py-2 text-base ${r.id === rs.id ? "border-ink bg-ink text-paper" : "border-line hover:bg-paper-deep"}`}>{SHORT[r.id]}</Link>
+                  className={`inline-block rounded-full border px-5 py-2 text-base ${r.id === rs.id ? "border-ink bg-ink text-paper" : "border-line hover:bg-paper-deep"}`}><Rs id={r.id} en={SHORT[r.id]} /></Link>
               </li>
             ))}
           </ul>
         </nav>
         <ol className="mt-6 grid gap-y-4 sm:grid-cols-2 lg:grid-cols-5" aria-label="How the policy cascades">
           {[
-            { k: "casc.1", t: `Policy target (${SHORT[rs.id]})`, h: "The country sets the goal and the rules." },
+            { k: "casc.1", t: "Policy target", h: "The country sets the goal and the rules." },
             { k: "casc.2", t: "Entity rules", h: "Each entity can add its own human-oversight rules." },
             { k: "casc.3", t: "Process attributes", h: "Client-facing? Affects rights? Irreversible?" },
             { k: "casc.4", t: "Checks", h: "Those facts decide which checks are required." },
@@ -106,72 +109,75 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
             <li key={x.k} className="relative flex gap-3 pe-4">
               <span aria-hidden className="font-display text-3xl leading-none text-lit tabular-nums">{i + 1}</span>
               <div>
-                <p className="text-base font-medium"><T k={x.k} en={x.t} /></p>
+                <p className="text-base font-medium"><T k={x.k} en={x.t} />{i === 0 && <> (<Rs id={rs.id} en={SHORT[rs.id]} />)</>}</p>
                 <p className="mt-0.5 text-sm text-ink-soft"><T k={`${x.k}.h`} en={x.h} /></p>
               </div>
             </li>
           ))}
         </ol>
-        <p className="mt-2 text-xs text-ink-soft">
-          Active: <strong>{rs.name}</strong>. Cap: {rs.capAutonomy === "always" ? "every process is capped at GO_SUPERVISED" : "client-facing processes are capped at GO_SUPERVISED"}.
-          Base gates: {rs.gates.map((g) => <span key={g}><span className={`${chip} me-1`}>{g}</span>{" "}</span>)}
-          {rs.highRisk && <> Rights-affecting processes escalate: {rs.highRisk.label}.</>}
+        <p className="mt-2 text-xs leading-7 text-ink-soft">
+          <T k="ub.cmp.active" en="Active:" /> <strong><En>{rs.name}</En></strong>. <T k="ub.cmp.cap" en="Cap:" />{" "}
+          {rs.capAutonomy === "always" ? <T k="ub.cmp.cap.always" en="every process is capped at GO_SUPERVISED" /> : <T k="ub.cmp.cap.cf" en="client-facing processes are capped at GO_SUPERVISED" />}.{" "}
+          <T k="ub.cmp.base" en="Base gates:" /> {rs.gates.map((g) => <span key={g}><span className={`${chip} me-1`}><Gx id={g} /></span>{" "}</span>)}
+          {rs.highRisk && <> <T k="ub.cmp.escalate" en="Rights-affecting processes escalate:" /> <En>{rs.highRisk.label}</En>.</>}
         </p>
 
         <details className="mt-5 rounded-xl border border-line bg-card p-3 text-sm">
-          <summary className="cursor-pointer font-medium">Choose processes and evidence</summary>
+          <summary className="cursor-pointer font-medium"><T k="ub.cmp.choose" en="Choose processes and evidence" /></summary>
           <form method="get" className="mt-3">
             <input type="hidden" name="f" value="1" /><input type="hidden" name="j" value={KEY[rs.id]} />
             <ul className="grid gap-x-6 gap-y-1 sm:grid-cols-2">
               {all.map((u) => (
                 <li key={u.ext_id} className="flex flex-wrap items-center gap-2">
                   <label className="flex items-center gap-2"><input type="checkbox" name="uc" value={u.ext_id} defaultChecked={pick.includes(u.ext_id)} /> {u.ext_id} {u.title}</label>
-                  <label className="ms-auto flex items-center gap-1 text-xs text-ink-soft"><input type="checkbox" name="rights" value={u.ext_id} defaultChecked={rightsSet.has(u.ext_id)} /> affects rights</label>
+                  <label className="ms-auto flex items-center gap-1 text-xs text-ink-soft"><input type="checkbox" name="rights" value={u.ext_id} defaultChecked={rightsSet.has(u.ext_id)} /> <T k="ub.cmp.rights" en="affects rights" /></label>
                 </li>
               ))}
             </ul>
             <div className="mt-3 flex flex-wrap items-end gap-4">
-              <label>UC02 evidence (staged scenario S1)<br />
+              <label><T k="ub.cmp.uc02ev" en="UC02 evidence (staged scenario S1)" /><br />
                 <select name="step" defaultValue={step} className="rounded-md border border-line bg-card px-2 py-1">{STEPS.map((s) => <option key={s}>{s}</option>)}</select>
               </label>
-              <label>Other processes<br />
+              <label><T k="ub.cmp.other" en="Other processes" /><br />
                 <select name="ev" defaultValue={allPass ? "pass" : "none"} className="rounded-md border border-line bg-card px-2 py-1">
-                  <option value="none">No evidence yet</option><option value="pass">All gates pass</option>
+                  <option value="none"><T k="ub.cmp.noev" en="No evidence yet" /></option><option value="pass"><T k="ub.cmp.allpass" en="All gates pass" /></option>
                 </select>
               </label>
-              <button className="rounded-full border border-line px-3 py-1 hover:bg-paper-deep">Apply</button>
+              <button className="rounded-full border border-line px-3 py-1 hover:bg-paper-deep"><T k="ub.cmp.apply" en="Apply" /></button>
             </div>
           </form>
         </details>
 
-        <h2 className="font-display mt-10 text-3xl font-medium tracking-tight">Processes under {SHORT[rs.id]}</h2>
+        <h2 className="font-display mt-10 text-3xl font-medium tracking-tight"><TX k="ub.cmp.under" en="Processes under {rs}" v={{ rs: <Rs id={rs.id} en={SHORT[rs.id]} /> }} /></h2>
         {isUae ? (
-          <p className="mt-2 max-w-[68ch] text-base text-ink-soft">This is the baseline. Switch to another policy above to see which decisions change.</p>
+          <p className="mt-2 max-w-[68ch] text-base text-ink-soft"><T k="ub.cmp.baseline" en="This is the baseline. Switch to another policy above to see which decisions change." /></p>
         ) : (
           <p role="status" className="mt-3 max-w-[68ch] rounded-xl border-2 p-4 text-lg font-medium" style={{ borderColor: changed ? "var(--color-ember)" : "var(--color-line)" }}>
-            <span aria-hidden>{changed ? "▲ " : "= "}</span>{changed ? `${changed} of ${rows.length} decisions change under ${SHORT[rs.id]} compared with UAE.` : `No decision changes under ${SHORT[rs.id]} for these processes.`}
+            <span aria-hidden>{changed ? "▲ " : "= "}</span>{changed
+              ? <TX k="ub.cmp.changed" en="{c} of {n} decisions change under {rs} compared with UAE." v={{ c: changed, n: rows.length, rs: <Rs id={rs.id} en={SHORT[rs.id]} /> }} />
+              : <TX k="ub.cmp.nochange" en="No decision changes under {rs} for these processes." v={{ rs: <Rs id={rs.id} en={SHORT[rs.id]} /> }} />}
           </p>
         )}
         <p className="mt-2 text-sm text-ink-soft">
-          Every process asks for GO_AUTONOMOUS. UC02 follows staged scenario S1 up to {step} (synthetic); other processes have {allPass ? "every check passed" : "no evidence yet"}.
+          <TX k="ub.cmp.asks" en="Every process asks for GO_AUTONOMOUS. UC02 follows staged scenario S1 up to {step} (synthetic); other processes have {ev}." v={{ step, ev: allPass ? <T k="ub.cmp.ev.pass" en="every check passed" /> : <T k="ub.cmp.ev.none" en="no evidence yet" /> }} />
         </p>
         <div className="mt-4 overflow-x-auto">
           <table className="proj w-full min-w-[52rem] border-separate border-spacing-y-2 text-start">
-            <caption className="sr-only">Decision per process under {SHORT[rs.id]}</caption>
+            <caption className="sr-only"><TX k="ub.cmp.tcap" en="Decision per process under {rs}" v={{ rs: <Rs id={rs.id} en={SHORT[rs.id]} /> }} /></caption>
             <thead><tr className="font-mono text-xs text-ink-soft uppercase">
-              <th scope="col" className="px-3 text-start font-normal">Process</th><th scope="col" className="px-3 text-start font-normal">Decision</th><th scope="col" className="px-3 text-start font-normal">Why</th>
+              <th scope="col" className="px-3 text-start font-normal"><T k="ub.cmp.th.process" en="Process" /></th><th scope="col" className="px-3 text-start font-normal"><T k="ub.cmp.th.decision" en="Decision" /></th><th scope="col" className="px-3 text-start font-normal"><T k="ub.cmp.th.why" en="Why" /></th>
             </tr></thead>
             <tbody>
               {rows.map((r) => {
                 const f = r.input.facts;
                 const u = chosen.find((x) => x.ext_id === r.input.id)!;
                 const diff = r.decision.verdict !== r.uae.verdict;
-                const note: string[] = [];
-                if (f.client_facing) note.push("client-facing: capped at GO_SUPERVISED");
-                else if (r.capped) note.push("this policy caps every process at GO_SUPERVISED");
-                if (r.highRisk) note.push(`rights-affecting: high-risk tier${r.addedByAttributes.length ? ", adds " + r.addedByAttributes.join(", ") : ""}`);
-                else if (f.client_facing && r.addedByAttributes.length) note.push(`client-facing: adds ${r.addedByAttributes.join(", ")}`);
-                if (f.irreversible) note.push("irreversible: needs human approval");
+                const note: ReactNode[] = [];
+                if (f.client_facing) note.push(<T key="a" k="ub.cmp.n.cf" en="client-facing: capped at GO_SUPERVISED" />);
+                else if (r.capped) note.push(<T key="b" k="ub.cmp.n.cap" en="this policy caps every process at GO_SUPERVISED" />);
+                if (r.highRisk) note.push(<span key="c"><T k="ub.cmp.n.ra" en="rights-affecting: high-risk tier" />{r.addedByAttributes.length > 0 && <TX k="ub.cmp.n.adds" en=", adds {g}" v={{ g: <GateList ids={r.addedByAttributes} /> }} />}</span>);
+                else if (f.client_facing && r.addedByAttributes.length) note.push(<TX key="d" k="ub.cmp.n.cfadds" en="client-facing: adds {g}" v={{ g: <GateList ids={r.addedByAttributes} /> }} />);
+                if (f.irreversible) note.push(<T key="e" k="ub.cmp.n.irr" en="irreversible: needs human approval" />);
                 const cell = `bg-card px-3 py-3 align-top first:rounded-s-xl last:rounded-e-xl ${diff ? "border-y-2 border-ember first:border-s-2 last:border-e-2" : "border-y border-line first:border-s last:border-e"}`;
                 return (
                   <tr key={r.input.id}>
@@ -179,20 +185,20 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
                       {r.gatesAdded > 0 && <><br /><span className={`${chip} mt-1 inline-block`} title="This process is judged under more gates than the shipped rule set, so compare its figures with care."><span aria-hidden>+ </span><TV k="gt.added" en="{n} gates added" v={{ n: r.gatesAdded }} /></span></>}</td>
                     <td className={`${cell} w-[24%]`}>
                       <VerdictBadge verdict={r.decision.verdict as never} size="lg" />
-                      {diff && <p className="mt-2 text-sm font-medium text-ember"><span aria-hidden>▲ </span>Changed. UAE: <span className="font-mono">{r.uae.verdict}</span></p>}
+                      {diff && <p className="mt-2 text-sm font-medium text-ember"><span aria-hidden>▲ </span><T k="ub.cmp.chg" en="Changed. UAE:" /> <span className="font-mono"><Vd v={r.uae.verdict} /></span></p>}
                     </td>
                     <td className={`${cell} text-sm`}>
-                      {r.decision.reasons[0]}
+                      <En>{r.decision.reasons[0]}</En>
                       <details className="mt-2">
-                        <summary className="w-fit cursor-pointer text-ink-soft underline underline-offset-2">How it was worked out</summary>
+                        <summary className="w-fit cursor-pointer text-ink-soft underline underline-offset-2"><T k="ub.cmp.how" en="How it was worked out" /></summary>
                         <div className="mt-2 space-y-2">
-                          <p><span className="font-mono text-[11px] text-ink-soft uppercase">Attributes </span>
-                            {f.client_facing && <span className={chip}>client-facing</span>} {f.affects_rights && <span className={chip}>rights</span>} {f.irreversible && <span className={chip}>irreversible</span>}
-                            {!f.client_facing && !f.affects_rights && !f.irreversible && "none"}</p>
-                          <p><span className="font-mono text-[11px] text-ink-soft uppercase">Required checks </span>
-                            {r.required.map((g) => <span key={g} title={r.input.catalog?.[g]?.label ?? GATES[g]?.label} className={`${chip} me-1 ${r.addedByAttributes.includes(g) ? "bg-ember/15 font-semibold" : ""}`}>{r.addedByAttributes.includes(g) ? "+ " : ""}{g}</span>)}</p>
-                          <p><span className="font-mono text-[11px] text-ink-soft uppercase">Autonomy cap </span><span className="font-mono text-xs">{r.capped ? "GO_SUPERVISED" : "none"}</span> · <span className="text-ink-soft">{r.input.id === "UC02" ? `evidence S1 ${step}` : allPass ? "all checks pass" : "no evidence yet"}</span></p>
-                          {note.length > 0 && <p className="text-ink-soft">{note.join("; ")}.</p>}
+                          <p><span className="font-mono text-[11px] text-ink-soft uppercase"><T k="ub.cmp.attr" en="Attributes" /> </span>
+                            {f.client_facing && <span className={chip}><T k="pf.cf" en="client-facing" /></span>} {f.affects_rights && <span className={chip}><T k="ub.cmp.rt" en="rights" /></span>} {f.irreversible && <span className={chip}><T k="pf.ir" en="irreversible" /></span>}
+                            {!f.client_facing && !f.affects_rights && !f.irreversible && <T k="ub.none" en="none" />}</p>
+                          <p><span className="font-mono text-[11px] text-ink-soft uppercase"><T k="ub.cmp.req" en="Required checks" /> </span>
+                            {r.required.map((g) => <span key={g} title={r.input.catalog?.[g]?.label ?? GATES[g]?.label} className={`${chip} me-1 ${r.addedByAttributes.includes(g) ? "bg-ember/15 font-semibold" : ""}`}>{r.addedByAttributes.includes(g) ? "+ " : ""}<Gx id={g} /></span>)}</p>
+                          <p><span className="font-mono text-[11px] text-ink-soft uppercase"><T k="ub.cmp.cap2" en="Autonomy cap" /> </span><span className="font-mono text-xs">{r.capped ? <Vd v="GO_SUPERVISED" /> : <T k="ub.none" en="none" />}</span> · <span className="text-ink-soft">{r.input.id === "UC02" ? <TX k="ub.cmp.evS1" en="evidence S1 {step}" v={{ step }} /> : allPass ? <T k="ub.cmp.ev.allpass" en="all checks pass" /> : <T k="ub.cmp.ev.none" en="no evidence yet" />}</span></p>
+                          {note.length > 0 && <p className="text-ink-soft">{note.map((n, i) => <span key={i}>{i > 0 && <T k="ub.sep" en="; " />}{n}</span>)}.</p>}
                         </div>
                       </details>
                     </td>
@@ -202,20 +208,21 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
             </tbody>
           </table>
         </div>
-        {rows.length === 0 && <p className="mt-2 text-sm">No processes selected.</p>}
-        <p className="mt-2 text-xs text-ink-soft">Checks marked + are required because of the process attributes. {rs.notIngested.length > 0 && `Cited by name only, not ingested: ${rs.notIngested.join("; ")}.`} Sources: {cites(Object.values(rs.cites).flatMap((c) => c ?? []))}{rs.highRisk && cites(rs.highRisk.cites)}</p>
+        {rows.length === 0 && <p className="mt-2 text-sm"><T k="ub.cmp.nosel" en="No processes selected." /></p>}
+        <p className="mt-2 text-xs text-ink-soft"><T k="ub.cmp.marked" en="Checks marked + are required because of the process attributes." />{" "}{rs.notIngested.length > 0 && <><T k="ub.cmp.noting" en="Cited by name only, not ingested:" /> <En>{rs.notIngested.join("; ")}</En>.</>}{" "}<T k="ub.cmp.sources" en="Sources:" />{" "}{cites(Object.values(rs.cites).flatMap((c) => c ?? []))}{rs.highRisk && cites(rs.highRisk.cites)}</p>
 
-        <h2 className="font-display mt-10 text-3xl font-medium tracking-tight">Resulting gaps</h2>
-        <p className="mt-1 text-xs text-ink-soft">Curated gaps this policy touches, linked to <Link href="/admin/federal/gaps" className="underline">the gap page</Link>, then gaps derived by this comparison (not in kb/gaps.json).</p>
+        <h2 className="font-display mt-10 text-3xl font-medium tracking-tight"><T k="ub.cmp.gaps" en="Resulting gaps" /></h2>
+        <p className="mt-1 text-xs text-ink-soft"><T k="ub.cmp.g1" en="Curated gaps this policy touches, linked to " /><Link href="/admin/federal/gaps" className="underline"><T k="ub.cmp.g2" en="the gap page" /></Link><T k="ub.cmp.g3" en=", then gaps derived by this comparison (not in kb/gaps.json)." /></p>
+        <ArOnly><p className="mt-1 text-xs text-ink-soft"><T k="ub.en.note" en="" /></p></ArOnly>
         <ul className="mt-3 flex flex-wrap gap-2 font-mono text-xs">
-          {[...rs.gapIds].sort().map((id) => <li key={id}><Link href={`/admin/federal/gaps#${id}`} className="rounded-md bg-paper-deep px-2 py-0.5 underline">{id}</Link></li>)}
+          {[...rs.gapIds].sort().map((id) => <li key={id}><Link href={`/admin/federal/gaps#${id}`} dir="ltr" className="rounded-md bg-paper-deep px-2 py-0.5 underline">{id}</Link></li>)}
         </ul>
         <ul className="mt-4 grid gap-3">
           {gaps.map((g) => (
             <li key={g.id} className="rounded-xl border border-line bg-card p-3 text-sm">
-              <span className="font-mono text-xs"><span className="rounded-md bg-paper-deep px-2 py-0.5">{g.id}</span> derived · {g.ruleset} · extends {g.relatesTo.join(", ")}</span>
-              <p className="mt-1">{g.statement}</p>
-              <p className="mt-1">{cites(g.chunk_ids)}</p>
+              <span className="font-mono text-xs"><span dir="ltr" className="rounded-md bg-paper-deep px-2 py-0.5">{g.id}</span> <T k="ub.cmp.derived" en="derived" /> · <Rs id={g.ruleset} /> · <T k="ub.cmp.extends" en="extends" /> <Ltr>{g.relatesTo.join(", ")}</Ltr></span>
+              <p dir="ltr" lang="en" className="mt-1 text-start">{g.statement}</p>
+              <p className="mt-1" dir="ltr">{cites(g.chunk_ids)}</p>
             </li>
           ))}
         </ul>

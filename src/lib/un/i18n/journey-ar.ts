@@ -2,6 +2,7 @@
 // speaker, like the rest of dict.ts. Spread into AR there. Placeholders such as {n} are filled by TV in Lang.tsx.
 export const JOURNEY_AR: Record<string, string> = {
   "nav.signout": "تسجيل الخروج",
+  "nav.federal": "الاتحادية",
   "jb.label": "المسار من الإجراء إلى التشغيل",
   "jb.counter": "اكتملت {d} من 7 مراحل، و{w} بانتظار إجراء",
   "jb.group.define": "التحديد",
@@ -64,7 +65,7 @@ export const JOURNEY_AR: Record<string, string> = {
   "pf.attached": "الإجراء المرفق: {sop}",
   "pf.change": "تغيير الإجراء",
   "pf.profile": "الملف الوظيفي",
-  "pf.tasks": "المهام",
+  "pf.tasks": "{n} مهام",
   "pf.automate": "أتمتة",
   "pf.automate.admin": "تحديد الأتمتة يتطلب مديراً.",
   "pf.flags": "المؤشرات من مهامه",

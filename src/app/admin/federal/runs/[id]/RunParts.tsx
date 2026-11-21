@@ -36,7 +36,7 @@ export function Pipeline({
                     {s.st === "active" && <span aria-hidden className="fx-ring absolute inset-0 rounded-full border border-lit" />}
                   </span>
                   {s.title}
-                  <span className="sr-only">{s.st}</span>
+                  <span className="sr-only">{tr(lang, `uc.stage.${s.st}`, s.st)}</span>
                 </p>
                 <p className="mt-1 ps-9 text-sm text-ink-soft">{s.line}</p>
               </div>
@@ -64,7 +64,7 @@ export function VerdictHero({
         <div className="fx-stamp relative"><VerdictBadge verdict={verdict} size="lg" /></div>
         {moved && prev && (
           <p className="fx-fade text-sm text-ink-soft">
-            <span className="font-mono">{prev.replace("_", " ")}</span> <span aria-hidden className="rtl:rotate-180 inline-block">→</span> <span className="font-medium text-ink">{tr(lang, `verdict.${verdict}`, verdict.replace("_", " "))}</span>
+            <span className="font-mono">{tr(lang, `verdict.${prev}`, prev.replace("_", " "))}</span> <span aria-hidden className="rtl:rotate-180 inline-block">→</span> <span className="font-medium text-ink">{tr(lang, `verdict.${verdict}`, verdict.replace("_", " "))}</span>
           </p>
         )}
         {expectedOk !== null && <p className={`fx-fade text-sm font-medium ${expectedOk ? "text-lit-deep" : "text-ember"}`}><span aria-hidden>{expectedOk ? "✓" : "✕"}</span> {expectedOk ? tr(lang, "hero.as_expected", "As the scenario expected") : tr(lang, "hero.unexpected", "Not what the scenario expected")}</p>}

@@ -7,6 +7,7 @@ import { listOutside } from "@/lib/un/outside-queue";
 import AdminHeader from "../../AdminHeader";
 import LangShell, { T, TV } from "../_components/Lang";
 import { card } from "../_components/ui";
+import { En, Ltr, Role, TX } from "../_components/b-bits";
 import { AnswerForm, AskForm } from "./OutsideControls";
 
 export const metadata: Metadata = { title: "Outside-information requests", robots: { index: false, follow: false } };
@@ -44,9 +45,9 @@ export default async function OutsidePage() {
                 {open.map((r) => (
                   <li key={r.id} className={card}>
                     <p className="font-medium">“{r.question}”</p>
-                    <p className="mt-1 text-xs text-ink-soft"><TV k="oq.meta" en="Case {c} · {p} · {t}" v={{ c: r.case_id, p: r.profile, t: new Date(r.created_at).toLocaleString("en-GB", DUBAI) }} /></p>
-                    <p className="mt-2 text-sm text-ink-soft"><T k="oq.why" en="Why it came here:" /> {r.reason}</p>
-                    {r.tried.length > 0 && <p className="mt-1 text-xs text-ink-soft"><T k="oq.tried" en="Searches tried:" /> <span dir="ltr">{r.tried.join(" | ")}</span></p>}
+                    <p className="mt-1 text-xs text-ink-soft"><TX k="oq.meta" en="Case {c} · {p} · {t}" v={{ c: <Ltr>{r.case_id}</Ltr>, p: <En>{r.profile}</En>, t: <Ltr>{new Date(r.created_at).toLocaleString("en-GB", DUBAI)}</Ltr> }} /></p>
+                    <p className="mt-2 text-sm text-ink-soft"><T k="oq.why" en="Why it came here:" /> <En>{r.reason}</En></p>
+                    {r.tried.length > 0 && <p className="mt-1 text-xs text-ink-soft"><T k="oq.tried" en="Searches tried:" /> <bdi dir="ltr" lang="en">{r.tried.join(" | ")}</bdi></p>}
                     {canEdit ? <AnswerForm id={r.id} /> : <p className="mt-3 text-sm text-ink-soft"><T k="oq.viewer" en="Only an admin can answer. You have read-only access." /></p>}
                   </li>
                 ))}
@@ -62,7 +63,7 @@ export default async function OutsidePage() {
                   <li key={r.id} className="p-4">
                     <p className="font-medium">“{r.question}”</p>
                     <p className="mt-1">{r.answer}</p>
-                    <p className="mt-1 text-xs text-ink-soft"><TV k="oq.by" en="Answered by role {role} · {t} · memory entry" v={{ role: r.answered_role ?? "", t: r.answered_at ? new Date(r.answered_at).toLocaleString("en-GB", DUBAI) : "" }} /> <code dir="ltr">{r.memory_hash?.slice(0, 12)}…</code></p>
+                    <p className="mt-1 text-xs text-ink-soft"><TX k="oq.by" en="Answered by role {role} · {t} · memory entry" v={{ role: <Role id={r.answered_role ?? ""} />, t: <Ltr>{r.answered_at ? new Date(r.answered_at).toLocaleString("en-GB", DUBAI) : ""}</Ltr> }} /> <bdi dir="ltr"><code>{r.memory_hash?.slice(0, 12)}…</code></bdi></p>
                   </li>
                 ))}
               </ul>

@@ -7,6 +7,7 @@ import { CATEGORIES, EVIDENCE_SOURCES, FLAGS, RULESET_IDS, ROLE_IDS, type GateDe
 import type { Approver } from "@/lib/un/approvers";
 import { useLang } from "../_components/Lang";
 import { btnGhost, btnPrimary, field } from "../_components/ui";
+import { Flag, Rs } from "../_components/b-bits";
 
 const blank = { gate: "", label: "", owner: "compliance", category: "functional", evidence: "reviewer", requires: [] as string[], rulesets: [] as string[], reason: "", approver: "", mname: "", mop: "<=", mthreshold: "", munit: "" };
 
@@ -53,7 +54,7 @@ export function GateForm({ custom, approvers }: { custom: Record<string, GateDef
       )}
       <div>
         <label className={lbl} htmlFor="gf-id">{tr(lang, "gt.f.id", "Gate id")}</label>
-        <input id="gf-id" className={field} value={f.gate} onChange={(e) => set("gate", e.target.value)} readOnly={changing} placeholder="response_time" required pattern="[a-z][a-z0-9_]{2,40}" />
+        <input id="gf-id" className={field} value={f.gate} onChange={(e) => set("gate", e.target.value)} readOnly={changing} placeholder="response_time" dir="ltr" required pattern="[a-z][a-z0-9_]{2,40}" />
         <p className="mt-1 text-xs text-ink-soft">{tr(lang, "gt.f.id.h", "Lower-case letters, digits and underscores.")}</p>
       </div>
       <div>
@@ -63,7 +64,7 @@ export function GateForm({ custom, approvers }: { custom: Record<string, GateDef
       <div>
         <label className={lbl} htmlFor="gf-owner">{tr(lang, "gt.f.owner", "Owner role")}</label>
         <select id="gf-owner" className={field} value={f.owner} onChange={(e) => set("owner", e.target.value)}>
-          {ROLE_IDS.filter((r) => r !== "coordinator").map((r) => <option key={r} value={r}>{r}</option>)}
+          {ROLE_IDS.filter((r) => r !== "coordinator").map((r) => <option key={r} value={r}>{tr(lang, `ub.role.${r}`, r)}</option>)}
         </select>
       </div>
       <div>
@@ -81,14 +82,14 @@ export function GateForm({ custom, approvers }: { custom: Record<string, GateDef
       <fieldset>
         <legend className={lbl}>{tr(lang, "gt.f.requires", "Applies only when the use case is")}</legend>
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          {FLAGS.map((x) => <label key={x} className="flex items-center gap-2"><input type="checkbox" checked={f.requires.includes(x)} onChange={() => toggle("requires", x)} /> <span className="font-mono text-xs">{x}</span></label>)}
+          {FLAGS.map((x) => <label key={x} className="flex items-center gap-2"><input type="checkbox" checked={f.requires.includes(x)} onChange={() => toggle("requires", x)} /> <span className="font-mono text-xs"><Flag id={x} /></span></label>)}
         </div>
         <p className="mt-1 text-xs text-ink-soft">{tr(lang, "gt.f.requires.h", "Leave all unticked to apply to every use case that requires it.")}</p>
       </fieldset>
       <fieldset className="sm:col-span-2">
         <legend className={lbl}>{tr(lang, "gt.f.rulesets", "Rule sets that require it")}</legend>
         <div className="mt-1 flex flex-wrap gap-x-4 gap-y-1 text-sm">
-          {RULESET_IDS.map((x) => <label key={x} className="flex items-center gap-2"><input type="checkbox" checked={f.rulesets.includes(x)} onChange={() => toggle("rulesets", x)} /> <span className="font-mono text-xs">{x}</span></label>)}
+          {RULESET_IDS.map((x) => <label key={x} className="flex items-center gap-2"><input type="checkbox" checked={f.rulesets.includes(x)} onChange={() => toggle("rulesets", x)} /> <span className="font-mono text-xs"><Rs id={x} /></span></label>)}
         </div>
         <p className="mt-1 text-xs text-ink-soft">{tr(lang, "gt.f.rulesets.h", "With none ticked, the gate applies only to use cases that add it themselves.")}</p>
       </fieldset>

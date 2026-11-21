@@ -36,14 +36,14 @@ function PortfolioBars({ outcome, lang }: { outcome: string; lang: Lang }) {
   return (
     <div className="mt-3">
       <p className="mb-1 inline-block rounded-md border border-ember/60 px-2 py-0.5 font-mono text-[11px] font-medium text-ember">{tr(lang, SANDBOX_KEY, SANDBOX_EN)}</p>
-      <div role="img" aria-label={`${tr(lang, SANDBOX_KEY, SANDBOX_EN)}. Deployed ${d.deployed} of ${d.total}, compliant ${d.compliant}, target ${d.target}`}>
+      <div role="img" aria-label={`${tr(lang, SANDBOX_KEY, SANDBOX_EN)}. ${tr(lang, "uc.run.pf_aria", "Deployed {d} of {n}, compliant {c}, target {t}").replace("{d}", String(d.deployed)).replace("{n}", String(d.total)).replace("{c}", String(d.compliant)).replace("{t}", String(d.target))}`}>
         <div className="relative h-3 rounded-full bg-paper-deep">
           <div className="absolute inset-y-0 start-0 rounded-full bg-lit" style={{ width: w(d.deployed) }} />
           <div className="absolute inset-y-0 start-0 rounded-full" style={{ width: w(d.compliant), background: "var(--color-v-sup)" }} />
           <div aria-hidden className="absolute -top-1 -bottom-1 w-0.5 bg-ink" style={{ insetInlineStart: `calc(${w(d.target)} - 1px)` }} />
         </div>
       </div>
-      <p className="mt-1 font-mono text-[11px] text-ink-soft">deployed {d.deployed} (green) · compliant {d.compliant} (blue) · target line {d.target} of {d.total}</p>
+      <p className="mt-1 font-mono text-[11px] text-ink-soft">{tr(lang, "uc.run.pf_legend", "deployed {d} (green) · compliant {c} (blue) · target line {t} of {n}").replace("{d}", String(d.deployed)).replace("{c}", String(d.compliant)).replace("{t}", String(d.target)).replace("{n}", String(d.total))}</p>
     </div>
   );
 }
@@ -90,7 +90,7 @@ export default function RunView({
   const signature = lastRecord?.signature ?? null;
   const finalOutcome = state.steps[state.steps.length - 1]?.outcome ?? "";
   async function sign(decision: "SIGN" | "WITHHOLD") {
-    if (decision === "WITHHOLD" && !comment.trim()) { setErr("Withholding approval needs a comment."); return; }
+    if (decision === "WITHHOLD" && !comment.trim()) { setErr(tr(lang, "uc.run.need_comment", "Withholding approval needs a comment.")); return; }
     setBusy(true);
     setErr(null);
     const res = await fetch(`/api/admin/un/runs/${runId}/sign`, {
@@ -101,7 +101,7 @@ export default function RunView({
     const data = (await res.json().catch(() => ({}))) as { error?: string };
     setBusy(false);
     if (res.ok) router.refresh();
-    else setErr(data.error ?? "Failed");
+    else setErr(data.error ?? tr(lang, "uc.run.failed", "Failed"));
   }
   const agents = [...new Set(state.log.map((r) => r.agent))];
   const rows = state.log.filter((r) => agent === "all" || r.agent === agent);
@@ -148,7 +148,7 @@ export default function RunView({
   async function addStep() {
     setBusy(true);
     setErr(null);
-    setPending({ names: form.recipients.map((r) => ROLES[r].label) });
+    setPending({ names: form.recipients.map(roleName) });
     const res = await fetch(`/api/admin/un/runs/${runId}/adhoc`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -157,7 +157,7 @@ export default function RunView({
     const data = (await res.json().catch(() => ({}))) as { error?: string };
     setBusy(false);
     setPending(null);
-    if (res.ok) { setForm({ ...form, summary: "" }); router.refresh(); } else setErr(data.error ?? "Failed");
+    if (res.ok) { setForm({ ...form, summary: "" }); router.refresh(); } else setErr(data.error ?? tr(lang, "uc.run.failed", "Failed"));
   }
 
   // Tamper demo: the server edits a throwaway copy and runs the verifier; the stored run is never changed.
@@ -167,7 +167,7 @@ export default function RunView({
     setErr(null);
     const res = await fetch(`/api/admin/un/runs/${runId}/export`, { method: "POST" });
     setBusy(false);
-    if (res.ok) setTamper(await res.json()); else setErr("Tamper demo failed");
+    if (res.ok) setTamper(await res.json()); else setErr(tr(lang, "uc.run.tamper_failed", "Tamper demo failed"));
   }
 
   async function next() {
@@ -181,13 +181,14 @@ export default function RunView({
     const data = (await res.json().catch(() => ({}))) as { error?: string };
     setBusy(false);
     if (res.ok) router.refresh();
-    else setErr(data.error ?? "Failed");
+    else setErr(data.error ?? tr(lang, "uc.run.failed", "Failed"));
   }
 
   const lastStep = state.steps[state.steps.length - 1];
   const prevVerdict = [...state.steps.slice(0, -1)].reverse().map((s) => s.outcome).find(isVerdict) ?? null;
   const heroVerdict = lastStep && isVerdict(lastStep.outcome) ? lastStep.outcome : null;
-  const names = form.recipients.map((r) => ROLES[r].label);
+  const roleName = (r: RoleId) => tr(lang, `uc.role.${r}`, ROLES[r].label);
+  const names = form.recipients.map(roleName);
   const gateOn = Boolean(form.gate);
   const startTour = () => setTour(true);
 
@@ -211,10 +212,10 @@ export default function RunView({
     <div className="space-y-10">
       <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-3">
         <div>
-          <Link href="/admin/federal/scenarios" className="text-sm text-ink-soft underline underline-offset-2">← <T k="run.all_scenarios" en="All scenarios" /></Link>
+          <Link href="/admin/federal/scenarios" className="text-sm text-ink-soft underline underline-offset-2"><span className="inline-block rtl:rotate-180">←</span> <T k="run.all_scenarios" en="All scenarios" /></Link>
           <h1 className="font-display mt-3 max-w-[30ch] text-3xl font-medium tracking-tight sm:text-4xl">{title}</h1>
           <p className="mt-2 font-mono text-xs text-ink-soft">
-            {state.run_id} · {state.steps.length} / {totalSteps} {tr(lang, "run.steps_released", "steps released")}
+            <bdi dir="ltr">{state.run_id}</bdi> · {state.steps.length} / {totalSteps} {tr(lang, "run.steps_released", "steps released")}
             {" · "}<span className={verification.ok ? "text-lit-deep" : "font-medium text-ember"}><span aria-hidden>{verification.ok ? "✓" : "✕"}</span> {verification.ok ? tr(lang, "run.logbook_ok", "logbook verified") : tr(lang, "run.logbook_bad", "logbook broken")}</span>
           </p>
         </div>
@@ -233,7 +234,7 @@ export default function RunView({
 
       {lastStep && heroVerdict && <VerdictHero step={lastStep.step} verdict={heroVerdict} prev={prevVerdict} reasons={lastStep.reasons} expectedOk={lastStep.adhoc && !lastStep.expected ? null : lastStep.match} />}
       {lastStep && !heroVerdict && (
-        <section key={lastStep.step} aria-label="Current state" className="fx-fade rounded-2xl border border-line bg-card p-6">
+        <section key={lastStep.step} aria-label={tr(lang, "uc.run.state", "Current state")} className="fx-fade rounded-2xl border border-line bg-card p-6">
           <p className="font-display text-2xl">{lastStep.outcome}</p>
           <PortfolioBars outcome={lastStep.outcome} lang={lang} />
         </section>
@@ -256,16 +257,16 @@ export default function RunView({
               <div role="status" className="fx-stamp mt-4 border-t border-line pt-3 text-sm">
                 <p className={`text-base font-medium ${signature.decision === "SIGN" ? "text-lit-deep" : "text-ember"}`}>
                   <span aria-hidden>{signature.decision === "SIGN" ? "✓" : "✕"}</span>{" "}
-                  {signature.decision === "SIGN" ? tr(lang, "run.signed", "Signed") : tr(lang, "run.withheld", "Approval withheld")} · {signature.role} · {time(lastRecord.timestamp)}
+                  {signature.decision === "SIGN" ? tr(lang, "run.signed", "Signed") : tr(lang, "run.withheld", "Approval withheld")} · {signature.role} · <bdi dir="ltr">{time(lastRecord.timestamp)}</bdi>
                 </p>
                 {signature.comment && <p className="mt-1 text-ink-soft">“{signature.comment}”</p>}
-                <p className="mt-1 font-mono text-[11px] text-ink-soft">{tr(lang, "run.last_record", "Last record in the logbook")}: {lastRecord.trace_id} · signer {signature.signer_id}</p>
+                <p className="mt-1 font-mono text-[11px] text-ink-soft">{tr(lang, "run.last_record", "Last record in the logbook")}: <bdi dir="ltr">{lastRecord.trace_id}</bdi> · {tr(lang, "uc.run.signer", "signer")} <bdi dir="ltr">{signature.signer_id}</bdi></p>
               </div>
             ) : canEdit ? (
               <div className="mt-4 border-t border-line pt-3">
                 <label className="block text-xs">
                   <span className="font-medium">{tr(lang, "run.comment", "Comment (required to withhold)")}</span>
-                  <textarea value={comment} onChange={(e) => setComment(e.target.value)} rows={2} maxLength={1000} className={`${field} mt-1 w-full`} />
+                  <textarea dir="auto" value={comment} onChange={(e) => setComment(e.target.value)} rows={2} maxLength={1000} className={`${field} mt-1 w-full`} />
                 </label>
                 <div className="mt-3 flex flex-wrap gap-3">
                   <button type="button" onClick={() => sign("SIGN")} disabled={busy || !verification.ok} className={btnPrimary}><T k="run.sign" en="Sign" /></button>
@@ -299,8 +300,8 @@ export default function RunView({
               <li>
                 <label className="block text-sm">
                   <span className="font-medium"><span aria-hidden className="me-2 font-mono text-xs text-ink-soft">1</span>{tr(lang, "ed.what", "What happened?")}</span>
-                  <textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} rows={2} maxLength={500} required placeholder={tr(lang, "ed.what_ph", "One plain sentence, as you would tell a colleague.")} className={`${field} mt-1 w-full`} />
-                  <span className="mt-1 block text-right text-xs text-ink-soft tabular-nums rtl:text-left">{form.summary.length} / 500</span>
+                  <textarea dir="auto" value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} rows={2} maxLength={500} required placeholder={tr(lang, "ed.what_ph", "One plain sentence, as you would tell a colleague.")} className={`${field} mt-1 w-full`} />
+                  <span className="mt-1 block text-end text-xs text-ink-soft tabular-nums">{form.summary.length} / 500</span>
                 </label>
               </li>
               <li>
@@ -325,7 +326,7 @@ export default function RunView({
                   {gateOn && form.status === "fix_declared" && (
                     <label className="mt-3 block text-sm">
                       <span className="font-medium">{tr(lang, "ed.evref", "Evidence reference for the fix")}</span>
-                      <input value={form.evidence} onChange={(e) => setForm({ ...form, evidence: e.target.value })} className={`${field} mt-1 w-full font-mono`} placeholder="S1-T0-audit" />
+                      <input value={form.evidence} onChange={(e) => setForm({ ...form, evidence: e.target.value })} className={`${field} mt-1 w-full font-mono`} dir="ltr" placeholder="S1-T0-audit" />
                       <span className="mt-0.5 block text-xs text-ink-soft">{tr(lang, "ed.evref_h", "An event id from this run or a knowledge-base chunk id. Without one the declaration is rejected and lifts nothing. The reference is checked to exist, not to prove the fix.")}</span>
                     </label>
                   )}
@@ -341,7 +342,7 @@ export default function RunView({
                       return (
                         <label key={r} title={ROLES[r].mandate} className={`flex cursor-pointer items-center gap-2 rounded-full border px-3 py-1.5 text-sm has-focus-visible:outline-2 has-focus-visible:outline-offset-2 has-focus-visible:outline-lit ${on ? "border-ink bg-paper-deep" : "border-line hover:border-ink-soft"}`}>
                           <input type="checkbox" className="sr-only" checked={on} onChange={(e) => { setTouched(true); setForm({ ...form, recipients: e.target.checked ? [...form.recipients, r] : form.recipients.filter((x) => x !== r) }); }} />
-                          <span aria-hidden className="text-xs">{on ? "✓" : "+"}</span>{ROLES[r].label}
+                          <span aria-hidden className="text-xs">{on ? "✓" : "+"}</span>{roleName(r)}
                         </label>
                       );
                     })}
@@ -390,7 +391,7 @@ export default function RunView({
           {tamper && (
             <div role="status" className="fx-fade mt-4 rounded-xl border border-dashed border-ember/60 p-4">
               <p className="font-mono text-[11px] tracking-[0.2em] text-ember uppercase">{tr(lang, "log.copy", "Throwaway copy, one record edited")}</p>
-              {tamper.edited && <p className="mt-2 font-mono text-xs text-ink-soft">{tamper.edited.trace_id}: “{tamper.edited.before.slice(0, 60)}” → “{tamper.edited.after.slice(0, 80)}”</p>}
+              {tamper.edited && <p className="mt-2 font-mono text-xs text-ink-soft"><bdi dir="ltr">{tamper.edited.trace_id}</bdi>: “{tamper.edited.before.slice(0, 60)}” <span className="inline-block rtl:rotate-180">→</span> “{tamper.edited.after.slice(0, 80)}”</p>}
               <div className="mt-3"><Chain log={state.log} verification={tamper.verification} /></div>
               <p className="mt-1 text-sm text-ink-soft">{tamper.named ? `${tr(lang, "log.named", "The checker named")} ${tamper.named}. ` : ""}{tr(lang, "log.real_ok", "The real logbook above is still intact: this was a copy.")}</p>
             </div>
@@ -402,15 +403,15 @@ export default function RunView({
 
       <Section eyebrow={tr(lang, "tl.eyebrow", "Timeline")} title={tr(lang, "tl.title", "Step by step")} lede={tr(lang, "tl.lede", "Each step releases new events to only some of the agents. The outcome is the decision the policy engine reaches from what has been shown so far.")}>
         <div {...scrollRegion("rv-prog")} className="relative overflow-x-auto pb-2">
-        <ol id="rv-prog" className="flex gap-2" aria-label="Run progress">
+        <ol id="rv-prog" className="flex gap-2" aria-label={tr(lang, "uc.run.progress", "Run progress")}>
           {slots.map((s, i) => (
             <li key={i} className="min-w-[8.5rem] flex-1">
               <a href={s ? `#step-${s.step}` : undefined} aria-current={s && i === state.steps.length - 1 ? "step" : undefined} className={`block rounded-xl border p-2.5 text-center ${s ? "border-line bg-card hover:border-ink-soft" : "border-dashed border-line text-ink-soft"} ${s && i === state.steps.length - 1 ? "outline-2 outline-offset-2 outline-ink" : ""}`}>
-                <span className="font-mono text-xs">{s ? s.step : `T${i}`}</span>
+                <bdi dir="ltr" className="font-mono text-xs">{s ? s.step : `T${i}`}</bdi>
                 <span className="mt-1.5 flex min-h-6 items-center justify-center">
-                  {s ? (isVerdict(s.outcome) ? <VerdictBadge verdict={s.outcome} /> : <span className="font-mono text-[11px] tabular-nums" title={tr(lang, SANDBOX_KEY, SANDBOX_EN)}>{dash(s.outcome) ? `${dash(s.outcome)!.deployed}/${dash(s.outcome)!.total}` : "·"}</span>) : <span className="text-[11px]">to come</span>}
+                  {s ? (isVerdict(s.outcome) ? <VerdictBadge verdict={s.outcome} /> : <span className="font-mono text-[11px] tabular-nums" title={tr(lang, SANDBOX_KEY, SANDBOX_EN)}>{dash(s.outcome) ? `${dash(s.outcome)!.deployed}/${dash(s.outcome)!.total}` : "·"}</span>) : <span className="text-[11px]">{tr(lang, "uc.run.to_come", "to come")}</span>}
                 </span>
-                {s && <span className={`mt-1 block text-[11px] ${s.match ? "text-lit-deep" : "font-medium text-ember"}`}><span aria-hidden>{s.match ? "✓" : "✕"}</span> {s.match ? "as expected" : "unexpected"}</span>}
+                {s && <span className={`mt-1 block text-[11px] ${s.match ? "text-lit-deep" : "font-medium text-ember"}`}><span aria-hidden>{s.match ? "✓" : "✕"}</span> {s.match ? tr(lang, "uc.run.as_expected", "as expected") : tr(lang, "uc.run.unexpected", "unexpected")}</span>}
               </a>
             </li>
           ))}
@@ -420,23 +421,23 @@ export default function RunView({
         {showGates && (
           <div {...scrollRegion("rv-gates")} className="relative mt-6 overflow-x-auto">
             <table className="w-full min-w-[28rem] border-separate border-spacing-1 text-sm">
-              <caption id="rv-gates" className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">Gate status after each step</caption>
+              <caption id="rv-gates" className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">{tr(lang, "uc.run.gate_after", "Gate status after each step")}</caption>
               <thead>
                 <tr>
-                  <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">Gate</th>
-                  {state.steps.map((s) => <th key={s.step} scope="col" className="px-1 font-mono text-xs font-normal">{s.step}</th>)}
+                  <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">{tr(lang, "uc.run.gate", "Gate")}</th>
+                  {state.steps.map((s) => <th key={s.step} scope="col" className="px-1 font-mono text-xs font-normal"><bdi dir="ltr">{s.step}</bdi></th>)}
                 </tr>
               </thead>
               <tbody>
                 {gateIds.map((g) => (
                   <tr key={g}>
-                    <th scope="row" className="py-1 pe-3 text-start font-normal" title={GATES[g].label}>{g.replaceAll("_", " ")}</th>
+                    <th scope="row" className="py-1 pe-3 text-start font-normal" title={GATES[g].label}>{tr(lang, `gate.${g}`, g.replaceAll("_", " "))}</th>
                     {gateAt(g).map((c, i) => {
                       const m = STATUS_META[c.cur];
                       return (
-                        <td key={i} className="h-9 min-w-12 rounded-md text-center font-mono text-sm" style={{ background: `color-mix(in srgb, ${m.color} ${c.moved ? 22 : 8}%, transparent)`, outline: c.moved ? `1px solid color-mix(in srgb, ${m.color} 60%, transparent)` : undefined }} title={`${m.label}${c.moved ? " (new evidence this step)" : " (carried over)"}`}>
+                        <td key={i} className="h-9 min-w-12 rounded-md text-center font-mono text-sm" style={{ background: `color-mix(in srgb, ${m.color} ${c.moved ? 22 : 8}%, transparent)`, outline: c.moved ? `1px solid color-mix(in srgb, ${m.color} 60%, transparent)` : undefined }} title={`${tr(lang, `status.${c.cur}`, m.label)}${c.moved ? tr(lang, "uc.run.new_ev", " (new evidence this step)") : tr(lang, "uc.run.carried", " (carried over)")}`}>
                           <span aria-hidden style={{ color: m.color }}>{m.glyph}</span>
-                          <span className="sr-only">{m.label}{c.moved ? ", new evidence" : ""}</span>
+                          <span className="sr-only">{tr(lang, `status.${c.cur}`, m.label)}{c.moved ? tr(lang, "uc.run.new_ev_sr", ", new evidence") : ""}</span>
                         </td>
                       );
                     })}
@@ -444,7 +445,7 @@ export default function RunView({
                 ))}
               </tbody>
             </table>
-            <p className="mt-2 font-mono text-[11px] text-ink-soft">✓ pass · ✕ fail · ↻ fix declared, not re-tested · ? no evidence. Outlined cell = evidence arrived this step.</p>
+            <p className="mt-2 font-mono text-[11px] text-ink-soft">{tr(lang, "uc.run.legend", "✓ pass · ✕ fail · ↻ fix declared, not re-tested · ? no evidence. Outlined cell = evidence arrived this step.")}</p>
           </div>
         )}
 
@@ -452,21 +453,21 @@ export default function RunView({
           <div {...scrollRegion("rv-exp")} className="relative mt-8 overflow-x-auto">
             <table className="w-full min-w-[28rem] border-separate border-spacing-y-1 text-sm">
               <caption id="rv-exp" className="mb-2 flex flex-wrap items-center justify-between gap-3 text-start">
-                <span className="font-mono text-[11px] tracking-widest text-ink-soft uppercase">Expected vs actual · {matchSummary(expected)}</span>
-                <button type="button" onClick={downloadExpected} className="text-xs underline underline-offset-2">Download CSV</button>
+                <span className="font-mono text-[11px] tracking-widest text-ink-soft uppercase">{tr(lang, "uc.run.expvsact", "Expected vs actual")} · {tr(lang, "uc.run.match_sum", matchSummary(expected)).replace("{a}", String(expected.filter((r) => r.match).length)).replace("{b}", String(expected.length))}</span>
+                <button type="button" onClick={downloadExpected} className="text-xs underline underline-offset-2">{tr(lang, "uc.run.csv", "Download CSV")}</button>
               </caption>
               <thead>
                 <tr className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">
-                  <th scope="col" className="font-normal">Step</th><th scope="col" className="font-normal">Expected</th><th scope="col" className="font-normal">Actual</th><th scope="col" className="font-normal">Match</th>
+                  <th scope="col" className="font-normal">{tr(lang, "uc.run.col_step", "Step")}</th><th scope="col" className="font-normal">{tr(lang, "uc.run.col_expected", "Expected")}</th><th scope="col" className="font-normal">{tr(lang, "uc.run.col_actual", "Actual")}</th><th scope="col" className="font-normal">{tr(lang, "uc.run.col_match", "Match")}</th>
                 </tr>
               </thead>
               <tbody>
                 {expected.map((r) => (
                   <tr key={r.step}>
-                    <th scope="row" className="py-1 pe-3 text-start font-mono text-xs font-normal">{r.step}</th>
+                    <th scope="row" className="py-1 pe-3 text-start font-mono text-xs font-normal"><bdi dir="ltr">{r.step}</bdi></th>
                     <td className="pe-3">{isVerdict(r.expected) ? <VerdictBadge verdict={r.expected} /> : <span className="text-xs">{r.expected}</span>}</td>
                     <td className="pe-3">{isVerdict(r.actual) ? <VerdictBadge verdict={r.actual} /> : <span className="text-xs">{r.actual}</span>}{isSandboxOutcome(r.actual) && <span className="block text-[11px] text-ember">{tr(lang, SANDBOX_KEY, SANDBOX_EN)}</span>}</td>
-                    <td className={r.match ? "text-lit-deep" : "font-medium text-ember"}><span aria-hidden>{r.match ? "✓" : "✕"}</span> {r.match ? "match" : "differs"}</td>
+                    <td className={r.match ? "text-lit-deep" : "font-medium text-ember"}><span aria-hidden>{r.match ? "✓" : "✕"}</span> {r.match ? tr(lang, "uc.run.match", "match") : tr(lang, "uc.run.differs", "differs")}</td>
                   </tr>
                 ))}
               </tbody>
@@ -477,29 +478,29 @@ export default function RunView({
         {know.length > 1 && (
           <div {...scrollRegion("rv-know")} className="relative mt-8 overflow-x-auto">
             <table className="w-full min-w-[40rem] border-separate border-spacing-1 text-sm">
-              <caption id="rv-know" className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">What each agent knows after each step</caption>
+              <caption id="rv-know" className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">{tr(lang, "uc.run.know_cap", "What each agent knows after each step")}</caption>
               <thead>
                 <tr>
-                  <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">Step</th>
-                  {know.map((a) => <th key={a.role} scope="col" className="px-1 text-start text-xs font-medium" title={ROLES[a.role].mandate}>{ROLES[a.role].label}</th>)}
+                  <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">{tr(lang, "uc.run.col_step", "Step")}</th>
+                  {know.map((a) => <th key={a.role} scope="col" className="px-1 text-start text-xs font-medium" title={ROLES[a.role].mandate}>{roleName(a.role)}</th>)}
                 </tr>
               </thead>
               <tbody>
                 {state.steps.map((s, i) => (
                   <tr key={s.step} className="align-top">
-                    <th scope="row" className="py-1 pe-2 text-start font-mono text-xs font-normal">{s.step}</th>
+                    <th scope="row" className="py-1 pe-2 text-start font-mono text-xs font-normal"><bdi dir="ltr">{s.step}</bdi></th>
                     {know.map((a) => (
                       <td key={a.role} className={`min-w-36 rounded-md border p-1.5 text-xs ${a.received[i].length ? "border-lit/50 bg-lit-soft/30" : "border-dashed border-line text-ink-soft"}`}>
                         {a.received[i].length
-                          ? a.received[i].map((e) => <span key={e.id} className="mb-1 block"><span className="font-mono text-[10px] text-ink-soft">{e.id}</span> {e.summary}</span>)
-                          : <span>nothing new</span>}
+                          ? a.received[i].map((e) => <span key={e.id} className="mb-1 block"><bdi dir="ltr" className="font-mono text-[10px] text-ink-soft">{e.id}</bdi> {e.summary}</span>)
+                          : <span>{tr(lang, "uc.run.nothing_new", "nothing new")}</span>}
                       </td>
                     ))}
                   </tr>
                 ))}
               </tbody>
             </table>
-            <p className="mt-2 font-mono text-[11px] text-ink-soft">Each event reaches only some agents. A blank cell means that agent was told nothing at that step and cannot reason about what it did not see.</p>
+            <p className="mt-2 font-mono text-[11px] text-ink-soft">{tr(lang, "uc.run.know_note", "Each event reaches only some agents. A blank cell means that agent was told nothing at that step and cannot reason about what it did not see.")}</p>
           </div>
         )}
 
@@ -507,30 +508,30 @@ export default function RunView({
           {state.steps.map((s) => (
             <li key={s.step} id={`step-${s.step}`} className={`${card} scroll-mt-6`}>
               <div className="flex flex-wrap items-center justify-between gap-3">
-                <p className="font-mono text-sm font-medium">{s.step} <span className="font-normal text-ink-soft">· released {time(s.released_at)}</span></p>
+                <p className="font-mono text-sm font-medium"><bdi dir="ltr">{s.step}</bdi> <span className="font-normal text-ink-soft">· {tr(lang, "uc.run.released", "released")} <bdi dir="ltr">{time(s.released_at)}</bdi></span></p>
                 <p className={`text-sm font-medium ${s.match ? "text-lit-deep" : "text-ember"}`}>
-                  {s.adhoc && !s.expected ? "ad hoc, not scored" : <><span aria-hidden>{s.match ? "✓" : "✕"}</span> {s.match ? "matches expected" : `expected ${s.expected}`}</>}
+                  {s.adhoc && !s.expected ? tr(lang, "uc.run.adhoc", "ad hoc, not scored") : <><span aria-hidden>{s.match ? "✓" : "✕"}</span> {s.match ? tr(lang, "uc.run.matches_exp", "matches expected") : tr(lang, "uc.run.expected_x", "expected {v}").replace("{v}", s.expected ? tr(lang, `verdict.${s.expected}`, s.expected) : "")}</>}
                 </p>
               </div>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 {isVerdict(s.outcome) && <VerdictBadge verdict={s.outcome} size="lg" />}
-                <p className={`font-display ${isVerdict(s.outcome) ? "text-lg text-ink-soft" : "text-xl"}`}>{isVerdict(s.outcome) ? "verdict after this step" : s.outcome}</p>
+                <p className={`font-display ${isVerdict(s.outcome) ? "text-lg text-ink-soft" : "text-xl"}`}>{isVerdict(s.outcome) ? tr(lang, "uc.run.verdict_after", "verdict after this step") : s.outcome}</p>
               </div>
               {!isVerdict(s.outcome) && <PortfolioBars outcome={s.outcome} lang={lang} />}
               {s.reasons.length > 0 && (
                 <ul className="mt-3 space-y-1 text-sm">
-                  {s.reasons.map((r) => <li key={r} className="flex gap-2"><span aria-hidden className="text-ink-soft">→</span><span>{r}</span></li>)}
+                  {s.reasons.map((r) => <li key={r} className="flex gap-2"><span aria-hidden className="text-ink-soft rtl:rotate-180">→</span><span>{r}</span></li>)}
                 </ul>
               )}
               <div className="mt-4 border-t border-line pt-3">
-                <p className="font-mono text-[10px] tracking-widest text-ink-soft uppercase">Events released this step</p>
+                <p className="font-mono text-[10px] tracking-widest text-ink-soft uppercase">{tr(lang, "uc.run.events_rel", "Events released this step")}</p>
                 <ul className="mt-2 space-y-2 text-sm">
                   {s.events.map((e) => (
                     <li key={e.id} className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                      <span className="font-mono text-xs text-ink-soft">{e.id}</span>
+                      <bdi dir="ltr" className="font-mono text-xs text-ink-soft">{e.id}</bdi>
                       <span className="min-w-0 flex-1 basis-60">{e.summary}</span>
                       {e.gate && e.status && <GateChip gate={e.gate} status={e.status} />}
-                      <span className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-ink-soft">only {e.recipients.join(", ")}</span>
+                      <span className="rounded-full border border-line px-2 py-0.5 font-mono text-[11px] text-ink-soft">{tr(lang, "uc.run.only", "only")} <bdi dir="ltr">{e.recipients.join(", ")}</bdi></span>
                     </li>
                   ))}
                 </ul>
@@ -545,7 +546,7 @@ export default function RunView({
                         <blockquote key={c.chunk_id} className="rounded-lg border border-lit/40 bg-lit-soft/30 p-3">
                           <span className="font-display text-base italic">“{c.quote}”</span>
                           <cite className="mt-1.5 block font-mono text-[11px] text-ink-soft not-italic">
-                            {sources[c.chunk_id] ? <a href={sources[c.chunk_id].url} className="font-sans text-xs text-ink underline underline-offset-2" target="_blank" rel="noreferrer">{sources[c.chunk_id].title}</a> : "source unavailable"} · {c.chunk_id}
+                            {sources[c.chunk_id] ? <a href={sources[c.chunk_id].url} className="font-sans text-xs text-ink underline underline-offset-2" target="_blank" rel="noreferrer">{sources[c.chunk_id].title}</a> : tr(lang, "uc.run.src_unavail", "source unavailable")} · <bdi dir="ltr">{c.chunk_id}</bdi>
                           </cite>
                         </blockquote>
                       ))}
@@ -555,19 +556,19 @@ export default function RunView({
               })()}
             </li>
           ))}
-          {!state.steps.length && <li className={`${card} text-sm text-ink-soft`}>No events released yet. Nothing has been shown to any agent.</li>}
+          {!state.steps.length && <li className={`${card} text-sm text-ink-soft`}>{tr(lang, "uc.run.no_events", "No events released yet. Nothing has been shown to any agent.")}</li>}
         </ol>
       </Section>
 
       <Section
-        eyebrow="Audit trail"
+        eyebrow={tr(lang, "uc.run.audit", "Audit trail")}
         title={`${tr(lang, "trace.title", "Reasoning trace")} (${rows.length})`}
-        lede="What each agent saw, claimed and cited, in order. Evidence quoted from the knowledge base is set apart from the agent's own reasoning."
+        lede={tr(lang, "uc.run.audit_lede", "What each agent saw, claimed and cited, in order. Evidence quoted from the knowledge base is set apart from the agent's own reasoning.")}
         aside={
-          <div className="flex flex-wrap items-center gap-2" role="group" aria-label="Filter by agent">
+          <div className="flex flex-wrap items-center gap-2" role="group" aria-label={tr(lang, "uc.run.filter", "Filter by agent")}>
             {["all", ...agents].map((a) => (
               <button key={a} onClick={() => setAgent(a)} aria-pressed={agent === a}
-                className={`rounded-full border px-3 py-1 text-xs ${agent === a ? "border-ink bg-ink text-paper" : "border-line hover:border-ink-soft"}`}>{a}</button>
+                className={`rounded-full border px-3 py-1 text-xs ${agent === a ? "border-ink bg-ink text-paper" : "border-line hover:border-ink-soft"}`}>{a === "all" ? tr(lang, "uc.run.all", "all") : <bdi dir="ltr">{a}</bdi>}</button>
             ))}
           </div>
         }
@@ -575,24 +576,24 @@ export default function RunView({
         <div className="space-y-6">
           {stepsIds.map((st) => (
             <div key={st}>
-              <h3 className="mb-2 font-mono text-xs tracking-widest text-ink-soft uppercase">Step {st}</h3>
+              <h3 className="mb-2 font-mono text-xs tracking-widest text-ink-soft uppercase">{tr(lang, "uc.run.step", "Step")} <bdi dir="ltr">{st}</bdi></h3>
               <ol className="space-y-3">
                 {rows.filter((r) => r.step === st).map((r) => {
                   const rejected = r.disposition.startsWith("rejected");
                   return (
                     <li key={r.trace_id} className={`rounded-xl border bg-card p-4 ${rejected ? "border-ember/60" : "border-line"}`}>
                       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                        <span className="font-mono text-xs">{r.trace_id}</span>
+                        <bdi dir="ltr" className="font-mono text-xs">{r.trace_id}</bdi>
                         <span className="rounded-md bg-paper-deep px-2 py-0.5 text-xs font-medium">{r.agent}</span>
-                        {r.proposal && <span className="rounded-md border border-line px-2 py-0.5 font-mono text-[11px]">proposes: {r.proposal}</span>}
+                        {r.proposal && <span className="rounded-md border border-line px-2 py-0.5 font-mono text-[11px]">{tr(lang, "uc.run.proposes", "proposes:")} <bdi dir="ltr">{r.proposal}</bdi></span>}
                         {r.disposition !== "accepted" && (
                           <span className={`font-mono text-[11px] ${rejected ? "font-medium text-ember" : "text-ink-soft"}`}>{rejected && <span aria-hidden>✕ </span>}{r.disposition}</span>
                         )}
                       </div>
-                      <p className="mt-2 font-mono text-[11px] text-ink-soft">Saw: {r.inputs_seen.join(", ") || "-"}</p>
+                      <p className="mt-2 font-mono text-[11px] text-ink-soft">{tr(lang, "uc.run.saw", "Saw:")} <bdi dir="ltr">{r.inputs_seen.join(", ") || "-"}</bdi></p>
                       {/* The agent's reasoning: plain text. */}
                       <div className="mt-2 space-y-1.5 text-sm">
-                        <p className="font-mono text-[10px] tracking-widest text-ink-soft uppercase">Agent reasoning</p>
+                        <p className="font-mono text-[10px] tracking-widest text-ink-soft uppercase">{tr(lang, "uc.run.reasoning", "Agent reasoning")}</p>
                         {r.claims.map((c) => (
                           <p key={c.text}>{c.text}{c.evidence.length > 0 && <span className="ms-2 font-mono text-[11px] text-ink-soft">[{c.evidence.join(", ")}]</span>}</p>
                         ))}
@@ -600,13 +601,13 @@ export default function RunView({
                       {/* Evidence: quoted, framed and sourced, so it never reads as the agent's own words. */}
                       {r.kb_citations.length > 0 && (
                         <div className="mt-3 space-y-2">
-                          <p className="font-mono text-[10px] tracking-widest text-ink-soft uppercase">Cited evidence</p>
+                          <p className="font-mono text-[10px] tracking-widest text-ink-soft uppercase">{tr(lang, "uc.run.cited", "Cited evidence")}</p>
                           {r.kb_citations.map((c) => (
                             <blockquote key={c.chunk_id} className="rounded-lg border border-lit/40 bg-lit-soft/30 p-3 text-sm">
                               <span className="font-display text-base italic">“{c.quote}”</span>
                               <cite className="mt-1.5 block font-mono text-[11px] text-ink-soft not-italic">
                                 {sources[c.chunk_id] ? <a href={sources[c.chunk_id].url} className="font-sans text-xs text-ink underline underline-offset-2" target="_blank" rel="noreferrer">{sources[c.chunk_id].title}</a> : "source unavailable"}
-                                {" · "}{c.chunk_id}{sources[c.chunk_id] && ` · sha256 ${sources[c.chunk_id].sha256.slice(0, 10)}…`}
+                                {" · "}<bdi dir="ltr">{c.chunk_id}</bdi>{sources[c.chunk_id] && <> · <bdi dir="ltr" className="break-all">sha256 {sources[c.chunk_id].sha256.slice(0, 10)}…</bdi></>}
                               </cite>
                             </blockquote>
                           ))}
@@ -618,7 +619,7 @@ export default function RunView({
               </ol>
             </div>
           ))}
-          {!rows.length && <p className="text-sm text-ink-soft">No trace records yet.</p>}
+          {!rows.length && <p className="text-sm text-ink-soft">{tr(lang, "uc.run.no_trace", "No trace records yet.")}</p>}
         </div>
       </Section>
     <Tour steps={TOUR} open={tour} onClose={() => setTour(false)} />

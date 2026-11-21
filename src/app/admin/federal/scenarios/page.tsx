@@ -6,7 +6,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { listRuns } from "@/lib/un/runs";
 import { SCENARIOS } from "@/lib/un/scenarios";
 import AdminHeader from "../../AdminHeader";
-import LangShell, { T } from "../_components/Lang";
+import LangShell, { T, TV } from "../_components/Lang";
 import StartRun from "./StartRun";
 
 const WHAT: Record<string, string> = {
@@ -47,9 +47,9 @@ export default async function ScenariosPage() {
                   <span>{s.kind === "gate" ? <T k="sc.kind.gate" en="One use case: a decision at each step" /> : <T k="sc.kind.fed" en="Whole portfolio: a sandbox copy of the dashboard at each step (not the live register)" />}</span>
                   {idx === 0 && <span className="rounded-full border border-lit/50 px-2 py-0.5 text-lit-deep"><T k="sc.first" en="Start with this one" /></span>}
                 </p>
-                <p className="font-display mt-2 text-xl">{s.title}</p>
-                {WHAT[s.id] && <p className="mt-1 max-w-[56ch] text-sm text-ink-soft">{WHAT[s.id]}</p>}
-                <ol className="mt-3 flex items-center gap-1.5" aria-label={`${s.steps.length} steps`}>
+                <p className="font-display mt-2 text-xl"><T k={`ua.sc.${s.id}.title`} en={s.title} /></p>
+                {WHAT[s.id] && <p className="mt-1 max-w-[56ch] text-sm text-ink-soft"><T k={`ua.sc.${s.id}.what`} en={WHAT[s.id]} /></p>}
+                <ol className="mt-3 flex items-center gap-1.5" aria-label={`${s.steps.length} steps`} dir="ltr">
                   {s.steps.map((st) => (
                     <li key={st.step} className="flex h-6 min-w-8 items-center justify-center rounded-md border border-line px-1.5 font-mono text-[10px] text-ink-soft">{st.step}</li>
                   ))}
@@ -66,10 +66,10 @@ export default async function ScenariosPage() {
               <Link href={`/admin/federal/runs/${r.id}`} className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 px-5 py-3.5 text-sm hover:bg-paper-deep/60">
                 <span className="flex flex-wrap items-center gap-3">
                   <span className="rounded-md bg-paper-deep px-2 py-0.5 font-mono text-xs font-medium">{r.scenario_id}</span>
-                  <span>{r.steps} step{r.steps === 1 ? "" : "s"} released</span>
-                  <span className={`rounded-full border px-2 py-0.5 font-mono text-[11px] ${r.done ? "border-lit/50 text-lit-deep" : "border-line text-ink-soft"}`}>{r.done ? "✓ complete" : "in progress"}</span>
+                  <span>{r.steps === 1 ? <T k="ua.sc.step1" en="1 step released" /> : <TV k="ua.sc.steps" en="{n} steps released" v={{ n: r.steps }} />}</span>
+                  <span className={`rounded-full border px-2 py-0.5 font-mono text-[11px] ${r.done ? "border-lit/50 text-lit-deep" : "border-line text-ink-soft"}`}>{r.done ? <>✓ <T k="ua.sc.complete" en="complete" /></> : <T k="ua.sc.progress" en="in progress" />}</span>
                 </span>
-                <span className="text-ink-soft tabular-nums">{new Date(r.created_at).toLocaleString("en-GB", { timeZone: "Asia/Dubai" })}</span>
+                <bdi dir="ltr" className="text-ink-soft tabular-nums">{new Date(r.created_at).toLocaleString("en-GB", { timeZone: "Asia/Dubai" })}</bdi>
               </Link>
             </li>
           ))}

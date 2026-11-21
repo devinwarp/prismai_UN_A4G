@@ -2,13 +2,14 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { computeDashboard, deadlineText } from "@/lib/un/model";
+import { computeDashboard } from "@/lib/un/model";
 import { effectiveGates } from "@/lib/un/gates";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { loadJourneys } from "@/lib/un/journey-store";
 import { loadHitlConfig, loadPolicy, loadUnUseCases } from "@/lib/un/store";
 import AdminHeader from "../AdminHeader";
-import LangShell, { T } from "./_components/Lang";
+import LangShell, { T, TV } from "./_components/Lang";
+import { DeadlineNote } from "./_components/Deadline";
 import CitizenMessageCheck from "./_components/CitizenMessageCheck";
 import FederalPanel from "./FederalPanel";
 
@@ -45,7 +46,7 @@ export default async function FederalPage() {
           {policy.name}
         </h1>
         <p className="mt-2 max-w-[68ch] text-sm text-ink-soft">
-          {policy.jurisdiction} · {policy.target_percent}% of use cases deployed{deadlineText(policy)}
+          {policy.jurisdiction} · <TV k="ua.pg.sub" en="{p}% of use cases deployed" v={{ p: policy.target_percent }} /><DeadlineNote policy={policy} />
         </p>
         <FederalPanel
           policy={policy}

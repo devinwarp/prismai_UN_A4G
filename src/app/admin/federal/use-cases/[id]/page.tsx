@@ -9,7 +9,7 @@ import { loadReports, loadRuns, loadUseCase } from "@/lib/un/sijil-store";
 import { liveConfigFromEnv, liveNode } from "@/lib/un/sijil-live";
 import SijilPanel from "./SijilPanel";
 import UseCaseGates from "./UseCaseGates";
-import LangShell from "../../_components/Lang";
+import LangShell, { T, TV } from "../../_components/Lang";
 import { effectiveGates } from "@/lib/un/gates";
 import { approversForUseCase } from "@/lib/un/approvers-store";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
@@ -30,26 +30,25 @@ async function ChangeHistory({ ext_id }: { ext_id: string }) {
   const v = (ver.data as { ok: boolean; length: number; broken_seq: number | null; reason: string | null }[] | null)?.[0];
   const rows = (data ?? []) as ChangeRow[];
   return (
-    <section className="mx-auto mt-10 max-w-6xl px-4 sm:px-6" aria-label="Change history">
-      <h2 className="text-lg font-semibold">Change history</h2>
+    <section className="mx-auto mt-10 max-w-6xl px-4 sm:px-6">
+      <h2 className="text-lg font-semibold"><T k="uc.ch.title" en="Change history" /></h2>
       <p className="mt-1 text-sm text-ink-soft">
-        Every change to this use case&apos;s stage, verdict or compliant flag is stored with its old and new value in an append-only,
-        hash-chained log. History starts when the log was installed.{" "}
-        {v ? (v.ok ? `✓ Chain verified: ${v.length} records, intact.` : `✕ Chain broken at record ${v.broken_seq}: ${v.reason}`) : ""}
+        <T k="uc.ch.lede" en="Every change to this use case's stage, verdict or compliant flag is stored with its old and new value in an append-only, hash-chained log. History starts when the log was installed." />{" "}
+        {v ? (v.ok ? <TV k="uc.ch.ok" en="✓ Chain verified: {n} records, intact." v={{ n: v.length }} /> : <><TV k="uc.ch.bad" en="✕ Chain broken at record {n}:" v={{ n: v.broken_seq ?? "" }} /> {v.reason}</>) : ""}
       </p>
       {rows.length === 0 ? (
-        <p className="mt-3 text-sm text-ink-soft">No changes recorded for this use case yet.</p>
+        <p className="mt-3 text-sm text-ink-soft"><T k="uc.ch.none" en="No changes recorded for this use case yet." /></p>
       ) : (
         <ul className="mt-3 divide-y divide-line text-sm">
           {rows.map((r) => (
             <li key={r.seq} className="py-2">
-              <span className="tabular-nums text-ink-soft">#{r.seq} · {new Date(r.at).toLocaleString("en-GB", DUBAI)} · {r.actor}</span>
+              <bdi dir="ltr" className="tabular-nums text-ink-soft">#{r.seq} · {new Date(r.at).toLocaleString("en-GB", DUBAI)} · {r.actor}</bdi>
               <div>
                 {Object.entries(r.changes).filter(([k]) => !k.startsWith("verdict_") || k === "verdict").map(([k, c]) => (
-                  <span key={k} className="me-4">{k}: {show(c.from)} → <strong>{show(c.to)}</strong></span>
+                  <span key={k} className="me-4"><bdi dir="ltr">{k}: {show(c.from)} → <strong>{show(c.to)}</strong></bdi></span>
                 ))}
               </div>
-              <code className="text-xs text-ink-soft">{r.hash.slice(0, 16)}…</code>
+              <code dir="ltr" className="block text-start text-xs break-all text-ink-soft">{r.hash.slice(0, 16)}…</code>
             </li>
           ))}
         </ul>
@@ -77,10 +76,10 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
   let liveMode = false;
   try { liveMode = liveConfigFromEnv() !== null; } catch { liveMode = true; /* misconfigured: the pull reports the error */ }
   return (
-    <div>
+    <LangShell>
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <p className="mb-4 text-sm">
-          <Link href="/admin/federal/evals" className="underline underline-offset-4">All use cases side by side</Link>
+          <Link href="/admin/federal/evals" className="underline underline-offset-4"><T k="uc.pg.all" en="All use cases side by side" /></Link>
         </p>
         <SijilPanel
           uc={uc}
@@ -95,13 +94,13 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
           canEdit={profile.role === "admin"}
         />
       </main>
-      <LangShell>
+      <div>
         <div className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
           <UseCaseGates useCaseId={id} ext={uc.ext_id} eff={eff} runGates={verdictRun?.state.state?.gates ?? {}} canEdit={profile.role === "admin"} approvers={await approversForUseCase(profile.org_id, id)} />
         </div>
-      </LangShell>
+      </div>
       <ChangeHistory ext_id={uc.ext_id} />
       <div className="h-12" />
-    </div>
+    </LangShell>
   );
 }
