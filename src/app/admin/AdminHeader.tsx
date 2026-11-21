@@ -2,6 +2,7 @@ import Link from "next/link";
 import DevDbBanner from "@/components/DevDbBanner";
 import PrismMark from "@/components/PrismMark";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
+import SignOut from "./SignOut";
 
 export default function AdminHeader({
   active,
@@ -55,7 +56,7 @@ export default function AdminHeader({
               </>
             )}
             <form action="/auth/signout" method="post">
-              <button className="text-ink-soft hover:text-ink">Sign out</button>
+              <SignOut />
             </form>
           </nav>
         </div>

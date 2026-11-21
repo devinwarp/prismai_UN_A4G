@@ -114,7 +114,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
         </ol>
         <p className="mt-2 text-xs text-ink-soft">
           Active: <strong>{rs.name}</strong>. Cap: {rs.capAutonomy === "always" ? "every process is capped at GO_SUPERVISED" : "client-facing processes are capped at GO_SUPERVISED"}.
-          Base gates: {rs.gates.map((g) => <span key={g} className={`${chip} me-1`}>{g}</span>)}
+          Base gates: {rs.gates.map((g) => <span key={g}><span className={`${chip} me-1`}>{g}</span>{" "}</span>)}
           {rs.highRisk && <> Rights-affecting processes escalate: {rs.highRisk.label}.</>}
         </p>
 

@@ -122,3 +122,8 @@ export function DataTableAlt({ caption, head, rows }: { caption: string; head: s
     </details>
   );
 }
+
+/** Props for a horizontally scrolling wrapper: focusable so a keyboard user can scroll it (WCAG 2.1.1, axe
+ * scrollable-region-focusable), named by the table caption. A spread because jsx-a11y's no-noninteractive-tabindex
+ * does not know about scroll regions. */
+export const scrollRegion = (captionId: string) => ({ role: "region", tabIndex: 0, "aria-labelledby": captionId });

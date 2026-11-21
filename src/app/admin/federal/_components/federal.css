@@ -44,6 +44,10 @@
   pointer-events: none;
 }
 .fed .gloss:is(:hover, :focus-visible) > .gloss-tip { opacity: 1; visibility: visible; }
+/* Phone width: the hint is a bottom sheet, so an anchored tip can never push the page sideways. */
+@media (max-width: 40rem) {
+  .fed .gloss-tip { position: fixed; inset-inline: 1rem; inset-block: auto 1rem; width: auto; max-width: none; }
+}
 
 /* ---- Pipeline: check -> decide -> sign ---- */
 .fed .pipe-link { position: relative; height: 2px; flex: 1; background: var(--color-line); overflow: hidden; }

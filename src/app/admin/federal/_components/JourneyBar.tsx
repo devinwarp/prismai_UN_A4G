@@ -31,7 +31,7 @@ const SEGMENT: Record<string, StageId> = { sop: "sop", evals: "evals", tuning: "
 const PATH: Record<StageId, string> = { sop: "/sop", gates: "/sop?stage=gates#risk", verdict: "", evals: "/evals", tuning: "/tuning", approval: "/tuning?stage=approval", production: "/production" };
 export const stageHref = (base: string, id: StageId): string => base + PATH[id];
 
-function useStoredLang(): Lang {
+export function useStoredLang(): Lang {
   const [lang, setLang] = useState<Lang>("en");
   useEffect(() => {
     const read = () => {

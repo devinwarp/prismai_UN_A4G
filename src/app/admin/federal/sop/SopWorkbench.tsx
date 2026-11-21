@@ -130,7 +130,7 @@ export default function SopWorkbench({ samples, canEdit, uc02Id }: { samples: Do
             <div key={x.l}>
               <dd className="font-display text-4xl leading-none tabular-nums">{x.v}</dd>
               <dt className="mt-2 text-sm font-medium">{x.l}</dt>
-              <p className="mt-0.5 text-xs text-ink-soft">{x.s}</p>
+              <dd className="mt-0.5 text-xs text-ink-soft">{x.s}</dd>
             </div>
           ))}
         </dl>

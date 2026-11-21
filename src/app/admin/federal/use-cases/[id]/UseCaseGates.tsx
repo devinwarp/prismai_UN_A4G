@@ -2,7 +2,7 @@ import Link from "next/link";
 import { evidenceFor, metricEvidence, type Effective } from "@/lib/un/gates";
 import type { GateStatus } from "@/lib/un/policy";
 import { T, TV } from "../../_components/Lang";
-import { GateChip, Section } from "../../_components/ui";
+import { GateChip, scrollRegion, Section } from "../../_components/ui";
 import { GateActions } from "./GateActions";
 
 const chip = "inline-flex items-center rounded-md bg-paper-deep px-1.5 py-0.5 font-mono text-[11px]";
@@ -20,9 +20,9 @@ export default function UseCaseGates({ useCaseId, ext, eff, runGates, canEdit }:
         <TV k="gt.uc.count" en="{n} gates apply, {m} added beyond the rule set." v={{ n: eff.gates.length, m: eff.added.length }} />{" "}
         <Link href="/admin/federal/gates" className="underline"><T k="gt.uc.catalogue" en="Gate catalogue and log" /></Link>
       </p>
-      <div className="overflow-x-auto rounded-2xl border border-line bg-card">
+      <div {...scrollRegion("gt-uc-cap")} className="overflow-x-auto rounded-2xl border border-line bg-card">
         <table className="w-full min-w-[44rem] text-sm">
-          <caption className="sr-only"><T k="gt.uc.cap" en="Effective gates with the reason each applies and the evidence so far" /></caption>
+          <caption id="gt-uc-cap" className="sr-only"><T k="gt.uc.cap" en="Effective gates with the reason each applies and the evidence so far" /></caption>
           <thead className="text-start font-mono text-[11px] tracking-wide text-ink-soft uppercase">
             <tr>
               <th scope="col" className="px-4 py-3 text-start font-normal"><T k="gt.col.gate" en="Gate" /></th>

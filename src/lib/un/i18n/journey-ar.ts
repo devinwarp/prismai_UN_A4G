@@ -1,6 +1,7 @@
 // Arabic strings for the journey bar and the job-profile screen. DRAFT translations for review by a native
 // speaker, like the rest of dict.ts. Spread into AR there. Placeholders such as {n} are filled by TV in Lang.tsx.
 export const JOURNEY_AR: Record<string, string> = {
+  "nav.signout": "تسجيل الخروج",
   "jb.label": "المسار من الإجراء إلى التشغيل",
   "jb.counter": "اكتملت {d} من 7 مراحل، و{w} بانتظار إجراء",
   "jb.group.define": "التحديد",

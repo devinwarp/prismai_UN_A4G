@@ -47,7 +47,7 @@ export default async function EvalsOverview() {
                 <article key={u.id} className={card} aria-label={u.title}>
                   <p className="font-mono text-[11px] tracking-wide text-ink-soft uppercase">{u.ext_id} · {u.entity}</p>
                   <h2 className="mt-1 text-lg font-semibold">{u.title}</h2>
-                  <p className="mt-2"><JourneyLine journey={journeys.get(u.id)!} /></p>
+                  <div className="mt-2"><JourneyLine journey={journeys.get(u.id)!} /></div>
                   {!latest || !al ? (
                     <p className="mt-3 text-sm text-ink-soft"><T k="evo.norun" en="No run yet." /></p>
                   ) : (

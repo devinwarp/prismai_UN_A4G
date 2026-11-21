@@ -6,7 +6,7 @@ import { useState } from "react";
 import type { UnUseCaseState } from "@/lib/un/model";
 import { GOAL_ALIGNMENT_FORMULA, type EntityGoal } from "@/lib/un/goals";
 import { CRITERIA, HARD, PROFILES, type Attestation, type Profile, type SijilRun, type Thresholds } from "@/lib/un/sijil";
-import { Section, VerdictBadge, btnGhost, btnPrimary, card, field } from "../../_components/ui";
+import { scrollRegion, Section, VerdictBadge, btnGhost, btnPrimary, card, field } from "../../_components/ui";
 import { MetricChart, RejectBars, RunProgress, pct } from "./SijilCharts";
 
 type Report = { id: string; runs: number; pass: boolean; content: string; sha256: string; created_at: string };
@@ -183,9 +183,9 @@ export default function SijilPanel({ uc, runs, goals, attestation: a, thresholds
       </div>
 
       <Section eyebrow="Data" title={`Runs (${runs.length})`} lede={hasRuns ? "Latest first. ✕ marks a value outside its threshold or a hard-criterion reject; this table is the text version of the charts." : undefined}>
-        <div className="relative max-h-[28rem] overflow-auto rounded-2xl border border-line bg-card">
+        <div {...scrollRegion("sj-runs-cap")} className="relative max-h-[28rem] overflow-auto rounded-2xl border border-line bg-card">
           <table className="w-full min-w-[40rem] text-sm">
-            <caption className="sr-only">Pilot runs with accuracy, hallucination, alignment and rejects</caption>
+            <caption id="sj-runs-cap" className="sr-only">Pilot runs with accuracy, hallucination, alignment and rejects</caption>
             <thead className="sticky top-0 bg-card text-start font-mono text-[11px] tracking-wide text-ink-soft uppercase shadow-[0_1px_0_var(--color-line)]">
               <tr>
                 <th scope="col" className="px-4 py-3 font-normal">Run</th><th scope="col" className="font-normal">Actions</th>

@@ -9,7 +9,7 @@ import { GATES } from "@/lib/un/policy";
 import { RULESETS } from "@/lib/un/rulesets";
 import AdminHeader from "../../AdminHeader";
 import LangShell, { T, TV } from "../_components/Lang";
-import { card, Section } from "../_components/ui";
+import { card, scrollRegion, Section } from "../_components/ui";
 import { GateForm } from "./GateForm";
 
 export const metadata: Metadata = { title: "Gates and rule sets", robots: { index: false, follow: false } };
@@ -45,9 +45,9 @@ export default async function GatesPage() {
 
           <div className="mt-10 space-y-12">
             <Section id="gates" eyebrow={<T k="gt.s.gates" en="Gates" />} title={<T k="gt.s.cat" en="The gate catalogue" />}>
-              <div className="overflow-x-auto rounded-2xl border border-line bg-card">
+              <div {...scrollRegion("gt-cap")} className="overflow-x-auto rounded-2xl border border-line bg-card">
                 <table className="w-full min-w-[52rem] text-sm">
-                  <caption className="sr-only"><T k="gt.cap" en="Gates with category, owner, evidence source and the rule sets that require them" /></caption>
+                  <caption id="gt-cap" className="sr-only"><T k="gt.cap" en="Gates with category, owner, evidence source and the rule sets that require them" /></caption>
                   <thead className="text-start font-mono text-[11px] tracking-wide text-ink-soft uppercase">
                     <tr>
                       <th scope="col" className="px-4 py-3 text-start font-normal"><T k="gt.col.gate" en="Gate" /></th>
