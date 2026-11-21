@@ -1,5 +1,6 @@
 import type { HitlFacts, HitlRuleId } from "./hitl.ts";
 import { hitlBreaches } from "./hitl.ts";
+import type { GateDef } from "./governance.ts";
 import { GATES, decide, type Decision, type GateId, type GateState, type Requested } from "./policy.ts";
 import { DERIVED_GAPS, RULESETS, UAE_FEDERAL, gateDivergence, hitlConfigFor, resolve, type DerivedGap, type GateDivergence, type RuleSet } from "./rulesets.ts";
 import { S1 } from "./scenarios.ts";
@@ -37,12 +38,19 @@ export function s1EvidenceAt(step: string): { gates: GateState; hitlUnmet: HitlR
 }
 
 // ---- Many processes, one policy layer (jurisdiction) -----------------------
-export interface ProcessInput { id: string; entity: string; facts: HitlFacts; requested: Requested; gates: GateState; hitlUnmet: HitlRuleId[] }
+export interface ProcessInput {
+  id: string; entity: string; facts: HitlFacts; requested: Requested; gates: GateState; hitlUnmet: HitlRuleId[];
+  /** Gates this process adds beyond the rule set (gates.ts effective gates), with the catalog that defines them. */
+  useCaseGates?: GateId[];
+  catalog?: Record<GateId, GateDef>;
+}
 export interface ProcessRow {
   input: ProcessInput;
   highRisk: boolean;
   /** Gates this process must clear under the active policy. */
   required: GateId[];
+  /** How many gates this process adds beyond the shipped rule set ("N gates added"). */
+  gatesAdded: number;
   /** Subset of `required` that the process attributes added (vs a plain internal process). */
   addedByAttributes: GateId[];
   capped: boolean;
@@ -57,7 +65,7 @@ const requiredGates = (rs: RuleSet, clientFacing: boolean): GateId[] =>
 function judge(base: RuleSet, p: ProcessInput) {
   const { rs, highRisk } = resolve(base, p.facts);
   const breaches = hitlBreaches(hitlConfigFor(rs, p.entity), p.entity, p.facts, p.hitlUnmet);
-  const decision = decide({ clientFacing: p.facts.client_facing, requested: p.requested, gates: p.gates, hitlBreaches: breaches, ruleset: rs });
+  const decision = decide({ clientFacing: p.facts.client_facing, requested: p.requested, gates: p.gates, hitlBreaches: breaches, ruleset: rs, useCaseGates: p.useCaseGates, catalog: p.catalog });
   return { rs, highRisk, decision };
 }
 
@@ -67,10 +75,11 @@ export function compareProcesses(base: RuleSet, ps: ProcessInput[]): ProcessRow[
   const baseline = requiredGates(plain, false);
   return ps.map((p) => {
     const { rs, highRisk, decision } = judge(base, p);
-    const required = requiredGates(rs, p.facts.client_facing);
+    const added = (p.useCaseGates ?? []).filter((g) => !requiredGates(rs, p.facts.client_facing).includes(g));
+    const required = [...requiredGates(rs, p.facts.client_facing), ...added];
     return {
-      input: p, highRisk, required, decision,
-      addedByAttributes: required.filter((g) => !baseline.includes(g)),
+      input: p, highRisk, required, decision, gatesAdded: added.length,
+      addedByAttributes: required.filter((g) => !baseline.includes(g) && !added.includes(g)),
       capped: p.facts.client_facing || rs.capAutonomy === "always",
       uae: judge(UAE_FEDERAL, p).decision,
     };

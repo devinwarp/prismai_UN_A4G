@@ -2,6 +2,9 @@ import { NextResponse } from "next/server";
 import { bad, notFound, requireAdmin } from "@/lib/api-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isUuid } from "@/lib/un/model";
+import { approvalBlockers, effectiveGates, evidenceFor } from "@/lib/un/gates";
+import { factsOf, loadGov } from "@/lib/un/gates-store";
+import { loadRun } from "@/lib/un/runs";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { appendEntry, approvalState, configOf, verifyChain } from "@/lib/un/tuning";
 import { appendLog, loadLog } from "@/lib/un/tuning-store";
@@ -26,6 +29,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!v.ok) return NextResponse.json({ error: `The tuning log failed verification at entry ${v.broken_seq}: ${v.reason}` }, { status: 409 });
   if (approvalState(log) !== "ready") return NextResponse.json({ error: "Nothing is certified and waiting for a decision." }, { status: 409 });
 
+  // Gates added to this use case (or required by an admin-added gate) must all be pass, or waived, before approval.
+  // A use case with no added gates is unaffected: its rule-set gates are already enforced by its signed verdict.
+  if (b.decision === "SIGN") {
+    const eff = effectiveGates({ ext: uc.ext_id, facts: factsOf(uc), gov: await loadGov(who.org_id!) });
+    if (eff.added.length) {
+      const run = uc.verdict_run_id ? await loadRun(who.org_id!, uc.verdict_run_id) : null;
+      const blockers = approvalBlockers(eff, evidenceFor(eff, uc.ext_id, run?.state.state?.gates ?? {}));
+      if (blockers.length) return NextResponse.json({ error: `Approval needs every effective gate to pass. Not yet passing: ${blockers.map((x) => `${x.label} (${x.status})`).join("; ")}.` }, { status: 409 });
+    }
+  }
   const signer = who.email ?? who.id;
   const entry = appendEntry(log[log.length - 1], "approval", signer, { version: configOf(log)?.version ?? null, decision: b.decision, signer, comment }, new Date().toISOString());
   const err = await appendLog(who.org_id!, id, [entry]);

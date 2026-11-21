@@ -74,6 +74,7 @@ class Query implements PromiseLike<Result> {
   neq(k: string, v: unknown) { this.filters.push((r) => r[k] !== v); return this; }
   in(k: string, v: unknown[]) { this.filters.push((r) => v.includes(r[k])); return this; }
   is(k: string, v: unknown) { this.filters.push((r) => (r[k] ?? null) === v); return this; }
+  like(k: string, pat: string) { const re = new RegExp(`^${pat.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*").replace(/_/g, ".")}$`); this.filters.push((r) => re.test(String(r[k] ?? ""))); return this; }
   order(k: string, o: { ascending?: boolean } = {}) { this.ord = [k, o.ascending !== false]; return this; }
   limit(n: number) { this.lim = n; return this; }
   maybeSingle() { this.shape = "maybe"; return this; }

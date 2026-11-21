@@ -9,6 +9,11 @@ import { loadReports, loadRuns, loadUseCase } from "@/lib/un/sijil-store";
 import AdminHeader from "../../../AdminHeader";
 import { liveConfigFromEnv, liveNode } from "@/lib/un/sijil-live";
 import SijilPanel from "./SijilPanel";
+import UseCaseGates from "./UseCaseGates";
+import LangShell from "../../_components/Lang";
+import { effectiveGates } from "@/lib/un/gates";
+import { factsOf, loadGov } from "@/lib/un/gates-store";
+import { loadRun } from "@/lib/un/runs";
 
 const DUBAI = { timeZone: "Asia/Dubai" } as const;
 interface ChangeRow { seq: number; at: string; op: string; changes: Record<string, { from: unknown; to: unknown }>; actor: string; hash: string }
@@ -68,6 +73,8 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
     loadReports(profile.org_id, id),
     createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle(),
   ]);
+  const eff = effectiveGates({ ext: uc.ext_id, facts: factsOf(uc), gov: await loadGov(profile.org_id) });
+  const verdictRun = uc.verdict_run_id ? await loadRun(profile.org_id, uc.verdict_run_id) : null;
   let liveMode = false;
   try { liveMode = liveConfigFromEnv() !== null; } catch { liveMode = true; /* misconfigured: the pull reports the error */ }
   return (
@@ -92,6 +99,11 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
           canEdit={profile.role === "admin"}
         />
       </main>
+      <LangShell>
+        <div className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
+          <UseCaseGates useCaseId={id} ext={uc.ext_id} eff={eff} runGates={verdictRun?.state.state?.gates ?? {}} canEdit={profile.role === "admin"} />
+        </div>
+      </LangShell>
       <ChangeHistory ext_id={uc.ext_id} />
       <div className="h-12" />
     </div>

@@ -8,11 +8,13 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { loadChunks } from "@/lib/un/kb";
 import { parseUseCases } from "@/lib/un/model";
 import { loadUnUseCases } from "@/lib/un/store";
+import { effectiveGates } from "@/lib/un/gates";
+import { loadGov } from "@/lib/un/gates-store";
 import { compareProcesses, flatEvidence, s1EvidenceAt, type ProcessInput } from "@/lib/un/compare";
 import { GATES } from "@/lib/un/policy";
 import { DERIVED_GAPS, RULESETS } from "@/lib/un/rulesets";
 import AdminHeader from "../../AdminHeader";
-import LangShell, { T } from "../_components/Lang";
+import LangShell, { T, TV } from "../_components/Lang";
 import { VerdictBadge } from "../_components/ui";
 
 export const metadata: Metadata = { title: "Compare business processes", robots: { index: false, follow: false } };
@@ -48,9 +50,12 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
   const allPass = one(sp.ev) === "pass";
   const chosen = all.filter((u) => pick.includes(u.ext_id));
 
+  const gov = await loadGov(profile.org_id);
   const inputs: ProcessInput[] = chosen.map((u) => {
     const ev = u.ext_id === "UC02" ? s1EvidenceAt(step) : { gates: flatEvidence(allPass), hitlUnmet: [] };
-    return { id: u.ext_id, entity: u.entity, facts: { client_facing: u.client_facing, affects_rights: rightsSet.has(u.ext_id), irreversible: u.irreversible }, requested: "GO_AUTONOMOUS", ...ev };
+    const facts = { client_facing: u.client_facing, affects_rights: rightsSet.has(u.ext_id), irreversible: u.irreversible };
+    const eff = effectiveGates({ ext: u.ext_id, facts, ruleset: rs, gov });
+    return { id: u.ext_id, entity: u.entity, facts, requested: "GO_AUTONOMOUS", ...ev, useCaseGates: eff.added, catalog: eff.catalog };
   });
   const rows = compareProcesses(rs, inputs);
   const isUae = rs.id === "uae-federal";
@@ -170,7 +175,8 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
                 const cell = `bg-card px-3 py-3 align-top first:rounded-s-xl last:rounded-e-xl ${diff ? "border-y-2 border-ember first:border-s-2 last:border-e-2" : "border-y border-line first:border-s last:border-e"}`;
                 return (
                   <tr key={r.input.id}>
-                    <td className={`${cell} w-[30%]`}><span className="font-mono text-xs">{r.input.id}</span> <span className="font-medium">{u.title}</span><br /><span className="text-sm text-ink-soft">{u.entity}</span></td>
+                    <td className={`${cell} w-[30%]`}><span className="font-mono text-xs">{r.input.id}</span> <span className="font-medium">{u.title}</span><br /><span className="text-sm text-ink-soft">{u.entity}</span>
+                      {r.gatesAdded > 0 && <><br /><span className={`${chip} mt-1 inline-block`} title="This process is judged under more gates than the shipped rule set, so compare its figures with care."><span aria-hidden>+ </span><TV k="gt.added" en="{n} gates added" v={{ n: r.gatesAdded }} /></span></>}</td>
                     <td className={`${cell} w-[24%]`}>
                       <VerdictBadge verdict={r.decision.verdict as never} size="lg" />
                       {diff && <p className="mt-2 text-sm font-medium text-ember"><span aria-hidden>▲ </span>Changed. UAE: <span className="font-mono">{r.uae.verdict}</span></p>}
@@ -184,7 +190,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
                             {f.client_facing && <span className={chip}>client-facing</span>} {f.affects_rights && <span className={chip}>rights</span>} {f.irreversible && <span className={chip}>irreversible</span>}
                             {!f.client_facing && !f.affects_rights && !f.irreversible && "none"}</p>
                           <p><span className="font-mono text-[11px] text-ink-soft uppercase">Required checks </span>
-                            {r.required.map((g) => <span key={g} title={GATES[g].label} className={`${chip} me-1 ${r.addedByAttributes.includes(g) ? "bg-ember/15 font-semibold" : ""}`}>{r.addedByAttributes.includes(g) ? "+ " : ""}{g}</span>)}</p>
+                            {r.required.map((g) => <span key={g} title={r.input.catalog?.[g]?.label ?? GATES[g]?.label} className={`${chip} me-1 ${r.addedByAttributes.includes(g) ? "bg-ember/15 font-semibold" : ""}`}>{r.addedByAttributes.includes(g) ? "+ " : ""}{g}</span>)}</p>
                           <p><span className="font-mono text-[11px] text-ink-soft uppercase">Autonomy cap </span><span className="font-mono text-xs">{r.capped ? "GO_SUPERVISED" : "none"}</span> · <span className="text-ink-soft">{r.input.id === "UC02" ? `evidence S1 ${step}` : allPass ? "all checks pass" : "no evidence yet"}</span></p>
                           {note.length > 0 && <p className="text-ink-soft">{note.join("; ")}.</p>}
                         </div>
@@ -197,7 +203,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
           </table>
         </div>
         {rows.length === 0 && <p className="mt-2 text-sm">No processes selected.</p>}
-        <p className="mt-2 text-xs text-ink-soft">Checks marked + are required because of the process attributes. {rs.notIngested.length > 0 && `Cited by name only, not ingested: ${rs.notIngested.join("; ")}.`} Sources: {cites(Object.values(rs.cites).flat())}{rs.highRisk && cites(rs.highRisk.cites)}</p>
+        <p className="mt-2 text-xs text-ink-soft">Checks marked + are required because of the process attributes. {rs.notIngested.length > 0 && `Cited by name only, not ingested: ${rs.notIngested.join("; ")}.`} Sources: {cites(Object.values(rs.cites).flatMap((c) => c ?? []))}{rs.highRisk && cites(rs.highRisk.cites)}</p>
 
         <h2 className="font-display mt-10 text-3xl font-medium tracking-tight">Resulting gaps</h2>
         <p className="mt-1 text-xs text-ink-soft">Curated gaps this policy touches, linked to <Link href="/admin/federal/gaps" className="underline">the gap page</Link>, then gaps derived by this comparison (not in kb/gaps.json).</p>
