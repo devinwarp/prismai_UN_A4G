@@ -1,0 +1,277 @@
+{
+  "meta": {
+    "model": "google/gemini-3.1-flash-lite",
+    "base": "https://openrouter.ai/api/v1",
+    "n": 20,
+    "dry": false,
+    "at": "2026-11-20T12:32:25.044Z"
+  },
+  "rows": [
+    {
+      "scenario": "S1",
+      "runs": 20,
+      "path_match": {
+        "k": 20,
+        "n": 20,
+        "p": 1,
+        "lo": 0.8388698745050667,
+        "hi": 1
+      },
+      "step_match": {
+        "k": 100,
+        "n": 100,
+        "p": 1,
+        "lo": 0.9630051925239981,
+        "hi": 0.9999999999999999
+      },
+      "citation_exists": {
+        "k": 234,
+        "n": 234,
+        "p": 1,
+        "lo": 0.9838480736759255,
+        "hi": 1
+      },
+      "citation_retrieved": {
+        "k": 234,
+        "n": 234,
+        "p": 1,
+        "lo": 0.9838480736759255,
+        "hi": 1
+      },
+      "rejected": {
+        "k": 31,
+        "n": 207,
+        "p": 0.1497584541062802,
+        "lo": 0.10755260195901312,
+        "hi": 0.2047273276184517
+      },
+      "model_json_failures": {
+        "k": 0,
+        "n": 220,
+        "p": 0,
+        "lo": 0,
+        "hi": 0.017162136081943655
+      },
+      "accepted_per_run": 8.8,
+      "proposed_per_run": 12.8,
+      "dropped_per_run": 2.45,
+      "added_evidence": {
+        "k": 95,
+        "n": 176,
+        "p": 0.5397727272727273,
+        "lo": 0.4660727025222357,
+        "hi": 0.6117735799841477
+      },
+      "tokens_per_run": 13173.55,
+      "seconds_per_run": 18.560700000000004,
+      "cost_per_run": 0.007013949999999994,
+      "cost_total": 0.14027899999999988
+    },
+    {
+      "scenario": "S2",
+      "runs": 20,
+      "path_match": {
+        "k": 20,
+        "n": 20,
+        "p": 1,
+        "lo": 0.8388698745050667,
+        "hi": 1
+      },
+      "step_match": {
+        "k": 120,
+        "n": 120,
+        "p": 1,
+        "lo": 0.9689797289440706,
+        "hi": 1
+      },
+      "citation_exists": {
+        "k": 189,
+        "n": 190,
+        "p": 0.9947368421052631,
+        "lo": 0.9707937115912395,
+        "hi": 0.9990703423579641
+      },
+      "citation_retrieved": {
+        "k": 187,
+        "n": 190,
+        "p": 0.9842105263157894,
+        "lo": 0.9546126771112601,
+        "hi": 0.9946159714347692
+      },
+      "rejected": {
+        "k": 23,
+        "n": 232,
+        "p": 0.09913793103448276,
+        "lo": 0.06697139887763606,
+        "hi": 0.144363666691797
+      },
+      "model_json_failures": {
+        "k": 1,
+        "n": 260,
+        "p": 0.0038461538461538464,
+        "lo": 0.0006792460665055958,
+        "hi": 0.021461310995004035
+      },
+      "accepted_per_run": 10.45,
+      "proposed_per_run": 17.8,
+      "dropped_per_run": 6.2,
+      "added_evidence": {
+        "k": 87,
+        "n": 209,
+        "p": 0.41626794258373206,
+        "lo": 0.3515371260160294,
+        "hi": 0.48402133623946964
+      },
+      "tokens_per_run": 16845.5,
+      "seconds_per_run": 24.13165,
+      "cost_per_run": 0.009055312499999996,
+      "cost_total": 0.1811062499999999
+    },
+    {
+      "scenario": "S4",
+      "runs": 20,
+      "path_match": {
+        "k": 20,
+        "n": 20,
+        "p": 1,
+        "lo": 0.8388698745050667,
+        "hi": 1
+      },
+      "step_match": {
+        "k": 120,
+        "n": 120,
+        "p": 1,
+        "lo": 0.9689797289440706,
+        "hi": 1
+      },
+      "citation_exists": {
+        "k": 245,
+        "n": 251,
+        "p": 0.9760956175298805,
+        "lo": 0.9488379069728161,
+        "hi": 0.9889995575541686
+      },
+      "citation_retrieved": {
+        "k": 236,
+        "n": 251,
+        "p": 0.9402390438247012,
+        "lo": 0.9037518963373127,
+        "hi": 0.9634534578905686
+      },
+      "rejected": {
+        "k": 25,
+        "n": 214,
+        "p": 0.11682242990654206,
+        "lo": 0.08039250914137558,
+        "hi": 0.166766894755768
+      },
+      "model_json_failures": {
+        "k": 3,
+        "n": 260,
+        "p": 0.011538461538461539,
+        "lo": 0.003931661276428175,
+        "hi": 0.03336950730350766
+      },
+      "accepted_per_run": 9.45,
+      "proposed_per_run": 16.1,
+      "dropped_per_run": 5.4,
+      "added_evidence": {
+        "k": 102,
+        "n": 189,
+        "p": 0.5396825396825397,
+        "lo": 0.46853928033982906,
+        "hi": 0.6092447662559263
+      },
+      "tokens_per_run": 16666.6,
+      "seconds_per_run": 25.42455000000001,
+      "cost_per_run": 0.008841212500000004,
+      "cost_total": 0.17682425000000007
+    }
+  ],
+  "tallies": {
+    "S1": {
+      "runs": 20,
+      "pathMatch": 20,
+      "steps": 100,
+      "stepMatch": 100,
+      "llmMessages": 207,
+      "rejected": 31,
+      "citedKb": 234,
+      "citedKbExists": 234,
+      "citedKbRetrieved": 234,
+      "calls": 220,
+      "parseFailures": 0,
+      "reasons": {},
+      "proposed": 256,
+      "kept": 176,
+      "added": 95,
+      "tokensIn": 203942,
+      "tokensOut": 59529,
+      "seconds": 371.21400000000006,
+      "cost": 0.14027899999999988,
+      "costCalls": 220,
+      "flips": 0,
+      "stepMisses": {},
+      "rejectedCitation": 0,
+      "rejectedOther": 31
+    },
+    "S2": {
+      "runs": 20,
+      "pathMatch": 20,
+      "steps": 120,
+      "stepMatch": 120,
+      "llmMessages": 232,
+      "rejected": 23,
+      "citedKb": 190,
+      "citedKbExists": 189,
+      "citedKbRetrieved": 187,
+      "calls": 260,
+      "parseFailures": 1,
+      "reasons": {
+        "json (40 chars, ends \"ERDICT\\\",\\n    \\\"gate\\\":\")": 1
+      },
+      "proposed": 356,
+      "kept": 209,
+      "added": 87,
+      "tokensIn": 259407,
+      "tokensOut": 77503,
+      "seconds": 482.633,
+      "cost": 0.1811062499999999,
+      "costCalls": 260,
+      "flips": 0,
+      "stepMisses": {},
+      "rejectedCitation": 0,
+      "rejectedOther": 23
+    },
+    "S4": {
+      "runs": 20,
+      "pathMatch": 20,
+      "steps": 120,
+      "stepMatch": 120,
+      "llmMessages": 214,
+      "rejected": 25,
+      "citedKb": 251,
+      "citedKbExists": 245,
+      "citedKbRetrieved": 236,
+      "calls": 260,
+      "parseFailures": 3,
+      "reasons": {
+        "json (56 chars, ends \": \\\"VERDICT\\\",\\n      \\\"\")": 1,
+        "json (70 chars, ends \"DATE\\\",\\n      \\\"gate\\\":\")": 1,
+        "json (62 chars, ends \"POSE\\\",\\n      \\\"gate\\\":\")": 1
+      },
+      "proposed": 322,
+      "kept": 189,
+      "added": 102,
+      "tokensIn": 258539,
+      "tokensOut": 74793,
+      "seconds": 508.4910000000002,
+      "cost": 0.17682425000000007,
+      "costCalls": 260,
+      "flips": 0,
+      "stepMisses": {},
+      "rejectedCitation": 0,
+      "rejectedOther": 25
+    }
+  }
+}
