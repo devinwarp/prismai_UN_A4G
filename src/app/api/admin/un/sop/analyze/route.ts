@@ -1,0 +1,23 @@
+import { NextResponse } from "next/server";
+import { bad, requireAdmin } from "@/lib/api-auth";
+import { inputFromBody } from "@/lib/un/sop/data";
+import { llmAnalyzer } from "@/lib/un/sop/llm";
+import { ruleAnalyzer } from "@/lib/un/sop/reference";
+
+/** POST { sample } | { text, title?, entity? , use_model? } -> SopAnalysis. Pure: nothing is stored.
+ * Admin only (uploads cost compute and may call a model); viewers read the precomputed samples on the page. */
+export async function POST(request: Request) {
+  const who = await requireAdmin();
+  if (who instanceof NextResponse) return who;
+  if (Number(request.headers.get("content-length") ?? 0) > 400_000) return bad("The SOP is too large (200 KB limit).");
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return bad("Invalid JSON");
+  }
+  const input = inputFromBody(body);
+  if (typeof input === "string") return bad(input);
+  const analysis = await (body.use_model === true ? llmAnalyzer() : ruleAnalyzer).analyze(input, request.signal);
+  return NextResponse.json({ input: { sop_id: input.sop_id, title: input.title, text: input.text }, analysis });
+}
