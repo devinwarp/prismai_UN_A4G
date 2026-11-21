@@ -194,3 +194,24 @@ Non-functional tests are no longer listed as "not executable": they are measures
 Result on the Document Verification Analyst's set: 699 runs, nothing unexecuted, a conclusive pilot (with the smallest sample per task set to 4; T08 derives 4 tests), client-facing compliance 100%. The only failing measure is goal alignment, until a model has judged and a person has approved. Note the AI-disclosure sentence did not exist before; the scenarios would have failed on it, which is how it was found.
 
 Not done: fee_cases scenarios for the Fee and Payment Officer's profile, a real model's goal judgments, who-and-when evidence for control 3.
+
+# Edits to shared files (the journey bar: two new stages)
+
+Edited: `src/lib/un/journey.ts`, `journey-store.ts`, `_components/JourneyBar.tsx`, `i18n/journey-ar.ts`, `tests/un-journey.test.ts`, `tests/un-wiring.test.ts`.
+
+The bar goes from seven stages to nine: SOP intake, Risk and gates, Verdict, **Tests and parameters**, **Pilot and verdict**, Pilot evals, Tuning, Approval, Production (groups: Define 1-2, Assess 3-4, Pilot 5-7, Approve 8, Run 9). The two new stages link to `/tests` and `/pilot`.
+
+- Tests and parameters: not yet until the SOP stage is done; done when every ticked profile has a test set that is approved and unchanged since AND approved verdict parameters; otherwise needs you.
+- Pilot and verdict: not yet until the tests stage is done; needs you until every ticked profile has a pilot; done only when every ticked profile's latest pilot is conclusive with no failing threshold; otherwise needs you ("inconclusive or fails a threshold").
+
+The new stages do not gate the older ones (Pilot evals, Tuning, Approval, Production): those flows do not read the new records yet. Whether approval should require the new pilot to be met is an open decision. `loadJourneys` now also reads three more tables (test-set log, verdict-parameter log, pilot reports; the last without the stored runs), each of which is empty if its SQL has not been applied, so the two stages then read "needs you".
+
+# Edits to shared files (people and roles)
+
+New: `src/lib/un/role-admin.ts` (pure rules), `src/app/api/admin/un/roles/route.ts`, `src/app/admin/federal/people/page.tsx` and `PeopleRoles.tsx`, `src/lib/un/i18n/people-ar.ts` (Arabic draft), `tests/un-role-admin.test.ts`. Edited: `roles-store.ts` (list people, list and insert and revoke assignments, list use cases), `authz.ts` (`users.manage` now wired), `FederalPanel.tsx` (a "People and roles" card), `i18n/dict.ts`.
+
+`GET /api/admin/un/roles` lists everyone in the organisation with their assignments, live and revoked (any signed-in role). `POST` needs `users.manage` (platform administrator): `{action: "grant", user_id, role, use_case_id?}` or `{action: "revoke", assignment_id}`. Rules: a role is held for the whole organisation or for one use case; platform_admin and governance_admin only for the whole organisation; a person holds a role at a scope once; nobody changes their own roles (so a lone administrator cannot use the screen: another administrator must); a revoked assignment stays in the history. An administrator on the profile (legacy role) keeps every role; the screen says so.
+
+Verified over HTTP on a production build with a second person added to a scratch database: grant, duplicate, org-only role at a use case, self-grant, unknown role, revoke, revoke again. The page is `force-dynamic`: offline it reads no cookies, and Next prerendered it at build time (it showed a stale list) until this was set.
+
+Not done: how a person gets an account in the first place (this screen assigns roles to people who already have a profile); a history screen for who granted what (the data is kept).

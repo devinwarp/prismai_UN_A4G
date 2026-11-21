@@ -36,6 +36,7 @@ const GO = [
   { href: "/admin/federal/gates", k: "go.gates", en: "Gates and rule sets", hint: "The checks every verdict rests on, per rule set and per use case." },
   { href: "/admin/federal/country", k: "go.country", en: "Country and knowledge base", hint: "Switch country, add a policy, add a company and its SOP." },
   { href: "/admin/federal/outside", k: "go.outside", en: "Answer outside requests", hint: "Questions the SOP cannot answer wait here for a person." },
+  { href: "/admin/federal/people", k: "go.people", en: "People and roles", hint: "Who holds which role, for the organisation or for one use case." },
   { href: "/admin/federal/gaps", k: "go.gaps", en: "Read the gaps", hint: "Where today's rules fall short of agentic AI." },
 ];
 

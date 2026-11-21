@@ -44,7 +44,7 @@ export const ACTIONS = {
   "scenario.edit": def("Add, edit or retire a scenario", true, ["process_owner"], true),
   "scenario.approve": def("Approve and lock a test set and its verdict parameters", true, ["process_owner"], true),
   // people
-  "users.manage": def("Assign roles to people", false, ["platform_admin"]),
+  "users.manage": def("Assign roles to people", false, ["platform_admin"], true),
 } as const satisfies Record<string, ActionDef>;
 
 export type ActionId = keyof typeof ACTIONS;

@@ -9,7 +9,7 @@ import { baselineConfig } from "../src/lib/un/subject.ts";
 import { evalSetFor, noDesignation } from "../src/lib/un/evalset.ts";
 
 const sop = { attached: true, profiles: 4, ticked: 2, kbOk: true, skills: 2 };
-const base = (o: Partial<JourneyInput> = {}): JourneyInput => ({ sop, gates: null, verdict: null, evalSet: true, evalRuns: 0, evalMet: null, tuning: [], watch: [], ...o });
+const base = (o: Partial<JourneyInput> = {}): JourneyInput => ({ sop, gates: null, verdict: null, tests: { ticked: 2, ready: 0 }, pilot: { ticked: 2, run: 0, met: 0 }, evalSet: true, evalRuns: 0, evalMet: null, tuning: [], watch: [], ...o });
 const at = (i: JourneyInput, id: StageId) => { const s = journeyStatus(i).stages.find((x) => x.id === id)!; return [s.state, s.reason]; };
 let n = 0;
 const T = () => new Date(Date.UTC(2026, 10, 21, 9, 0, n++)).toISOString();
@@ -19,10 +19,10 @@ const certified = (): LogEntry[] => log([], "certification", { met: true, versio
 const approved = (): LogEntry[] => log(certified(), "approval", { decision: "SIGN", version: 2, signer: "p" });
 const deployed = (): WatchEntry[] => log([], "deployed", { version: 2 });
 
-test("seven stages in five groups, in order", () => {
+test("nine stages in five groups, in order", () => {
   const j = journeyStatus(base());
   assert.deepEqual(j.stages.map((s) => s.id), [...STAGE_IDS]);
-  assert.deepEqual(GROUPS.map((g) => j.stages.filter((s) => s.group === g).map((s) => s.n)), [[1, 2], [3], [4, 5], [6], [7]]);
+  assert.deepEqual(GROUPS.map((g) => j.stages.filter((s) => s.group === g).map((s) => s.n)), [[1, 2], [3, 4], [5, 6, 7], [8], [9]]);
 });
 
 test("stage 1 SOP intake: attach, tick, knowledge base, skills", () => {
@@ -93,7 +93,7 @@ test("counter, next stage, and a fresh use case waits on SOP intake first", () =
   assert.equal(fresh.done, 0);
   assert.equal(fresh.next, "sop");
   const mid = journeyStatus(base({ gates: { accepted: true }, verdict: "GO_SUPERVISED" }));
-  assert.deepEqual([mid.done, mid.next], [3, "evals"]);
+  assert.deepEqual([mid.done, mid.next], [3, "tests"], "the new stage comes next: approve the tests and parameters before the pilot");
 });
 
 test("every translation key the journey and profile screens use has an Arabic string", () => {
@@ -110,4 +110,20 @@ test("every translation key the journey and profile screens use has an Arabic st
   for (const e of ["all_pass", "one_fix", "hosting_fails", "no_evidence"]) keys.add(`pf.ev.${e}`);
   assert.ok(keys.size > 50, `found ${keys.size}`);
   assert.deepEqual([...keys].filter((k) => !AR[k]), []);
+});
+
+test("stage 4 tests and parameters: after the SOP; done when every ticked profile has an approved, unchanged test set and approved parameters", () => {
+  assert.deepEqual(at(base({ sop: { ...sop, attached: false, ticked: 0, skills: 0 } }), "tests"), ["not_yet", "after_sop"]);
+  assert.deepEqual(at(base(), "tests"), ["needs_you", "approve_tests"]);
+  assert.deepEqual(at(base({ tests: { ticked: 2, ready: 1 } }), "tests"), ["needs_you", "approve_tests"], "one of two is not enough");
+  assert.deepEqual(at(base({ tests: { ticked: 2, ready: 2 } }), "tests"), ["done", null]);
+});
+
+test("stage 5 pilot and verdict: after the tests; needs a run; done only when every ticked profile's latest pilot is conclusive with nothing failing", () => {
+  const ready = { tests: { ticked: 2, ready: 2 } };
+  assert.deepEqual(at(base(), "pilot"), ["not_yet", "tests_first"]);
+  assert.deepEqual(at(base({ ...ready }), "pilot"), ["needs_you", "run_pilot"]);
+  assert.deepEqual(at(base({ ...ready, pilot: { ticked: 2, run: 2, met: 1 } }), "pilot"), ["needs_you", "pilot_not_met"], "inconclusive or failing");
+  assert.deepEqual(at(base({ ...ready, pilot: { ticked: 2, run: 1, met: 1 } }), "pilot"), ["needs_you", "pilot_not_met"], "one profile has no pilot yet");
+  assert.deepEqual(at(base({ ...ready, pilot: { ticked: 2, run: 2, met: 2 } }), "pilot"), ["done", null]);
 });

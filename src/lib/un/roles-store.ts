@@ -1,5 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ROLES, type Assignment, type RoleId } from "./authz";
+import type { AssignmentRow } from "./role-admin";
 
 /** The live role assignments of one person (supabase/un-roles.sql, not applied yet). Empty if the table is absent
  * or the person has none; their stored profile role still applies (see authz.ts). */
@@ -12,4 +13,38 @@ export async function loadAssignments(orgId: string, userId: string): Promise<As
   return ((data ?? []) as { role: string; use_case_id: string | null; revoked_at: string | null }[])
     .filter((r) => !r.revoked_at && (ROLES as readonly string[]).includes(r.role))
     .map((r): Assignment => ({ role: r.role as RoleId, scope: r.use_case_id ? { kind: "use_case", use_case_id: r.use_case_id } : { kind: "org" } }));
+}
+
+export interface Person { id: string; email: string | null; job_title: string | null; legacy_role: string | null }
+
+/** Everyone in the organisation, with the role stored on their profile. */
+export async function loadPeople(orgId: string): Promise<Person[]> {
+  const { data } = await createAdminClient().from("profiles").select("id, email, job_title, role").eq("org_id", orgId);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({ id: String(r.id), email: (r.email as string | null) ?? null, job_title: (r.job_title as string | null) ?? null, legacy_role: (r.role as string | null) ?? null }));
+}
+
+/** Every assignment of the organisation, live and revoked, oldest first. */
+export async function loadAssignmentRows(orgId: string): Promise<AssignmentRow[]> {
+  const { data } = await createAdminClient().from("un_role_assignments").select("*").eq("org_id", orgId);
+  return ((data ?? []) as Record<string, unknown>[])
+    .map((r) => ({ id: String(r.id), user_id: String(r.user_id), role: String(r.role), use_case_id: (r.use_case_id as string | null) ?? null, granted_by: (r.granted_by as string | null) ?? null, granted_at: new Date(String(r.granted_at ?? r.created_at ?? Date.now())).toISOString(), revoked_at: r.revoked_at ? new Date(String(r.revoked_at)).toISOString() : null, revoked_by: (r.revoked_by as string | null) ?? null }))
+    .sort((a, b) => (a.granted_at < b.granted_at ? -1 : 1));
+}
+
+/** Returns an error message, or null. */
+export async function insertAssignment(orgId: string, row: { user_id: string; role: RoleId; use_case_id: string | null; granted_by: string }): Promise<string | null> {
+  const { error } = await createAdminClient().from("un_role_assignments").insert({ org_id: orgId, ...row, granted_at: new Date().toISOString() });
+  return error?.message ?? null;
+}
+
+/** Marks an assignment revoked; the row stays. Returns an error message, or null. */
+export async function revokeAssignment(orgId: string, id: string, by: string): Promise<string | null> {
+  const { error } = await createAdminClient().from("un_role_assignments").update({ revoked_at: new Date().toISOString(), revoked_by: by }).eq("org_id", orgId).eq("id", id);
+  return error?.message ?? null;
+}
+
+/** The organisation's use cases, for choosing a scope. */
+export async function loadUseCaseChoices(orgId: string): Promise<{ id: string; ext_id: string; title: string }[]> {
+  const { data } = await createAdminClient().from("un_use_cases").select("id, ext_id, use_case").eq("org_id", orgId);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({ id: String(r.id), ext_id: String(r.ext_id), title: String(r.use_case ?? "") })).sort((a, b) => a.ext_id.localeCompare(b.ext_id));
 }

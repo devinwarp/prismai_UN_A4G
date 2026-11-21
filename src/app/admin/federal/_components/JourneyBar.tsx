@@ -7,7 +7,7 @@ import { DIR, tr, type Lang } from "@/lib/un/i18n/dict";
 import { GROUPS, STAGE_IDS, REASON_EN, type Journey, type JourneyStage, type StageId, type StageState } from "@/lib/un/journey";
 import { T, TV, useLang } from "./Lang";
 
-// The journey bar: seven stages in five groups, along the top of every use-case page. It is a
+// The journey bar: nine stages in five groups, along the top of every use-case page. It is a
 // layout, so it sits outside each page's LangShell and follows the language through localStorage
 // plus the "prism-un-lang" event that LangShell fires. Views are always open (every stage is a link);
 // what a person still has to do is spelled out in words under the stage. State is a glyph AND text.
@@ -15,20 +15,22 @@ import { T, TV, useLang } from "./Lang";
 const STATE_EN: Record<StageState, string> = { done: "Done", needs_you: "Needs you", not_yet: "Not yet", stopped: "Stopped" };
 const GLYPH: Record<StageState, string> = { done: "✓", needs_you: "!", not_yet: "–", stopped: "✕" };
 const COLOR: Record<StageState, string> = { done: "var(--color-v-auto)", needs_you: "var(--color-v-esc)", not_yet: "var(--color-ink-soft)", stopped: "var(--color-v-nogo)" };
-const STAGE_EN: Record<StageId, string> = { sop: "SOP intake", gates: "Risk and gates", verdict: "Verdict", evals: "Pilot evals", tuning: "Tuning", approval: "Approval", production: "Production" };
+const STAGE_EN: Record<StageId, string> = { sop: "SOP intake", gates: "Risk and gates", verdict: "Verdict", tests: "Tests and parameters", pilot: "Pilot and verdict", evals: "Pilot evals", tuning: "Tuning", approval: "Approval", production: "Production" };
 const GROUP_EN = { define: "Define", assess: "Assess", pilot: "Pilot", approve: "Approve", run: "Run" } as const;
 const GIVE_EN: Record<StageId, string> = {
   sop: "The SOP's steps become job profiles, you choose which to automate, and each agent gets its skill file.",
   gates: "The risk flags and the gates that apply to this use case, with a person accepting them.",
   verdict: "A five-level verdict produced by the rules and signed by a person, kept in a hash-chained log.",
+  tests: "Tests derived from each job profile's skill, and the thresholds the pilot is judged against, both approved by a person.",
+  pilot: "The approved tests run on the real agent: accuracy, refusals, client-facing scenarios, SOP controls and goal alignment.",
   evals: "Each case puts the agent's output beside the expected output, with the calls Sijil rejected.",
   tuning: "Changes to the agent's rules measured on tuning cases, while held-out cases stay sealed for approval.",
   approval: "A person's signature on an agent version that meets the approval bar.",
   production: "Monitoring with the same evals, and the agent taken down if Sijil rejects a call.",
 };
-const SEGMENT: Record<string, StageId> = { sop: "sop", evals: "evals", tuning: "tuning", production: "production" };
+const SEGMENT: Record<string, StageId> = { sop: "sop", tests: "tests", pilot: "pilot", evals: "evals", tuning: "tuning", production: "production" };
 
-const PATH: Record<StageId, string> = { sop: "/sop", gates: "/sop?stage=gates#risk", verdict: "", evals: "/evals", tuning: "/tuning", approval: "/tuning?stage=approval", production: "/production" };
+const PATH: Record<StageId, string> = { sop: "/sop", gates: "/sop?stage=gates#risk", verdict: "", tests: "/tests", pilot: "/pilot", evals: "/evals", tuning: "/tuning", approval: "/tuning?stage=approval", production: "/production" };
 export const stageHref = (base: string, id: StageId): string => base + PATH[id];
 
 export function useStoredLang(): Lang {
@@ -84,9 +86,9 @@ export default function JourneyBar({ base, journey }: { base: string; journey: J
     <div dir={DIR[lang]} lang={lang} className="border-b border-line bg-paper/60">
       <nav aria-label={tr(lang, "jb.label", "Journey from SOP to production")} className="mx-auto max-w-6xl px-4 py-3 sm:px-6">
         <p className="text-xs text-ink-soft">
-          <TVLang lang={lang} k="jb.counter" en="{d} of 7 stages done, {w} waiting for someone" v={{ d: journey.done, w: journey.waiting }} />
+          <TVLang lang={lang} k="jb.counter" en="{d} of 9 stages done, {w} waiting for someone" v={{ d: journey.done, w: journey.waiting }} />
         </p>
-        <ol className="mt-2 grid gap-x-3 gap-y-3 sm:grid-cols-2 lg:grid-cols-[2fr_1fr_2fr_1fr_1fr]">
+        <ol className="mt-2 grid gap-x-3 gap-y-3 sm:grid-cols-2 lg:grid-cols-[2fr_2fr_3fr_1fr_1fr]">
           {GROUPS.map((g) => (
             <li key={g}>
               <p className="border-b border-line pb-1 font-mono text-[11px] tracking-wide text-ink-soft uppercase">{tr(lang, `jb.group.${g}`, GROUP_EN[g])}</p>
@@ -109,7 +111,7 @@ export default function JourneyBar({ base, journey }: { base: string; journey: J
 
 const TVLang = ({ lang, k, en, v }: { lang: Lang; k: string; en: string; v: Record<string, string | number> }) => <>{tr(lang, k, en).replace(/\{(\w+)\}/g, (_, n: string) => String(v[n] ?? ""))}</>;
 
-/** One line for lists: seven glyphs, how many are done, and what comes next. Used inside a LangShell. */
+/** One line for lists: nine glyphs, how many are done, and what comes next. Used inside a LangShell. */
 export function JourneyLine({ journey }: { journey: Journey }) {
   const lang = useLang();
   const next = journey.stages.find((s) => s.id === journey.next);
@@ -123,7 +125,7 @@ export function JourneyLine({ journey }: { journey: Journey }) {
           </li>
         ))}
       </ol>
-      <span className="text-ink-soft"><TV k="jb.compact" en="Journey: {d} of 7" v={{ d: journey.done }} />{" · "}{next ? <TV k="jb.compact.next" en="Next: {s}" v={{ s: tr(lang, `jb.stage.${next.id}`, STAGE_EN[next.id]) }} /> : <T k="jb.compact.none" en="Nothing waiting" />}</span>
+      <span className="text-ink-soft"><TV k="jb.compact" en="Journey: {d} of 9" v={{ d: journey.done }} />{" · "}{next ? <TV k="jb.compact.next" en="Next: {s}" v={{ s: tr(lang, `jb.stage.${next.id}`, STAGE_EN[next.id]) }} /> : <T k="jb.compact.none" en="Nothing waiting" />}</span>
     </span>
   );
 }
