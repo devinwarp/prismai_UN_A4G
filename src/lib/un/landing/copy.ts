@@ -42,7 +42,7 @@ const en = {
   proof: [
     ["60 of 60", "test runs reached the outcome the rules require (20 runs in each of three scenarios)."],
     ["930 of 930", "sources the AI cited are real passages in our library. None were made up."],
-    ["32 sources, 398 passages", "from official documents, each stored with a SHA-256 fingerprint."],
+    ["40 sources, 457 passages", "from official documents, each stored with a SHA-256 fingerprint."],
     ["20", "government use cases checked against the same rules."],
   ] as [string, string][],
   proofHonest:
@@ -142,7 +142,7 @@ const ar: Copy = {
   proof: [
     ["60 من 60", "تشغيلًا اختباريًا وصل إلى النتيجة التي تفرضها القواعد (20 تشغيلًا في كل من ثلاثة سيناريوهات)."],
     ["930 من 930", "مصدرًا استشهد به الذكاء الاصطناعي هي مقاطع حقيقية في مكتبتنا. لا شيء منها مختلق."],
-    ["32 مصدرًا، 398 مقطعًا", "من وثائق رسمية، لكل منها بصمة SHA-256."],
+    ["40 مصدرًا، 457 مقطعًا", "من وثائق رسمية، لكل منها بصمة SHA-256."],
     ["20", "حالة استخدام حكومية فُحصت وفق القواعد نفسها."],
   ],
   proofHonest:

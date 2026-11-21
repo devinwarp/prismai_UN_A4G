@@ -32,6 +32,8 @@ export interface TraceRecord {
   hitl_breaches?: string[];
   /** Verdict records of use cases that add or waive gates: every gate that applied and the reason. */
   effective_gates?: EffectiveGateRecord[];
+  /** Verdict records of a country re-run only: the rule set id the verdict was judged under. */
+  ruleset?: string;
   /** Present only on the final human signature record (I-4). */
   signature?: HumanSignature;
   /** Present only on records of model-written messages: model id and prompt hash. Older logs lack it and still verify. */
@@ -117,6 +119,7 @@ export function roundBodies(opts: {
   /** The effective gates and why each applies (gates.ts). Recorded only when the use case adds or waives gates, so older logs verify unchanged. */
   effectiveGates?: EffectiveGateRecord[];
   customGates?: Record<string, GateDef>;
+  ruleset?: string;
 }): Body[] {
   const cite = (m: AgentMessage) =>
     m.kb.flatMap((id) => {
@@ -152,6 +155,7 @@ export function roundBodies(opts: {
     derived_from: acceptedIds,
     ...(opts.hitlBreaches?.length ? { hitl_breaches: opts.hitlBreaches } : {}),
     ...(opts.effectiveGates?.length ? { effective_gates: opts.effectiveGates } : {}),
+    ...(opts.ruleset ? { ruleset: opts.ruleset } : {}),
   });
   return out;
 }

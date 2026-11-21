@@ -5,6 +5,7 @@ import { AGENT_RUNTIME_AR } from "./agent-runtime-ar.ts";
 import { LIFECYCLE_AR } from "./lifecycle-ar.ts";
 import { GATES_AR } from "./gates-ar.ts";
 import { TUNING_AR } from "./tuning-ar.ts";
+import { COUNTRY_AR } from "./country-ar.ts";
 
 // Lightweight Arabic/English dictionary for the federal admin UI. Pure, no
 // library. Keys not found fall back to the English text passed by the caller,
@@ -309,6 +310,7 @@ export const AR: Record<string, string> = {
   ...GATES_AR,
   ...JOURNEY_AR,
   ...TUNING_AR,
+  ...COUNTRY_AR,
   ...AGENT_RUNTIME_AR,
 };
 

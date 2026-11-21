@@ -59,3 +59,16 @@ Files that existed before the agent-runtime work and were edited. Everything els
 - `data/sops/fixtures/uc02/docs/ocr-cache.json`: new entries for the new synthetic images (existing entries untouched).
 
 New migration: `supabase/un-outside-queue.sql` (applied to the hackathon Supabase project on 21 Nov 2026). `supabase/schema.sql` is untouched.
+
+# Edits to shared files (country and knowledge base)
+
+New code lives in `src/lib/un/country*.ts`, `src/lib/un/i18n/country-ar.ts` (draft Arabic), `src/app/admin/federal/country/`, `src/app/api/admin/un/country/`, `data/un-countries.json`, `data/sops/sg-mbla-licence-renewal-sop.md` (synthetic company SOP), `kb/stage/eu/` (pre-fetched EU AI Act text with a manifest), `scripts/embed_new_chunks.ts`, `supabase/un-country.sql` (new tables, NOT applied to any database) and `tests/un-country.test.ts`. Edits to files that already existed:
+
+- `src/lib/un/kb.ts`: `SearchOpts.home` (which jurisdictions `mix` treats as home; default UAE-federal and Dubai, so every existing call is unchanged) and `warmIndex()` (builds and sizes the BM25 index).
+- `src/lib/un/vector.ts`: the embedder loader is now `getEmbedder()`, shared by `embedQuery` (unchanged behaviour) and the new `embedDocuments()` (document prefix, used by the live build).
+- `src/lib/un/protocol.ts`: optional `CaseState.ruleset`, passed to `decide()` in `reconcile`. Absent = today's behaviour. The policy engine itself (`policy.ts`) is not edited.
+- `src/lib/un/scenario.ts`: optional `RunEnv.ruleset` and `RunEnv.home`; the ruleset is never stored on a run's state.
+- `src/lib/un/trace.ts`: a verdict record carries `ruleset` only when the run was judged under one (country re-runs); older logs and hashes are unchanged.
+- `data/un-governance.json`: the Singapore rule set now cites the new Singapore chunks (PDPA, MGF) for its gates; the encoding (gates, thresholds) is unchanged.
+- `kb/sources.json`, `kb/chunks.json`, `kb/sources.lock.json`, `kb/vectors.json`: 8 Singapore excerpt sources appended (59 chunks); the first 398 chunks and vectors are untouched. `public/replay/backup-run.json` regenerated (the recorded replay reads the whole corpus; verdicts unchanged, citations and head hashes of S1, S2, S4 changed).
+- `src/lib/un/i18n/dict.ts` (spreads `COUNTRY_AR`), `src/app/admin/federal/FederalPanel.tsx` (one entry in `GO`), `src/lib/un/landing/copy.ts` (source and passage counts), `README.md`, `docs/RETRIEVAL_NOTE.md`, `tests/un-guard.test.ts` (the list of excerpt-only sources).

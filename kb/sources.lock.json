@@ -158,5 +158,45 @@
   "sha256": "87f6faff2646faefe17a7b80015fca64b4e905f7bce42d3a0958e04da3e0162f",
   "bytes": 0,
   "chars": 1140
+ },
+ "sg-mgf-2020": {
+  "sha256": "f2d199c826207a259c1c67b8379c0e2b0028fecf142129df9bf16447abcfb2d4",
+  "bytes": 0,
+  "chars": 1895
+ },
+ "sg-mgf-genai": {
+  "sha256": "24656605edf3186e4a10aac59d1ff7fb712e7524368a14cf5f165e664dd31490",
+  "bytes": 0,
+  "chars": 1027
+ },
+ "sg-pdpc-ai-recdec": {
+  "sha256": "68dde35cd342c4276fe27891b50949434cf28990ea4c9f4c345877f3b63ff4bd",
+  "bytes": 0,
+  "chars": 1819
+ },
+ "sg-pdpc-genai": {
+  "sha256": "de6e09e378c5137ac11dac4188a3e5970db43dcb5e5c8cb17d74c8e37825a7af",
+  "bytes": 0,
+  "chars": 1020
+ },
+ "sg-nais-2": {
+  "sha256": "34317684b098c43d7b063ec3a9c00ec0fc7275dd0bc272dd82213dbf4faa0316",
+  "bytes": 0,
+  "chars": 674
+ },
+ "sg-aiverify-framework": {
+  "sha256": "823c448e166417532be665a83c16698b4c5c76db8d05788fe73b170cc06c8b53",
+  "bytes": 0,
+  "chars": 578
+ },
+ "sg-govtech-rai-playbook": {
+  "sha256": "1e53b64bb4f19318a810ac8d47fc7fa1b9d2caa1eb82075a2961c938cfb21353",
+  "bytes": 0,
+  "chars": 727
+ },
+ "sg-pdpa-2012": {
+  "sha256": "ee49c0019d574b7c28331d2164d07e560f6d0296931b3a4743561490fbefcc8b",
+  "bytes": 0,
+  "chars": 930
  }
 }

@@ -18,7 +18,7 @@ Technical report: [`docs/report/prism-technical-report.pdf`](docs/report/prism-t
 | Area | Where |
 |---|---|
 | Policy config, use-case CSV import, federal dashboard (deployed % beside compliant %) | `src/lib/un/model.ts`, `src/app/admin/federal/` |
-| Knowledge base (32 sources, 398 chunks, SHA-256 provenance) built with ITU's code | `kb/` |
+| Knowledge base (32 sources, 398 chunks, SHA-256 provenance) built with ITU's code; the country demo adds 8 Singapore sources (59 chunks, 40 sources and 457 chunks in all) | `kb/` |
 | Eight role agents, typed coordination protocol | `src/lib/un/agents.ts`, `protocol.ts`, `round.ts` |
 | Deterministic policy engine: five hard gates never averaged, client-facing cap at `GO_SUPERVISED` | `src/lib/un/policy.ts` |
 | Staged scenarios S1 (gate engine), S2 (voice contact centre), S3 (federal cascade) and S4 (consumer complaint escalating to a privacy breach) | `src/lib/un/scenario.ts`, `scenarios.ts` |
@@ -76,6 +76,7 @@ cp .env.example .env.local     # fill in Supabase, OPENROUTER_API_KEY, ADMIN_EMA
 #   Lifecycle (optional, for the pilot, gates, tuning and outside-queue screens; pgvector must be enabled):
 #   supabase/un-agent-lifecycle.sql, un-agent-runtime.sql, un-gates.sql, un-profiles.sql,
 #   un-sop-kb.sql, un-outside-queue.sql, then un-log-guards.sql
+#   Country and knowledge base screen (optional): supabase/un-country.sql, after un-log-guards.sql
 npm ci
 npm run dev                    # http://localhost:3000 -> /admin/federal
 npm test                       # 332 tests (331 pass, 1 skipped without PyMuPDF), no database needed

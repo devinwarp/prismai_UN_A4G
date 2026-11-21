@@ -1334,5 +1334,391 @@
     "where": "India AI Governance Guidelines (2025), Innovation over Restraint sutra"
    }
   ]
+ },
+ {
+  "id": "sg-mgf-2020",
+  "title": "Model AI Governance Framework, Second Edition (PDPC and IMDA, Singapore): short excerpts only",
+  "url": "https://www.pdpc.gov.sg/-/media/files/pdpc/pdf-files/resource-for-organisation/ai/sgmodelaigovframework2.pdf",
+  "issuer": "Personal Data Protection Commission (PDPC) and Infocomm Media Development Authority (IMDA), Singapore",
+  "jurisdiction": "Singapore",
+  "instrument_type": "framework",
+  "binding": false,
+  "date": "2020-01",
+  "topics": [
+   "accountability",
+   "human-oversight",
+   "transparency",
+   "governance"
+  ],
+  "source_sha256": "f2d199c826207a259c1c67b8379c0e2b0028fecf142129df9bf16447abcfb2d4",
+  "excerpts": [
+   {
+    "text": "Human-in-the-loop suggests that human oversight is active and involved, with the human retaining full control and the AI only providing recommendations or input.",
+    "where": "PDPC and IMDA, Model AI Governance Framework Second Edition (2020), human-in-the-loop, PDF p. 30"
+   },
+   {
+    "text": "Human-over-the-loop (or human-on-the-loop) suggests that human oversight is involved to the extent that the human is in a monitoring or supervisory role, with the ability to take over control when the AI model encounters unexpected or undesirable events",
+    "where": "PDPC and IMDA, Model AI Governance Framework Second Edition (2020), human-over-the-loop, PDF p. 30"
+   },
+   {
+    "text": "Establishing monitoring and reporting systems as well as processes to ensure that the appropriate level of management is aware of the performance of and other issues relating to the deployed AI.",
+    "where": "PDPC and IMDA, Model AI Governance Framework Second Edition (2020), monitoring and reporting, PDF p. 24"
+   },
+   {
+    "text": "Measures such as explainability, repeatability, robustness, regular tuning, reproducibility, traceability, and auditability can enhance the transparency of algorithms found in AI models.",
+    "where": "PDPC and IMDA, Model AI Governance Framework Second Edition (2020), transparency measures, PDF p. 43"
+   },
+   {
+    "text": "Organisations are encouraged to provide general information on whether AI is used in their products and/or services.",
+    "where": "PDPC and IMDA, Model AI Governance Framework Second Edition (2020), general disclosure, PDF p. 53"
+   },
+   {
+    "text": "For example, an online portal may inform its users that they are interacting with an AI-powered chatbot and not a human customer service agent.",
+    "where": "PDPC and IMDA, Model AI Governance Framework Second Edition (2020), chatbot disclosure, PDF p. 53"
+   },
+   {
+    "text": "Apart from existing review channels obligations, organisations can consider providing an avenue for individuals (such as an aggrieved consumer) to request a review of material AI decisions that have affected them.",
+    "where": "PDPC and IMDA, Model AI Governance Framework Second Edition (2020), decision review, PDF p. 57"
+   },
+   {
+    "text": "Documenting this process through a periodically reviewed risk impact assessment helps organisations develop clarity and confidence in using the AI solutions.",
+    "where": "PDPC and IMDA, Model AI Governance Framework Second Edition (2020), risk impact assessment, PDF p. 29"
+   },
+   {
+    "text": "Traceability facilitates transparency and explainability, and is also helpful for other reasons.",
+    "where": "PDPC and IMDA, Model AI Governance Framework Second Edition (2020), traceability, PDF p. 48"
+   },
+   {
+    "text": "The purpose of being able to explain predictions made by AI is to build understanding and trust.",
+    "where": "PDPC and IMDA, Model AI Governance Framework Second Edition (2020), explainability, PDF p. 44"
+   },
+   {
+    "text": "If a model is built using biased, inaccurate or non-representative data, the risks of unintended discriminatory decisions from the model will increase.",
+    "where": "PDPC and IMDA, Model AI Governance Framework Second Edition (2020), data quality, PDF p. 36"
+   },
+   {
+    "text": "The organisation’s existing internal governance structures can be adapted, and/or new structures can be implemented if necessary.",
+    "where": "PDPC and IMDA, Model AI Governance Framework Second Edition (2020), internal governance, PDF p. 21"
+   }
+  ]
+ },
+ {
+  "id": "sg-mgf-genai",
+  "title": "Model AI Governance Framework for Generative AI (IMDA and AI Verify Foundation, 19 June 2024): short excerpts only",
+  "url": "https://aiverifyfoundation.sg/wp-content/uploads/2026/06/Model-AI-Governance-Framework-for-Generative-AI-19-June-2024.pdf",
+  "issuer": "Infocomm Media Development Authority (IMDA) and AI Verify Foundation, Singapore",
+  "jurisdiction": "Singapore",
+  "instrument_type": "framework",
+  "binding": false,
+  "date": "2024-06",
+  "topics": [
+   "accountability",
+   "safety",
+   "security",
+   "transparency"
+  ],
+  "source_sha256": "24656605edf3186e4a10aac59d1ff7fb712e7524368a14cf5f165e664dd31490",
+  "excerpts": [
+   {
+    "text": "Establishing structures and processes to enable incident monitoring and reporting is therefore key.",
+    "where": "IMDA and AI Verify Foundation, Model AI Governance Framework for Generative AI (19 June 2024), incident monitoring, PDF p. 4"
+   },
+   {
+    "text": "Incident reporting is an established practice, and allows for timely notification and remediation.",
+    "where": "IMDA and AI Verify Foundation, Model AI Governance Framework for Generative AI (19 June 2024), incident reporting, PDF p. 4"
+   },
+   {
+    "text": "Although AI testing is an emerging field, it is valuable for companies to adopt third-party testing and assurance to demonstrate trust with their end-users.",
+    "where": "IMDA and AI Verify Foundation, Model AI Governance Framework for Generative AI (19 June 2024), testing and assurance, PDF p. 4"
+   },
+   {
+    "text": "Accountability is a key consideration to incentivise players along the AI development chain to be responsible to end-users.",
+    "where": "IMDA and AI Verify Foundation, Model AI Governance Framework for Generative AI (19 June 2024), accountability, PDF p. 3"
+   },
+   {
+    "text": "Notwithstanding the limited visibility that end-users may have, meaningful transparency around the baseline safety and hygiene measures undertaken is key.",
+    "where": "IMDA and AI Verify Foundation, Model AI Governance Framework for Generative AI (19 June 2024), transparency, PDF p. 4"
+   },
+   {
+    "text": "Techniques like Retrieval- Augmented Generation (RAG)24 and few-shot learning are also commonly used to reduce hallucinations and improve accuracy.",
+    "where": "IMDA and AI Verify Foundation, Model AI Governance Framework for Generative AI (19 June 2024), hallucinations, PDF p. 13"
+   },
+   {
+    "text": "Transparency about where and how content is generated enables end-users to determine how to consume online content in an informed manner.",
+    "where": "IMDA and AI Verify Foundation, Model AI Governance Framework for Generative AI (19 June 2024), content provenance, PDF p. 4"
+   },
+   {
+    "text": "Even with the most robust development processes and safeguards, no software we use today is completely foolproof.",
+    "where": "IMDA and AI Verify Foundation, Model AI Governance Framework for Generative AI (19 June 2024), no software foolproof, PDF p. 4"
+   }
+  ]
+ },
+ {
+  "id": "sg-pdpc-ai-recdec",
+  "title": "Advisory Guidelines on use of Personal Data in AI Recommendation and Decision Systems (PDPC, Singapore, 1 March 2024): short excerpts only",
+  "url": "https://www.pdpc.gov.sg/-/media/files/pdpc/pdf-files/advisory-guidelines/advisory-guidelines-on-the-use-of-personal-data-in-ai-recommendation-and-decision-systems.pdf",
+  "issuer": "Personal Data Protection Commission (PDPC), Singapore",
+  "jurisdiction": "Singapore",
+  "instrument_type": "guidance",
+  "binding": false,
+  "date": "2024-03-01",
+  "topics": [
+   "privacy",
+   "consent",
+   "transparency",
+   "accountability"
+  ],
+  "source_sha256": "68dde35cd342c4276fe27891b50949434cf28990ea4c9f4c345877f3b63ff4bd",
+  "excerpts": [
+   {
+    "text": "To this end, organisations are encouraged to provide relevant information at the point of data collection so that consumers can give meaningful consent.",
+    "where": "PDPC, Advisory Guidelines on use of Personal Data in AI Recommendation and Decision Systems (1 March 2024), meaningful consent, PDF p. 3"
+   },
+   {
+    "text": "Section 20 of the PDPA sets out organisations’ obligations to inform individuals of the purposes for which their personal data is collected, used, and disclosed.",
+    "where": "PDPC, Advisory Guidelines on use of Personal Data in AI Recommendation and Decision Systems (1 March 2024), notification of purposes, PDF p. 13"
+   },
+   {
+    "text": "Written policies and documentation of processes enable organisations to show that their internal governance and supervision structures as well as operational practices ensure the responsible use of personal data.",
+    "where": "PDPC, Advisory Guidelines on use of Personal Data in AI Recommendation and Decision Systems (1 March 2024), written policies, PDF p. 16"
+   },
+   {
+    "text": "The Consent Obligation is complemented by the Notification Obligation, which requires that users be notified of the purpose of the collection and intended use of their personal data when seeking their consent.",
+    "where": "PDPC, Advisory Guidelines on use of Personal Data in AI Recommendation and Decision Systems (1 March 2024), consent and notification, PDF p. 13"
+   },
+   {
+    "text": "Particular attention should be paid to the data security and protection measures around the development environment and organisations are encouraged to conduct a Data Protection Impact Assessment",
+    "where": "PDPC, Advisory Guidelines on use of Personal Data in AI Recommendation and Decision Systems (1 March 2024), DPIA, PDF p. 10"
+   },
+   {
+    "text": "Organisations may wish to refer to the Commission’s Guide on Data Protection Impact Assessments for more guidance on this area.",
+    "where": "PDPC, Advisory Guidelines on use of Personal Data in AI Recommendation and Decision Systems (1 March 2024), DPIA guide, PDF p. 19"
+   },
+   {
+    "text": "Good practices that Service Providers could undertake include data mapping and labelling, as well as the maintenance of provenance records.",
+    "where": "PDPC, Advisory Guidelines on use of Personal Data in AI Recommendation and Decision Systems (1 March 2024), provenance records, PDF p. 3"
+   },
+   {
+    "text": "Information from the testing report can be used to support information that organisations wish to include into their notifications or written policies.",
+    "where": "PDPC, Advisory Guidelines on use of Personal Data in AI Recommendation and Decision Systems (1 March 2024), testing report, PDF p. 18"
+   },
+   {
+    "text": "Organisations should place themselves in the shoes of consumers and craft notifications that will enable individuals to understand how personal data will be processed to achieve the intended purpose.",
+    "where": "PDPC, Advisory Guidelines on use of Personal Data in AI Recommendation and Decision Systems (1 March 2024), notifications, PDF p. 13"
+   },
+   {
+    "text": "Robustness testing may also be useful if organisations intend to provide information on the robustness of the AI System in their notification.",
+    "where": "PDPC, Advisory Guidelines on use of Personal Data in AI Recommendation and Decision Systems (1 March 2024), robustness testing, PDF p. 19"
+   },
+   {
+    "text": "organisations should consider pre-emptively making such written policies available through their website, and not only upon request.",
+    "where": "PDPC, Advisory Guidelines on use of Personal Data in AI Recommendation and Decision Systems (1 March 2024), accountability obligation, PDF p. 16"
+   }
+  ]
+ },
+ {
+  "id": "sg-pdpc-genai",
+  "title": "Advisory Guidelines on Use of Personal Data in Generative AI (PDPC, Singapore, issued 20 July 2026): short excerpts only",
+  "url": "https://files.app.optical.gov.sg/pdpc/production/assets/143cb9d4-532e-4cca-9a77-bcc0415ca294.pdf",
+  "issuer": "Personal Data Protection Commission (PDPC), Singapore",
+  "jurisdiction": "Singapore",
+  "instrument_type": "guidance",
+  "binding": false,
+  "date": "2026-07-20",
+  "topics": [
+   "privacy",
+   "consent",
+   "data-subject-rights",
+   "security"
+  ],
+  "source_sha256": "de6e09e378c5137ac11dac4188a3e5970db43dcb5e5c8cb17d74c8e37825a7af",
+  "excerpts": [
+   {
+    "text": "The key purpose of the Consent and Notification Obligations is to enable individuals to provide meaningful consent.",
+    "where": "PDPC, Advisory Guidelines on Use of Personal Data in Generative AI (issued 20 July 2026), meaningful consent, PDF p. 9"
+   },
+   {
+    "text": "organisations can consider output filters and other safeguards to minimise the likelihood of models or systems producing inaccurate data as outputs.",
+    "where": "PDPC, Advisory Guidelines on Use of Personal Data in Generative AI (issued 20 July 2026), output filters, PDF p. 18"
+   },
+   {
+    "text": "Introducing escalating protocols to humans for complex or high-risk tasks.",
+    "where": "PDPC, Advisory Guidelines on Use of Personal Data in Generative AI (issued 20 July 2026), escalation to humans, PDF p. 16"
+   },
+   {
+    "text": "Organisations must take such data into account when responding to access and correction requests.",
+    "where": "PDPC, Advisory Guidelines on Use of Personal Data in Generative AI (issued 20 July 2026), access and correction, PDF p. 16"
+   },
+   {
+    "text": "In the Generative AI context, the Access and Correction Obligations apply to personal data which has been collected, used or disclosed for model or system development or deployment.",
+    "where": "PDPC, Advisory Guidelines on Use of Personal Data in Generative AI (issued 20 July 2026), access and correction scope, PDF p. 17"
+   },
+   {
+    "text": "Considering these complexities, this Part clarifies the key roles and responsibilities of Generative AI stakeholders in safeguarding personal data.",
+    "where": "PDPC, Advisory Guidelines on Use of Personal Data in Generative AI (issued 20 July 2026), stakeholder roles, PDF p. 11"
+   },
+   {
+    "text": "For example, a Model Provider may document their data access controls, data residency and retention policies and incident response and data breach procedures.",
+    "where": "PDPC, Advisory Guidelines on Use of Personal Data in Generative AI (issued 20 July 2026), documentation of controls, PDF p. 13"
+   },
+   {
+    "text": "Implementing additional role-based data controls to restrict the assistant’s file and network access",
+    "where": "PDPC, Advisory Guidelines on Use of Personal Data in Generative AI (issued 20 July 2026), role-based controls, PDF p. 16"
+   }
+  ]
+ },
+ {
+  "id": "sg-nais-2",
+  "title": "National AI Strategy 2.0 (Smart Nation Group, Singapore, December 2023): short excerpts only",
+  "url": "https://file.go.gov.sg/nais2023.pdf",
+  "issuer": "Smart Nation Group (Ministry of Communications and Information), Singapore",
+  "jurisdiction": "Singapore",
+  "instrument_type": "strategy",
+  "binding": false,
+  "date": "2023-12",
+  "topics": [
+   "governance",
+   "public-services",
+   "standards"
+  ],
+  "source_sha256": "34317684b098c43d7b063ec3a9c00ec0fc7275dd0bc272dd82213dbf4faa0316",
+  "excerpts": [
+   {
+    "text": "This requires paying close attention to the model development process, to ensure that the output of models is not biased, inaccurate, or erroneous.",
+    "where": "Smart Nation Group, National AI Strategy 2.0 (2023), model development, PDF p. 57"
+   },
+   {
+    "text": "Singapore launched the world’s first Model AI Governance Framework in 2019.",
+    "where": "Smart Nation Group, National AI Strategy 2.0 (2023), governance framework, PDF p. 9"
+   },
+   {
+    "text": "We therefore need to work with producers and users of AI in a more concerted manner, because responsible development and deployment do not happen by chance. ▶ Greater concerns.",
+    "where": "Smart Nation Group, National AI Strategy 2.0 (2023), responsible development, PDF p. 11"
+   },
+   {
+    "text": "Singapore’s initiatives, like AI Verify, have been welcomed as pragmatic contributions to the growing body of work on AI governance.",
+    "where": "Smart Nation Group, National AI Strategy 2.0 (2023), AI Verify, PDF p. 10"
+   },
+   {
+    "text": "Today, AI powers many public services, such as adaptive learning systems in our schools, and chronic health management systems in our hospitals.",
+    "where": "Smart Nation Group, National AI Strategy 2.0 (2023), public services, PDF p. 10"
+   }
+  ]
+ },
+ {
+  "id": "sg-aiverify-framework",
+  "title": "AI Verify Testing Framework (AI Verify Foundation, Singapore): short excerpts only",
+  "url": "https://aiverifyfoundation.sg/tools/ai-verify-testing-framework/",
+  "issuer": "AI Verify Foundation, Singapore",
+  "jurisdiction": "Singapore",
+  "instrument_type": "framework",
+  "binding": false,
+  "date": "2026-11",
+  "topics": [
+   "governance",
+   "accountability",
+   "transparency",
+   "standards"
+  ],
+  "source_sha256": "823c448e166417532be665a83c16698b4c5c76db8d05788fe73b170cc06c8b53",
+  "excerpts": [
+   {
+    "text": "Helps organisations assess the responsible implementation of their AI system against 11 internationally recognised AI governance principles",
+    "where": "AI Verify Foundation, AI Verify Testing Framework (web page), 11 principles"
+   },
+   {
+    "text": "The framework has 4 key elements: Principles, Outcomes, Processes, Evidence",
+    "where": "AI Verify Foundation, AI Verify Testing Framework (web page), four elements"
+   },
+   {
+    "text": "Systematically evaluate and document the responsible AI practices implemented during the deployment of your GenAI applications.",
+    "where": "AI Verify Foundation, AI Verify Testing Framework (web page), document practices"
+   },
+   {
+    "text": "Generate a summary report that shows your alignment with AI Verify Testing Framework.",
+    "where": "AI Verify Foundation, AI Verify Testing Framework (web page), summary report"
+   },
+   {
+    "text": "This mapping between AI Verify Framework and ISO/IEC 42001 demonstrates Singapore’s strong support in advancing global harmonisation in a practical way.",
+    "where": "AI Verify Foundation, AI Verify Testing Framework (web page), ISO/IEC 42001"
+   }
+  ]
+ },
+ {
+  "id": "sg-govtech-rai-playbook",
+  "title": "Responsible AI Playbook (GovTech, Singapore Government Developer Portal): short excerpts only",
+  "url": "https://www.developer.tech.gov.sg/guidelines/standards-and-best-practices/responsible-ai-playbook",
+  "issuer": "Government Technology Agency (GovTech), Singapore",
+  "jurisdiction": "Singapore",
+  "instrument_type": "guidance",
+  "binding": false,
+  "date": "2026-11",
+  "topics": [
+   "public-services",
+   "governance",
+   "security"
+  ],
+  "source_sha256": "1e53b64bb4f19318a810ac8d47fc7fa1b9d2caa1eb82075a2961c938cfb21353",
+  "excerpts": [
+   {
+    "text": "The Responsible AI (RAI) Playbook is designed to guide developers in the safe, trustworthy, and ethical development, evaluation, deployment, and monitoring of AI systems.",
+    "where": "GovTech, Responsible AI Playbook (web page), purpose"
+   },
+   {
+    "text": "The Responsible AI Playbook is applicable to Whole-of-Government (WOG) projects that involve AI system integration, ensuring compliance with responsible AI principles.",
+    "where": "GovTech, Responsible AI Playbook (web page), scope"
+   },
+   {
+    "text": "If you are interested in broader AI governance, please refer to the circulars published by MDDI on the use, development, and deployment of LLM systems in the Singapore Government.",
+    "where": "GovTech, Responsible AI Playbook (web page), MDDI circulars"
+   },
+   {
+    "text": "For specific guidance on AI security, please refer to CSA's Guidelines and Companion Guide for Securing AI Systems",
+    "where": "GovTech, Responsible AI Playbook (web page), AI security"
+   },
+   {
+    "text": "Easy-to-follow and actionable recommendations for deploying AI responsibly for your applications.",
+    "where": "GovTech, Responsible AI Playbook (web page), recommendations"
+   }
+  ]
+ },
+ {
+  "id": "sg-pdpa-2012",
+  "title": "Personal Data Protection Act 2012 (Singapore Statutes Online): short excerpts only",
+  "url": "https://sso.agc.gov.sg/Act/PDPA2012",
+  "issuer": "Attorney-General’s Chambers, Singapore",
+  "jurisdiction": "Singapore",
+  "instrument_type": "law",
+  "binding": true,
+  "date": "2021-12-31",
+  "version": "2020 Revised Edition, as shown on Singapore Statutes Online on 21 Nov 2026; source_sha256 is the SHA-256 of the five provision pages (ss. 13, 18, 20, 23, 26D) as fetched, concatenated in that order",
+  "topics": [
+   "privacy",
+   "consent",
+   "data-subject-rights"
+  ],
+  "source_sha256": "ee49c0019d574b7c28331d2164d07e560f6d0296931b3a4743561490fbefcc8b",
+  "excerpts": [
+   {
+    "text": "An organisation must not, on or after 2 July 2014, collect, use or disclose personal data about an individual unless — (a) the individual gives, or is deemed to have given, his or her consent under this Act",
+    "where": "Personal Data Protection Act 2012, s. 13 (consent required), https://sso.agc.gov.sg/Act/PDPA2012?ProvIds=pr13-"
+   },
+   {
+    "text": "An organisation may collect, use or disclose personal data about an individual only for purposes — (a) that a reasonable person would consider appropriate in the circumstances",
+    "where": "Personal Data Protection Act 2012, s. 18 (limitation of purpose and extent), https://sso.agc.gov.sg/Act/PDPA2012?ProvIds=pr18-"
+   },
+   {
+    "text": "an organisation must inform the individual of — (a) the purposes for the collection, use or disclosure of the personal data (as the case may be) on or before collecting the personal data",
+    "where": "Personal Data Protection Act 2012, s. 20(1) (notification of purpose), https://sso.agc.gov.sg/Act/PDPA2012?ProvIds=pr20-"
+   },
+   {
+    "text": "An organisation must make a reasonable effort to ensure that personal data collected by or on behalf of the organisation is accurate and complete, if the personal data — (a) is likely to be used",
+    "where": "Personal Data Protection Act 2012, s. 23 (accuracy of personal data), https://sso.agc.gov.sg/Act/PDPA2012?ProvIds=pr23-"
+   },
+   {
+    "text": "the organisation must notify the Commission as soon as is practicable, but in any case no later than 3 calendar days after the day the organisation makes that assessment",
+    "where": "Personal Data Protection Act 2012, s. 26D(1) (duty to notify a notifiable data breach), https://sso.agc.gov.sg/Act/PDPA2012?ProvIds=pr26D-"
+   }
+  ]
  }
 ]

@@ -8,6 +8,7 @@ import { type AgentMessage, type CaseState } from "./protocol.ts";
 import { runRound, type RoutedEvent } from "./round.ts";
 import { appendTrace, roundBodies, type TraceRecord } from "./trace.ts";
 import { traceGates, type Effective } from "./gates.ts";
+import type { RuleSet } from "./rulesets.ts";
 
 // Staged scenarios. Events are released one step at a time (never all at
 // once), each to a subset of roles. State is plain JSON so a run can be saved
@@ -85,6 +86,10 @@ export interface RunEnv {
   hitl?: { config: HitlConfig; entity: string; facts: HitlFacts };
   /** The use case's effective gates (gates.ts), computed by the caller when the verdict runs. Omitted = the shipped rule set. */
   effective?: Effective;
+  /** A country re-run (country.ts): judge under this rule set, and treat these jurisdictions as "home" in retrieval
+   * (see SearchOpts.home). Both omitted = today's behaviour. */
+  ruleset?: RuleSet;
+  home?: string[];
 }
 
 export const fmt = (d: Dashboard) =>
@@ -113,7 +118,7 @@ async function gateStep(sc: GateScenario, run: RunState, env: RunEnv, adhoc?: { 
   const at = env.now();
   let seq = run.msg_seq;
   const deps: AgentDeps = {
-    search: (q) => searchChunks(env.chunks, q, { k: 4, mix: true }),
+    search: (q) => searchChunks(env.chunks, q, { k: 4, mix: true, home: env.home }),
     nextId: () => `m${++seq}`,
     llm: env.llm,
     model: env.model,
@@ -135,7 +140,7 @@ async function gateStep(sc: GateScenario, run: RunState, env: RunEnv, adhoc?: { 
     : {};
   const tracedGates = eff && (eff.added.length || eff.waived.length) ? traceGates(eff) : undefined;
   const r = await runRound(
-    { state: { ...run.state!, hitlBreaches: breaches, ...gateInputs }, title: sc.title, requested: !adhoc && run.next === 0 ? sc.requested : undefined, thread: run.thread!, events: def.events },
+    { state: { ...run.state!, hitlBreaches: breaches, ...gateInputs, ruleset: env.ruleset }, title: sc.title, requested: !adhoc && run.next === 0 ? sc.requested : undefined, thread: run.thread!, events: def.events },
     deps,
     (id) => byId.has(id),
     // A declared fix may cite any earlier or current event that is not itself a fix declaration.
@@ -152,10 +157,11 @@ async function gateStep(sc: GateScenario, run: RunState, env: RunEnv, adhoc?: { 
     hitlBreaches: breaches,
     effectiveGates: tracedGates,
     customGates: gateInputs.customGates,
+    ruleset: env.ruleset?.id,
   });
   const log = bodies.reduce(appendTrace, run.log);
   return {
-    ...run, log, state: r.state, thread: r.thread, msg_seq: seq, hitl_unmet: [...unmet],
+    ...run, log, state: env.ruleset ? { ...r.state, ruleset: undefined } : r.state, thread: r.thread, msg_seq: seq, hitl_unmet: [...unmet],
     next: adhoc ? run.next : run.next + 1,
     done: adhoc ? run.done : run.next + 1 >= sc.steps.length,
     steps: [...run.steps, {

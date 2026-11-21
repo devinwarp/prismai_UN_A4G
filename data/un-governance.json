@@ -172,18 +172,26 @@
    },
    "cites": {
     "audit_log": [
-     "sg-imda-agentic-mgf#6"
+     "sg-imda-agentic-mgf#6",
+     "sg-mgf-2020#8"
+    ],
+    "data_lawful": [
+     "sg-pdpa-2012#0",
+     "sg-pdpa-2012#1",
+     "sg-pdpc-ai-recdec#0"
     ],
     "human_final_approval": [
      "sg-imda-agentic-mgf#2",
-     "sg-imda-agentic-mgf#1"
+     "sg-imda-agentic-mgf#1",
+     "sg-mgf-2020#0"
     ],
     "hallucination_rate": [
-     "sg-imda-agentic-mgf#11"
+     "sg-imda-agentic-mgf#11",
+     "sg-mgf-genai#5"
     ]
    },
    "notIngested": [
-    "Singapore PDPA"
+    "Singapore PDPA, other than the five provisions held as excerpts (ss. 13, 18, 20, 23, 26D)"
    ],
    "gapIds": [
     "G2",

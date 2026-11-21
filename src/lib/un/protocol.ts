@@ -1,4 +1,5 @@
 import type { GateDef } from "./governance.ts";
+import type { RuleSet } from "./rulesets.ts";
 import { decide, GATES, type Decision, type GateId, type GateState, type GateStatus, type RoleId, type Requested } from "./policy.ts";
 
 // Coordination protocol. Agents exchange typed messages; the coordinator
@@ -54,6 +55,8 @@ export interface CaseState {
   useCaseGates?: GateId[];
   waived?: GateId[];
   customGates?: Record<GateId, GateDef>;
+  /** The jurisdiction rule set the verdict is judged under (a country re-run, country.ts). Absent = today's behaviour. Never stored on a run. */
+  ruleset?: RuleSet;
 }
 
 export interface Rejection {
@@ -137,7 +140,7 @@ export function reconcile(
     state: next,
     accepted,
     rejected,
-    decision: decide({ clientFacing: next.clientFacing, requested: next.requested, gates: next.gates, extraGates: next.extraGates, hitlBreaches: next.hitlBreaches, useCaseGates: next.useCaseGates, waived: next.waived, catalog: state.customGates ? { ...GATES, ...state.customGates } : undefined }),
+    decision: decide({ ruleset: state.ruleset, clientFacing: next.clientFacing, requested: next.requested, gates: next.gates, extraGates: next.extraGates, hitlBreaches: next.hitlBreaches, useCaseGates: next.useCaseGates, waived: next.waived, catalog: state.customGates ? { ...GATES, ...state.customGates } : undefined }),
   };
 }
 
