@@ -76,7 +76,7 @@ Run with `OFFLINE=1` (file store `.data/offline-db.json`, auto-signed-in admin).
 - **Simulated, not a real model.** The subject agent is a deterministic simulation with seeded weaknesses. The eval results are not real model output.
 - **Sijil figures are simulated** in this branch. A live adapter exists only as a record mapper and is untested against a real node.
 - **Takedown is recorded, not enforced.**
-- **Database tables are not applied.** Hosted persistence and DB-level protection of the new logs are untested.
+- **Database tables are created but not yet exercised.** The SQL was applied to the hackathon Supabase project on 21 Nov 2026. Hosted persistence of the new logs, and the database-level append-only triggers, have not been tested with real writes from the app.
 - **Arabic strings are drafts** and need native-speaker review.
 - **Policy jurisdictions** remain simplified demos.
 - **The evaluated agent is rule-based, not a language model.** Slice E links the skill, KB, ReAct, OCR and memory into one path and tests it, but nothing here shows how a real model would behave. Slices A to C still use the simulated subject; slice E evals are separate from the lifecycle screens and are run from the command line.

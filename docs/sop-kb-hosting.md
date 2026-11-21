@@ -1,6 +1,6 @@
 # SOP knowledge base: storage and embedding in a hosted app
 
-Status: the SQL is written but **not applied to any database**, and the Supabase store is unit-tested only against a mocked client. The app defaults to the file store (`src/lib/un/kb-store.ts`), which is what runs offline and in the tests.
+Status: the SQL was applied to the hackathon Supabase project on 21 Nov 2026 (tables created, pgvector enabled, row-level security on), but the Supabase store is unit-tested only against a mocked client and the app has not been exercised with writes to these tables on the hosted database. The app defaults to the file store (`src/lib/un/kb-store.ts`), which is what runs offline and in the tests.
 
 ## What is stored
 `supabase/un-sop-kb.sql` (a new file; `schema.sql` is untouched) adds `un_sops`, `un_sop_chunks` (with `embedding vector(768)`, an HNSW cosine index and `un_match_sop_chunks`), `un_kb_configs` (settings and rule-line versions), `un_kb_questions`, `un_kb_runs` and `un_kb_log` (hash-chained, append-only by trigger). The outside-request queue is another workstream's table and is not created here. Set `UN_KB_STORE=supabase` to use it once applied.

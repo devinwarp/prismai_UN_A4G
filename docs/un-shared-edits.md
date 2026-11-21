@@ -23,7 +23,7 @@ New code lives in `src/lib/un/gates*.ts`, `src/lib/un/governance.ts`, `src/app/a
 - `src/lib/un/sop/{data,reference}.ts`, `data/sop-baseline.json`: SOP-LIC-014 as a fourth sample (Annex excluded); `flagsOfText` export and the cue "tell".
 - `scripts/extract_skill.ts`: now calls `src/lib/un/skill-extract.ts`.
 - `tests/un-sop.test.ts`: four samples.
-- New SQL: `supabase/un-profiles.sql` (not applied).
+- New SQL: `supabase/un-profiles.sql` (applied to the hackathon Supabase project on 21 Nov 2026; not yet exercised by the app).
 # Edits to shared files (tuning workstream)
 
 New code lives in `src/lib/un/` (react-config, tuning-bank, tuning-fix, tuning-versions, tuning-service, kb-store*), `src/app/admin/federal/tuning/`, `src/app/api/admin/un/tuning/`, `supabase/un-sop-kb.sql` and `docs/sop-kb-hosting.md`. Edits to files that already existed:
@@ -45,4 +45,4 @@ Files that existed before the agent-runtime work and were edited. Everything els
 - `src/lib/un/react-sop.ts`, `analyst-agent.ts`, `doc-ocr.ts`, `case-memory.ts`, `sop-rules.ts`, `task-evals.ts`, `fixtures-uc02.ts`, `scripts/make_synthetic_docs.ts` (agent-runtime code written by the earlier branch, extended here).
 - `data/sops/fixtures/uc02/docs/ocr-cache.json`: new entries for the new synthetic images (existing entries untouched).
 
-New migration: `supabase/un-outside-queue.sql` (not applied anywhere). `supabase/schema.sql` is untouched.
+New migration: `supabase/un-outside-queue.sql` (applied to the hackathon Supabase project on 21 Nov 2026). `supabase/schema.sql` is untouched.
