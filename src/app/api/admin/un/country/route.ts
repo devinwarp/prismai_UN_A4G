@@ -22,7 +22,7 @@ export async function POST(request: Request) {
       case "add_policy": return addPolicy(d, actor, str("country"), onStage);
       case "onboard": return onboardCompany(d, actor, b, onStage);
       case "run": return recordRun(d, actor, str("company") || "marsa", str("country"));
-      case "reset": return resetDemo(d, actor);
+      case "reset": return resetDemo(d, actor, who.org_id!);
       default: return Promise.resolve<Fail>({ ok: false, status: 400, error: "Unknown action" });
     }
   };

@@ -3,6 +3,9 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
 import { evalSetFor } from "@/lib/un/evalset";
+import { approvalBlockers, effectiveGates, evidenceFor } from "@/lib/un/gates";
+import { factsOf, loadGov } from "@/lib/un/gates-store";
+import { loadRun } from "@/lib/un/runs";
 import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import type { SubjectConfig } from "@/lib/un/subject";
@@ -131,6 +134,14 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
   ]);
   const hasSet = evalSetFor(uc.ext_id).length > 0;
   const state = approvalState(log);
+  // the same check the approve route makes (409 otherwise): say it up front instead of offering a button that fails
+  let approveBlocked: string | null = null;
+  if (state === "ready") {
+    const eff = effectiveGates({ ext: uc.ext_id, facts: factsOf(uc), gov: await loadGov(profile.org_id) });
+    const run = uc.verdict_run_id ? await loadRun(profile.org_id, uc.verdict_run_id) : null;
+    const blockers = approvalBlockers(eff, evidenceFor(eff, uc.ext_id, run?.state.state?.gates ?? {}));
+    if (blockers.length) approveBlocked = `Approval needs every effective gate to pass. Not yet passing: ${blockers.map((x) => `${x.label} (${x.status})`).join("; ")}.`;
+  }
   const cfg = configOf(log);
   const chain = verifyChain(log);
   const canEdit = profile.role === "admin";
@@ -170,7 +181,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
             <p className="mt-8 text-sm text-ink-soft"><TV k="ev.nocases" en="No eval set exists for {uc} yet. Eval sets are defined for UC01 and UC02." v={{ uc: uc.ext_id }} /></p>
           ) : (
             <>
-              {canEdit && <div className="mt-6"><TuningControls useCaseId={id} canRun={log.length > 0} /></div>}
+              {canEdit && <div className="mt-6"><TuningControls useCaseId={id} canRun={log.length > 0} state={state} /></div>}
 
               <section className={`${card} mt-6`} aria-label="Current agent">
                 <h2 className="text-lg font-semibold"><T k="tu.state.title" en="Current agent" />{cfg ? <> · <TV k="tu.state.version" en="Agent version {v}" v={{ v: cfg.version }} /></> : null}</h2>
@@ -184,7 +195,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
                 <section className={`${card} mt-4`} aria-label="Decision">
                   <h2 className="text-lg font-semibold"><T k="tu.approve.title" en="Decision" /></h2>
                   <p className="mt-1 mb-3 text-sm text-ink-soft"><T k="tu.approve.text" en="The agent version below met the approval bar. A person decides whether it goes forward." /></p>
-                  <ApproveForm useCaseId={id} />
+                  <ApproveForm useCaseId={id} blocked={approveBlocked} />
                 </section>
               )}
 

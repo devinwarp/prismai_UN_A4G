@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Noto_Sans_Arabic } from "next/font/google";
-import { DIR, tr, type Lang } from "@/lib/un/i18n/dict";
+import { DIR, tr, trN, type Lang } from "@/lib/un/i18n/dict";
 import "./federal.css";
 
 // Arabic-capable face, loaded only by the federal screens.
@@ -17,8 +17,10 @@ export function T({ k, en }: { k: string; en: string }) {
 }
 
 /** Translated text with {name} placeholders filled from v. */
-export function TV({ k, en, v }: { k: string; en: string; v: Record<string, string | number> }) {
-  return <>{tr(useLang(), k, en).replace(/\{(\w+)\}/g, (_, n: string) => String(v[n] ?? ""))}</>;
+export function TV({ k, en, v, one }: { k: string; en: string; v: Record<string, string | number>; one?: string }) {
+  const lang = useLang();
+  const n = typeof v.n === "number" ? v.n : undefined;
+  return <>{(n === undefined ? tr(lang, k, en) : trN(lang, k, en, n, one)).replace(/\{(\w+)\}/g, (_, n: string) => String(v[n] ?? ""))}</>;
 }
 
 /** Wraps a federal page: language toggle (remembered per browser), dir and font. */

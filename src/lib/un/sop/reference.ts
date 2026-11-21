@@ -97,13 +97,19 @@ export function classify(t: string): Cls {
 // ---- 4. Risk flags -----------------------------------------------------------
 const EXTERNAL = /\b(applicants?|citizens?|customers?|clients?|residents?|requesters?|complainants?|licensees?|business owners?|members of the public)\b/i;
 const OUTBOUND = /\b(send\w*|tell\w*|email\w*|notif\w*|repl(?:y|ies)|respond\w*|inform\w*|contact\w*|call\w*|letter|message|issu\w*|explain\w*|payment link|receipt)\b/i;
-const RIGHTS = /\b(eligib\w*|entitle\w*|waiv\w*|penalt\w*|fines?|suspend\w*|revok\w*|appeal\w*|refund\w*|sanction\w*|exempt\w*|benefit\w*|denied|deny|denies|reject\w*|disqualif\w*)\b/i;
-const IRREVERSIBLE = /\b(cannot be undone|can't be undone|irreversib\w*|permanent\w*|final|delet\w*|destroy\w*|purge\w*|terminat\w*|disburs\w*|pay(?:s)? out|releas\w* (?:any |the )?(?:refund|payment|funds))\b/i;
+const RIGHTS = /\b(eligib\w*|entitle\w*|waiv\w*|penalt\w*|(?:impos\w*|levy\w*|issu\w*) (?:an? |the )?fines?|suspend\w*|revok\w*|appeal\w*|refund\w*|sanction\w*|exempt\w*|benefit\w*|denied|deny|denies|reject\w*|disqualif\w*)\b/i;
+const IRREVERSIBLE = /\b(cannot be undone|can't be undone|irreversib\w*|cannot be (?:withdrawn|reversed|revoked|recalled|retracted)|can't be (?:withdrawn|reversed|revoked)|permanent\w*|final|delet\w*|destroy\w*|purge\w*|terminat\w*|disburs\w*|pay(?:s)? out|releas\w* (?:any |the )?(?:refund|payment|funds))\b/i;
 
 /** The three flags for one piece of text (a step or a task). Same cues as the whole-SOP result. */
+// A sentence that says what a role may NOT do ("May not waive, reduce or refund any fee", "does not approve or reject")
+// is a limit on authority, not a decision the task makes, so it is not read for rights cues.
+// ponytail: sentence-level, so "A rejection must not be sent without a reason" is also skipped; a person confirms flags anyway.
+const LIMIT = /\b(?:may not|must not|cannot|can not|does not|do not|no one may|is not|are not|never)\b/i;
+const withoutLimits = (t: string) => t.split(/(?<=[.;])\s+|\n/).filter((x) => !LIMIT.test(x)).join("\n");
+
 export const flagsOfText = (t: string): Record<FlagId, boolean> => ({
   client_facing: EXTERNAL.test(t) && OUTBOUND.test(t),
-  affects_rights: RIGHTS.test(t),
+  affects_rights: RIGHTS.test(withoutLimits(t)),
   irreversible: IRREVERSIBLE.test(t),
 });
 

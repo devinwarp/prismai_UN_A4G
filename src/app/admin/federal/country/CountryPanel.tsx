@@ -23,6 +23,7 @@ export function CountryPanel({ canEdit, active, countries, staged, euBuilt, comp
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const busyRef = useRef(false); // set synchronously, so a double-click cannot start a second request before the disabled state renders
   const [note, setNote] = useState<string | null>(null);
   const [stages, setStages] = useState<Stage[]>([]);
   const [elapsed, setElapsed] = useState(0);
@@ -37,6 +38,8 @@ export function CountryPanel({ canEdit, active, countries, staged, euBuilt, comp
   }, [busy]);
 
   async function call(action: string, body: Record<string, unknown>, stream = false) {
+    if (busyRef.current) return;
+    busyRef.current = true;
     setBusy(action); setError(null); setNote(null); setStages([]); setElapsed(0); t0.current = performance.now();
     try {
       const res = await fetch("/api/admin/un/country", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, stream, ...body }) });
@@ -59,10 +62,12 @@ export function CountryPanel({ canEdit, active, countries, staged, euBuilt, comp
       if (!res.ok || !out || out.ok === false) setError(String(out?.error ?? tr(lang, "gt.failed", "The request failed.")));
       else {
         const ms = Math.round(performance.now() - t0.current);
-        setNote(`${tr(lang, "cn.elapsed", "Elapsed")}: ${(ms / 1000).toFixed(2)} ${tr(lang, "ub.cn.sec", "s")}` + (out.matchesStored === true ? ` · ${tr(lang, "cn.sameHash", "Identical to the stored result (same head hash)")}` : ""));
+        if (out.noop === true) setNote(tr(lang, "cn.reset.noop", "Already at the starting state. Nothing to reset, nothing logged."));
+        else setNote(`${tr(lang, "cn.elapsed", "Elapsed")}: ${(ms / 1000).toFixed(2)} ${tr(lang, "ub.cn.sec", "s")}` + (out.matchesStored === true ? ` · ${tr(lang, "cn.sameHash", "Identical to the stored result (same head hash)")}` : ""));
         router.refresh();
       }
     } catch { setError(tr(lang, "gt.failed", "The request failed.")); }
+    busyRef.current = false;
     setBusy(null);
   }
 

@@ -171,6 +171,12 @@ export function approvalState(entries: LogEntry[]): ApprovalState {
   return "none";
 }
 
+/** Why a new tuning cycle cannot start in this approval state (the server answers 409 for these), or null. */
+export function runBlockedReason(state: ApprovalState): string | null {
+  return state === "approved" ? "Already approved. Reset the demo to start again."
+    : state === "ready" ? "Already certified. Approve it, or reset the demo to start again." : null;
+}
+
 // ---- one tuning cycle --------------------------------------------------------------------
 
 export type StopReason = "certified" | "no_proposals" | "no_reserve" | "max_rounds";

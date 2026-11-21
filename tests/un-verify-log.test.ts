@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
@@ -17,9 +17,10 @@ const signed = async () => {
   return signRun(S1, r, { signer_id: "u-officer", role: "compliance officer", decision: "SIGN", comment: "ok" }, env.now);
 };
 const cli = (doc: unknown) => {
-  const f = join(mkdtempSync(join(tmpdir(), "vl-")), "run.json");
+  const dir = mkdtempSync(join(tmpdir(), "vl-"));
+  const f = join(dir, "run.json");
   writeFileSync(f, JSON.stringify(doc));
-  return spawnSync(process.execPath, ["scripts/verify_log.ts", f], { encoding: "utf8" });
+  try { return spawnSync(process.execPath, ["scripts/verify_log.ts", f], { encoding: "utf8" }); } finally { rmSync(dir, { recursive: true, force: true }); }
 };
 
 test("C4-4: a clean export verifies, in every accepted shape, and reports the signature", async () => {

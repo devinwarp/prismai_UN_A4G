@@ -182,7 +182,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
                 return (
                   <tr key={r.input.id}>
                     <td className={`${cell} w-[30%]`}><span className="font-mono text-xs">{r.input.id}</span> <span className="font-medium">{u.title}</span><br /><span className="text-sm text-ink-soft">{u.entity}</span>
-                      {r.gatesAdded > 0 && <><br /><span className={`${chip} mt-1 inline-block`} title="This process is judged under more gates than the shipped rule set, so compare its figures with care."><span aria-hidden>+ </span><TV k="gt.added" en="{n} gates added" v={{ n: r.gatesAdded }} /></span></>}</td>
+                      {r.gatesAdded > 0 && <><br /><span className={`${chip} mt-1 inline-block`} title="This process is judged under more gates than the shipped rule set, so compare its figures with care."><span aria-hidden>+ </span><TV k="gt.added" en="{n} gates added" one="1 gate added" v={{ n: r.gatesAdded }} /></span></>}</td>
                     <td className={`${cell} w-[24%]`}>
                       <VerdictBadge verdict={r.decision.verdict as never} size="lg" />
                       {diff && <p className="mt-2 text-sm font-medium text-ember"><span aria-hidden>▲ </span><T k="ub.cmp.chg" en="Changed. UAE:" /> <span className="font-mono"><Vd v={r.uae.verdict} /></span></p>}

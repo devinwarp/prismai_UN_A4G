@@ -323,5 +323,12 @@ export const AR: Record<string, string> = {
 /** Look up a key; fall back to the English text supplied at the call site. */
 export const tr = (lang: Lang, key: string, en: string): string => (lang === "ar" ? AR[key] ?? en : en);
 
+/** Count-aware lookup. English: `one` for 1, else `en`. Arabic: key.1 (1), key.2 (2), key (3-10), key.many (11+), each falling back to the plain key. */
+export const trN = (lang: Lang, key: string, en: string, n: number, one?: string): string => {
+  if (lang !== "ar") return n === 1 && one ? one : en;
+  const suffix = n === 1 ? ".1" : n === 2 ? ".2" : n % 100 >= 11 || n % 100 === 0 ? ".many" : "";
+  return AR[key + suffix] ?? AR[key] ?? en;
+};
+
 export const verdictKeys = () => VERDICTS.map((v) => `verdict.${v}`);
 export const gateKeys = () => Object.keys(GATES).map((g) => `gate.${g}`);

@@ -3,7 +3,7 @@ import test from "node:test";
 import { activeCases, evalSetFor, noDesignation } from "../src/lib/un/evalset.ts";
 import { runEvalSet } from "../src/lib/un/eval-run.ts";
 import { baselineConfig } from "../src/lib/un/subject.ts";
-import { appendEntry, approvalState, applyProposals, canon, configOf, designationOf, optimise, runTuningCycle, verifyChain, type LogEntry } from "../src/lib/un/tuning.ts";
+import { appendEntry, approvalState, runBlockedReason, applyProposals, canon, configOf, designationOf, optimise, runTuningCycle, verifyChain, type LogEntry } from "../src/lib/un/tuning.ts";
 
 const clock = () => {
   let n = 0;
@@ -117,4 +117,10 @@ test("applying proposals bumps the version and never removes an existing rule", 
   assert.equal(next.version, 2);
   assert.deepEqual(next.rules, ["disclose_ai"]);
   assert.equal(applyProposals(next, [{ id: "x", op: "add_rule", rule: "disclose_ai", summary: "", because: [] }]).system_prompt, next.system_prompt, "no duplicate prompt text");
+});
+
+test("the Run-a-tuning-cycle button is blocked (with a reason) exactly in the states where the route answers 409", () => {
+  assert.equal(runBlockedReason("none"), null);
+  assert.match(runBlockedReason("ready")!, /certified/i);
+  assert.match(runBlockedReason("approved")!, /approved/i);
 });

@@ -14,7 +14,7 @@ const GLOSSARY: [string, string][] = [
   ["الامارات", "UAE"], ["الاماراتي", "UAE"], ["سنغافورة", "Singapore"], ["الهند", "India"], ["الاوروبي", "EU"],
   ["قانون", "law act"], ["استراتيجية", "strategy"], ["ميثاق", "charter"], ["الوكيل", "agent"], ["الوكلاء", "agents"], ["مزودي", "providers"], ["مزود", "provider"],
   ["استهلاك الطاقة", "energy consumption"], ["النموذج", "model"], ["السجلات", "logs records"], ["المواطن", "citizen"], ["الحكومية", "government"], ["القطاعات", "sectors"],
-  ["النسبة المستهدفة", "target percentage"], ["التقييم", "assessment"], ["الجهة المختصة", "authority"], ["المستندات", "documents"], ["الوثائق", "documents"], ["التجديد", "renew renewal"], ["تجديد", "renew renewal"], ["الرخصه التجاريه", "trade licence"], ["الرخصة التجارية", "trade licence"], ["الدفع", "pay payment"], ["المتاخر", "late"], ["المتاخره", "late"], ["بالتقسيط", "instalments"], ["التقسيط", "instalments"], ["الاحتفاظ", "retention"], ["الاختراق", "breach"],
+  ["النسبة المستهدفة", "target percentage"], ["التقييم", "assessment"], ["الجهة المختصة", "authority"], ["المستندات", "documents"], ["الوثائق", "documents"], ["الاوراق", "documents"], ["التجديد", "renewal"], ["تجديد", "renewal"], ["المطلوبه", "required"], ["المطلوب", "required"], ["مطلوب", "required"], ["مطلوبه", "required"], ["الرخصه التجاريه", "trade licence"], ["الرخصة التجارية", "trade licence"], ["الدفع", "pay payment"], ["المتاخر", "late"], ["المتاخره", "late"], ["بالتقسيط", "instalments"], ["التقسيط", "instalments"], ["الاحتفاظ", "retention"], ["الاختراق", "breach"],
 ];
 
 /** Strip diacritics and tatweel, fold alef/ya/ta-marbuta variants, and drop a leading و/ب/ل/ك/ف before a matched term. */
