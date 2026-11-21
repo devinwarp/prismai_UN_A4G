@@ -36,12 +36,16 @@ test("SOP-LIC-014 gives the four job profiles with 4, 7, 3 and 6 tasks, and the 
   assert.deepEqual(lic[0].tasks.map((t) => t.id), ["T01", "T02", "T03", "T19"]);
 });
 
-test("derived flags never miss a client-facing or rights-affecting profile the answer key has; over-flagging is the safe direction", () => {
+test("SOP-LIC-014 flags match the answer key task by task: limits on authority ('may not waive or refund', 'does not approve or reject') and lookups of fines/holds are not rights-affecting; 'cannot be withdrawn' (T17) is irreversible", () => {
   const key = answerKey();
   lic.forEach((p, i) => {
-    assert.equal(p.flags.client_facing, key[i].flags.client_facing, p.name);
-    if (key[i].flags.affects_rights) assert.ok(p.flags.affects_rights, p.name);
+    assert.deepEqual(p.flags, key[i].flags, p.name);
+    // task level: the answer key also marks T17 "issue the licence" rights-affecting; no cue for that is added (it would flip the older licence-renewal fixture), the profile flag is unaffected
+    p.tasks.forEach((t, j) => assert.deepEqual({ ...t.flags, affects_rights: t.flags.affects_rights || t.id === "T17" }, { ...key[i].tasks[j].flags }, `${p.name} ${t.id}`));
   });
+  // the roll-up consequence: Analyst and Fee profiles are not rights-affecting, the Supervisor is rights-affecting AND irreversible
+  assert.deepEqual(lic.map((p) => p.flags.affects_rights), [false, false, false, true]);
+  assert.deepEqual(lic.map((p) => p.flags.irreversible), [false, false, false, true]);
 });
 
 test("worked example, UAE rule set, answer-key flags: gates, rules and the four evidence cases per profile", () => {
