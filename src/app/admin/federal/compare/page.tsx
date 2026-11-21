@@ -55,7 +55,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
     const ev = u.ext_id === "UC02" ? s1EvidenceAt(step) : { gates: flatEvidence(allPass), hitlUnmet: [] };
     const facts = { client_facing: u.client_facing, affects_rights: rightsSet.has(u.ext_id), irreversible: u.irreversible };
     const eff = effectiveGates({ ext: u.ext_id, facts, ruleset: rs, gov });
-    return { id: u.ext_id, entity: u.entity, facts, requested: "GO_AUTONOMOUS", ...ev, useCaseGates: eff.added, catalog: eff.catalog };
+    return { id: u.ext_id, entity: u.entity, facts, requested: "GO_AUTONOMOUS", ...ev, useCaseGates: eff.added, waived: eff.waived, catalog: eff.catalog };
   });
   const rows = compareProcesses(rs, inputs);
   const isUae = rs.id === "uae-federal";

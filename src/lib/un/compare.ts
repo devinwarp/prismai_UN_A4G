@@ -42,6 +42,8 @@ export interface ProcessInput {
   id: string; entity: string; facts: HitlFacts; requested: Requested; gates: GateState; hitlUnmet: HitlRuleId[];
   /** Gates this process adds beyond the rule set (gates.ts effective gates), with the catalog that defines them. */
   useCaseGates?: GateId[];
+  /** Gates waived through governance for this process (gates.ts): not required, as in decide(). */
+  waived?: GateId[];
   catalog?: Record<GateId, GateDef>;
 }
 export interface ProcessRow {
@@ -65,7 +67,7 @@ const requiredGates = (rs: RuleSet, clientFacing: boolean): GateId[] =>
 function judge(base: RuleSet, p: ProcessInput) {
   const { rs, highRisk } = resolve(base, p.facts);
   const breaches = hitlBreaches(hitlConfigFor(rs, p.entity), p.entity, p.facts, p.hitlUnmet);
-  const decision = decide({ clientFacing: p.facts.client_facing, requested: p.requested, gates: p.gates, hitlBreaches: breaches, ruleset: rs, useCaseGates: p.useCaseGates, catalog: p.catalog });
+  const decision = decide({ clientFacing: p.facts.client_facing, requested: p.requested, gates: p.gates, hitlBreaches: breaches, ruleset: rs, useCaseGates: p.useCaseGates, waived: p.waived, catalog: p.catalog });
   return { rs, highRisk, decision };
 }
 
@@ -76,7 +78,7 @@ export function compareProcesses(base: RuleSet, ps: ProcessInput[]): ProcessRow[
   return ps.map((p) => {
     const { rs, highRisk, decision } = judge(base, p);
     const added = (p.useCaseGates ?? []).filter((g) => !requiredGates(rs, p.facts.client_facing).includes(g));
-    const required = [...requiredGates(rs, p.facts.client_facing), ...added];
+    const required = [...requiredGates(rs, p.facts.client_facing), ...added].filter((g) => !p.waived?.includes(g));
     return {
       input: p, highRisk, required, decision, gatesAdded: added.length,
       addedByAttributes: required.filter((g) => !baseline.includes(g) && !added.includes(g)),

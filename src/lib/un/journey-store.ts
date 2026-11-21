@@ -10,6 +10,10 @@ import { checkSopKb } from "./skill-extract";
 import { profilesOf } from "./sop/data";
 
 type Row = Record<string, unknown>;
+const tickedFlags = (on: Row[], all: ReturnType<typeof profilesOf>) => {
+  const ps = (all ?? []).filter((p) => on.some((r) => r.profile === p.name));
+  return { client_facing: ps.some((p) => p.flags.client_facing), affects_rights: ps.some((p) => p.flags.affects_rights), irreversible: ps.some((p) => p.flags.irreversible) };
+};
 const group = (rows: Row[] | null): Map<string, Row[]> => {
   const m = new Map<string, Row[]>();
   for (const r of rows ?? []) m.set(String(r.use_case_id), [...(m.get(String(r.use_case_id)) ?? []), r]);
@@ -19,7 +23,7 @@ const asLog = <T,>(rows: Row[] = []): T[] =>
   rows.map((r) => ({ seq: Number(r.seq), kind: r.kind, at: new Date(String(r.at)).toISOString(), actor: String(r.actor), payload: r.payload, prev_hash: String(r.prev_hash), hash: String(r.hash) }) as T).sort((a, b) => (a as { seq: number }).seq - (b as { seq: number }).seq);
 
 /** Journey for each given use case, derived from the stored records (one query per table for the whole org). */
-export async function loadJourneys(orgId: string, ucs: Pick<UnUseCaseState, "id" | "ext_id" | "verdict">[]): Promise<Map<string, Journey>> {
+export async function loadJourneys(orgId: string, ucs: Pick<UnUseCaseState, "id" | "ext_id" | "verdict" | "verdict_run_id" | "client_facing" | "affects_rights" | "irreversible">[]): Promise<Map<string, Journey>> {
   const db = createAdminClient();
   const [sops, profiles, evals, tuning, watch] = await Promise.all([
     db.from("un_use_case_sops").select("*").eq("org_id", orgId),
@@ -40,7 +44,7 @@ export async function loadJourneys(orgId: string, ucs: Pick<UnUseCaseState, "id"
     const r = runs.get(u.id) ?? [];
     out.set(u.id, journeyStatus({
       sop: { attached: !!sopId, profiles: all?.length ?? 0, ticked: on.length, kbOk: sopId ? !!kb.get(sopId) : false, skills: on.filter((x) => x.skill_sha256).length },
-      gates: await gateAcceptance(orgId, u.id),
+      gates: await gateAcceptance(orgId, u, tickedFlags(on, all)),
       verdict: u.verdict,
       evalSet: evalSetFor(u.ext_id).length > 0,
       evalRuns: r.length,

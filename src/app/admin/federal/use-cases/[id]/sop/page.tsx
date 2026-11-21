@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
 import { isUuid } from "@/lib/un/model";
+import { loadGov } from "@/lib/un/gates-store";
 import { loadAttachedSop, loadProfileRows } from "@/lib/un/profiles-store";
 import { RULESETS } from "@/lib/un/rulesets";
 import { loadUseCase } from "@/lib/un/sijil-store";
@@ -35,7 +36,7 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
   const rows = sopId ? await loadProfileRows(profile.org_id, id, sopId) : [];
   const ticked = new Set(rows.filter((r) => r.automate).map((r) => r.profile));
   const rs = RULESETS.find((r) => KEY[r.id] === j) ?? RULESETS[0];
-  const a = assessProfiles(profiles, ticked, rs, uc.entity);
+  const a = assessProfiles(profiles, ticked, rs, uc.entity, { ext: uc.ext_id, gov: await loadGov(profile.org_id) });
   const kb = sopId ? checkSopKb(sopId) : null;
   const skill = new Map(rows.map((r) => [r.profile, r.skill_sha256]));
   const th = "px-3 py-2 text-start font-normal";

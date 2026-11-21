@@ -1,6 +1,7 @@
 import { applicableRules, type HitlFacts } from "../hitl.ts";
 import type { Verdict } from "../model.ts";
-import { GATES, decide, type GateId, type GateState } from "../policy.ts";
+import { decideEffective, effectiveGates, type GovState } from "../gates.ts";
+import { GATES, type GateId, type GateState } from "../policy.ts";
 import { hitlConfigFor, resolve, type RuleSet } from "../rulesets.ts";
 import { flagsOfText } from "./reference.ts";
 import type { FlagId, SopAnalysis } from "./types.ts";
@@ -79,14 +80,21 @@ export interface ProfileAssessment {
 }
 export interface Assessment { rows: ProfileAssessment[]; rollup: Record<EvidenceKey, Verdict> | null }
 
-export function assessProfiles(profiles: JobProfile[], ticked: ReadonlySet<string>, base: RuleSet, entity: string): Assessment {
+/** `use` (the use case's ext id and the org's gate state) folds its added gates and waivers into every profile's
+ * verdict, through the same decideEffective() path the scenario runs use. Gates beyond the shipped nine have no
+ * staged evidence here: they read pass in every case except "no evidence". */
+export function assessProfiles(profiles: JobProfile[], ticked: ReadonlySet<string>, base: RuleSet, entity: string, use?: { ext: string; gov: GovState }): Assessment {
   const rows = profiles.map((p): ProfileAssessment => {
     const facts: HitlFacts = p.flags;
     const { rs, highRisk } = resolve(base, facts);
-    const gates = ALL.filter((g) => (facts.client_facing || !GATES[g].clientFacingOnly) && rs.gates.includes(g)).length;
+    const eff = effectiveGates({ ext: use?.ext ?? "", facts, ruleset: base, gov: use?.gov });
+    const gates = eff.gates.filter((g) => !g.waiver).length;
     const hitl = applicableRules(hitlConfigFor(rs, entity), entity, facts).length;
     const verdicts = Object.fromEntries(
-      EVIDENCE_KEYS.map((k) => [k, decide({ clientFacing: facts.client_facing, requested: "GO_AUTONOMOUS", gates: EVIDENCE[k], ruleset: rs }).verdict]),
+      EVIDENCE_KEYS.map((k) => {
+        const ev: GateState = { ...EVIDENCE[k], ...(k === "no_evidence" ? {} : Object.fromEntries(eff.gates.filter((g) => !ALL.includes(g.id)).map((g) => [g.id, "pass" as const]))) };
+        return [k, decideEffective({ ext: use?.ext ?? "", facts, requested: "GO_AUTONOMOUS", gates: ev, ruleset: base, gov: use?.gov }).decision.verdict];
+      }),
     ) as Record<EvidenceKey, Verdict>;
     return { name: p.name, tasks: p.tasks.length, automate: ticked.has(p.name), flags: p.flags, gates, hitl, highRisk, verdicts };
   });

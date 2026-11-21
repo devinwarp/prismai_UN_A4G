@@ -123,6 +123,15 @@ export function approvalBlockers(e: Effective, gates: GateState): { id: GateId; 
   return e.gates.filter((g) => !g.waiver && (gates[g.id] ?? "unknown") !== "pass").map((g) => ({ id: g.id, label: g.label, status: gates[g.id] ?? "unknown" }));
 }
 
+/** Is the use case's risk flags-and-gates stage settled? Every effective gate that is not waived has passing
+ * evidence (`lacking` otherwise), and every waiver and admin-added gate carries a named sign-off (`unsigned`
+ * otherwise). Feeds stage 2 of the journey bar; approvalBlockers() is the same test applied at approval. */
+export function acceptanceOf(e: Effective, ext: string, runGates: GateState, gov: GovState): { accepted: boolean; lacking: GateId[]; unsigned: GateId[] } {
+  const lacking = approvalBlockers(e, evidenceFor(e, ext, runGates)).map((b) => b.id);
+  const unsigned = e.gates.filter((g) => (g.waiver && !g.waiver.approver.trim()) || (gov.custom[g.id] && !gov.custom[g.id].signed_off_by.trim())).map((g) => g.id);
+  return { accepted: !lacking.length && !unsigned.length, lacking, unsigned };
+}
+
 /** Status of a metric gate from a SIMULATED measurement (labelled simulated wherever shown). */
 export function metricEvidence(id: GateId, ext: string, def: GateDef): { value: number; status: "pass" | "fail" | "unknown"; simulated: true } | null {
   if (!def.metric) return null;
