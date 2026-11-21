@@ -73,6 +73,9 @@ cp .env.example .env.local     # fill in Supabase, OPENROUTER_API_KEY, ADMIN_EMA
 #   supabase/un-federal-t1.sql   (verdict guard, append-only trace table, entities)
 #   supabase/un-federal-t2.sql   (tamper-evident change history)
 #   supabase/seed-entities.sql   (after importing the use cases)
+#   Lifecycle (optional, for the pilot, gates, tuning and outside-queue screens; pgvector must be enabled):
+#   supabase/un-agent-lifecycle.sql, un-agent-runtime.sql, un-gates.sql, un-profiles.sql,
+#   un-sop-kb.sql, un-outside-queue.sql, then un-log-guards.sql
 npm ci
 npm run dev                    # http://localhost:3000 -> /admin/federal
 npm test                       # 178 tests (177 pass, 1 skipped without PyMuPDF), no database needed

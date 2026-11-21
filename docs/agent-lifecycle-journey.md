@@ -76,6 +76,7 @@ Run with `OFFLINE=1` (file store `.data/offline-db.json`, auto-signed-in admin).
 - **Simulated, not a real model.** The subject agent is a deterministic simulation with seeded weaknesses. The eval results are not real model output.
 - **Sijil figures are simulated** in this branch. A live adapter exists only as a record mapper and is untested against a real node.
 - **Takedown is recorded, not enforced.**
+- **Log protection in the database.** `supabase/un-log-guards.sql` (applied 21 Nov 2026) makes `un_gate_log` refuse UPDATE and DELETE, and makes `un_tuning_log`, `un_watchdog_log` and `un_eval_runs` refuse UPDATE. Those three still allow DELETE because the admin-only demo reset clears a use case's log between runs, so they are append-only in normal use and tamper-evident through the hash chain, not tamper-proof against deletion by a database administrator. The case-memory and tuning-version logs (`un_case_memory`, `un_kb_log`) refuse both. All were tested with rollback transactions.
 - **Database tables are created but not yet exercised.** The SQL was applied to the hackathon Supabase project on 21 Nov 2026. Hosted persistence of the new logs, and the database-level append-only triggers, have not been tested with real writes from the app.
 - **Arabic strings are drafts** and need native-speaker review.
 - **Policy jurisdictions** remain simplified demos.
