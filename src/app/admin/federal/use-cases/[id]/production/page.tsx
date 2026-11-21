@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
+import { permissionsFor } from "@/lib/un/permissions-server";
 import { evalSetFor } from "@/lib/un/evalset";
 import { isUuid } from "@/lib/un/model";
 import { agentRuntimeSummary, SOP_BY_USE_CASE } from "@/lib/un/agent-eval-summary";
@@ -93,7 +94,9 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
   const certified = configOf(tuning);
   const approved = approvalState(tuning) === "approved";
   const chain = verifyChain(watch);
-  const canEdit = profile.role === "admin";
+  const perms = await permissionsFor(profile, user.id);
+  const mayOperate = perms.can("deploy", id) || perms.can("watchdog.window", id);
+  const mayReinstate = perms.can("reinstate", id);
   const runtime = SOP_BY_USE_CASE[uc.ext_id] ? await agentRuntimeSummary() : null;
   const st = STATUS[s.status];
 
@@ -119,9 +122,9 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
             <p className="mt-8 text-sm text-ink-soft"><TV k="ev.nocases" en="No eval set exists for {uc} yet. Eval sets are defined for UC01 and UC02." v={{ uc: uc.ext_id }} /></p>
           ) : (
             <>
-              {canEdit && (
+              {mayOperate && (
                 <div className="mt-6">
-                  <ProductionControls useCaseId={id} deployed={s.deployed} serving={s.serving} canDeploy={approved} rules={certified?.rules ?? []} />
+                  <ProductionControls canReset={profile.role === "admin"} useCaseId={id} deployed={s.deployed} serving={s.serving} canDeploy={approved} rules={certified?.rules ?? []} />
                 </div>
               )}
 
@@ -144,7 +147,7 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
                 )}
               </section>
 
-              {s.deployed && s.status === "suspended" && canEdit && (
+              {s.deployed && s.status === "suspended" && mayReinstate && (
                 <section className={`${card} mt-4`} aria-label="Reinstate">
                   <h2 className="text-lg font-semibold"><T k="pr.re.title" en="Bring the agent back" /></h2>
                   <p className="mt-1 mb-3 text-sm text-ink-soft"><TV k="pr.re.text" en="The agent is taken down. Reinstating rolls it back to certified version {v}, re-tests it, and puts it on probation: {n} clean windows are needed, and any failure suspends it again with a larger penalty." v={{ v: s.certified_version ?? 0, n: POLICY.probation_windows }} /></p>

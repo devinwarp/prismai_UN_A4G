@@ -26,7 +26,7 @@ function useCall(useCaseId: string) {
 }
 
 /** Deploy, run a monitoring window (optionally with a simulated regression), reset. */
-export function ProductionControls({ useCaseId, deployed, serving, canDeploy, rules }: { useCaseId: string; deployed: boolean; serving: boolean; canDeploy: boolean; rules: SubjectRule[] }) {
+export function ProductionControls({ useCaseId, deployed, serving, canDeploy, rules, canReset = true }: { useCaseId: string; deployed: boolean; serving: boolean; canDeploy: boolean; rules: SubjectRule[]; canReset?: boolean }) {
   const lang = useLang();
   const { busy, error, call } = useCall(useCaseId);
   const [drift, setDrift] = useState("");
@@ -52,7 +52,7 @@ export function ProductionControls({ useCaseId, deployed, serving, canDeploy, ru
             </button>
           </>
         )}
-        <button type="button" className={btnGhost} disabled={busy || !deployed} onClick={() => call("DELETE")}>{tr(lang, "pr.reset", "Reset the demo")}</button>
+        {canReset && <button type="button" className={btnGhost} disabled={busy || !deployed} onClick={() => call("DELETE")}>{tr(lang, "pr.reset", "Reset the demo")}</button>}
       </div>
       {error && <p role="alert" className="mt-2 text-sm" style={{ color: "var(--color-v-nogo)" }}>{error}</p>}
     </div>

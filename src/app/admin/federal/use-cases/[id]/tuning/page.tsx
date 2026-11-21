@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
+import { permissionsFor } from "@/lib/un/permissions-server";
 import { evalSetFor } from "@/lib/un/evalset";
 import { approvalBlockers, effectiveGates, evidenceFor } from "@/lib/un/gates";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
@@ -144,7 +145,9 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
   }
   const cfg = configOf(log);
   const chain = verifyChain(log);
-  const canEdit = profile.role === "admin";
+  const perms = await permissionsFor(profile, user.id);
+  const mayRun = perms.can("tuning.run", id);
+  const mayApprove = perms.can("tuning.approve", id);
   const last = log[log.length - 1];
   const real = uc.ext_id === "UC02" ? await realAgentEvals({ store: appKbStore(profile.org_id) }) : null;
   const approver = last?.kind === "approval" ? String(last.payload.signer) : "";
@@ -181,7 +184,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
             <p className="mt-8 text-sm text-ink-soft"><TV k="ev.nocases" en="No eval set exists for {uc} yet. Eval sets are defined for UC01 and UC02." v={{ uc: uc.ext_id }} /></p>
           ) : (
             <>
-              {canEdit && <div className="mt-6"><TuningControls useCaseId={id} canRun={log.length > 0} state={state} /></div>}
+              {mayRun && <div className="mt-6"><TuningControls useCaseId={id} canRun={log.length > 0} state={state} canReset={profile.role === "admin"} /></div>}
 
               <section className={`${card} mt-6`} aria-label="Current agent">
                 <h2 className="text-lg font-semibold"><T k="tu.state.title" en="Current agent" />{cfg ? <> · <TV k="tu.state.version" en="Agent version {v}" v={{ v: cfg.version }} /></> : null}</h2>
@@ -191,7 +194,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
                 {cfg && <Config cfg={cfg} />}
               </section>
 
-              {state === "ready" && canEdit && (
+              {state === "ready" && mayApprove && (
                 <section className={`${card} mt-4`} aria-label="Decision">
                   <h2 className="text-lg font-semibold"><T k="tu.approve.title" en="Decision" /></h2>
                   <p className="mt-1 mb-3 text-sm text-ink-soft"><T k="tu.approve.text" en="The agent version below met the approval bar. A person decides whether it goes forward." /></p>

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
+import { permissionsFor } from "@/lib/un/permissions-server";
 import { activeCases, evalSetFor } from "@/lib/un/evalset";
 import { alignment, type CaseResult, type Tally } from "@/lib/un/eval-run";
 import { loadEvalRuns } from "@/lib/un/eval-store";
@@ -64,7 +65,7 @@ export default async function EvalsPage({ params }: { params: Promise<{ id: stri
   const cases = activeCases(evalSetFor(uc.ext_id), designationOf(log));
   const latest = runs[0];
   const al = latest ? alignment(latest.summary) : null;
-  const canEdit = profile.role === "admin";
+  const canEdit = (await permissionsFor(profile, user.id)).can("tuning.run", id);
   const runtime = SOP_BY_USE_CASE[uc.ext_id] ? await agentRuntimeSummary() : null;
   const k = (x: Tally) => x.correct;
 
