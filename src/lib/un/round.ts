@@ -29,7 +29,7 @@ export interface RoundResult extends Reconciled {
 
 const ORDER: RoleId[] = ["innovator", "policy_adviser", "security", "privacy", "compliance", "frontline", "finance"];
 
-const gateName = (g: GateId) => GATES[g].label.toLowerCase();
+
 
 /** The coordinator's own protocol moves for this round (C2-1). None of them
  * changes a gate, so the policy engine's verdict is unaffected:
@@ -44,10 +44,12 @@ export function coordinate(state: CaseState, thread: AgentMessage[], round: Agen
   const out: AgentMessage[] = [];
   const re = state.ext_id;
   const seen = [...thread, ...round];
-  const ids = applicableGates(state.clientFacing, state.extraGates);
+  const cat = state.customGates ? { ...GATES, ...state.customGates } : GATES;
+  const gateName = (g: GateId) => cat[g].label.toLowerCase();
+  const ids = [...new Set([...applicableGates(state.clientFacing, state.extraGates, cat), ...(state.useCaseGates ?? [])])].filter((g) => cat[g] && !state.waived?.includes(g));
   for (const g of ids) {
     const status = state.gates[g] ?? "unknown";
-    const owner = GATES[g].owner;
+    const owner = cat[g].owner;
     if (status === "unknown" && !seen.some((m) => m.type === "EVIDENCE_REQUEST" && m.gate === g)) {
       const req: AgentMessage = { msg_id: nextId(), from: "coordinator", to: [owner], type: "EVIDENCE_REQUEST", re, gate: g,
         reason: `No evidence yet for: ${gateName(g)}. ${ROLES[owner].label}, please provide it or say it is not available.`, evidence: [], kb: [] };

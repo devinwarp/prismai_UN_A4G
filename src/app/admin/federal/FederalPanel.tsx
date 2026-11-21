@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
-import { T, useLang } from "./_components/Lang";
+import { T, TV, useLang } from "./_components/Lang";
 import { tr } from "@/lib/un/i18n/dict";
 import CountUp from "./_components/CountUp";
 import { Term } from "./_components/Gloss";
@@ -28,6 +28,7 @@ const GO = [
   { href: "/admin/federal/scenarios", k: "go.scen", en: "Run a scenario", hint: "Watch evidence arrive, a decision form, a person sign." },
   { href: "/admin/federal/compare", k: "go.cmp", en: "Compare jurisdictions", hint: "Same processes, three rule sets. What changes?" },
   { href: "/admin/federal/kb", k: "go.kb", en: "Search the sources", hint: "Every claim cites a passage. Find it here." },
+  { href: "/admin/federal/gates", k: "go.gates", en: "Gates and rule sets", hint: "The checks every verdict rests on, per rule set and per use case." },
   { href: "/admin/federal/gaps", k: "go.gaps", en: "Read the gaps", hint: "Where today's rules fall short of agentic AI." },
 ];
 
@@ -52,8 +53,10 @@ const TOUR: TourStep[] = [
 ];
 
 export default function FederalPanel({
-  policy, dashboard: d, useCases, canEdit, hitl, asOf,
+  policy, dashboard: d, useCases, canEdit, hitl, asOf, gatesAdded = {},
 }: {
+  /** Gates each use case adds beyond its rule set, by ext id (gates.ts). */
+  gatesAdded?: Record<string, number>;
   policy: Policy;
   dashboard: Dashboard;
   useCases: UnUseCaseState[];
@@ -290,6 +293,11 @@ export default function FederalPanel({
                   </td>
                   <td className="pe-3">
                     <VerdictBadge verdict={u.verdict} />
+                    {(gatesAdded[u.ext_id] ?? 0) > 0 && (
+                      <span className="mt-1 block font-mono text-[11px] text-ink-soft" title={tr(lang, "gt.added.h", "Judged under more gates than the shipped rule set; read older figures with care.")}>
+                        <span aria-hidden>+ </span><TV k="gt.added" en="{n} gates added" v={{ n: gatesAdded[u.ext_id] }} />
+                      </span>
+                    )}
                   </td>
                   <td className="pe-4 text-center">
                     <span aria-label={`Compliant ${u.ext_id}: ${u.compliant ? "yes" : "no"}`} title="Set only by a passing Sijil attestation">{u.compliant ? "✓" : "–"}</span>

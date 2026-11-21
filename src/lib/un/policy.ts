@@ -4,17 +4,11 @@ import type { RuleSet } from "./rulesets.ts";
 // Deterministic policy engine. LLM agents propose and explain; only this code
 // turns gate states into a verdict. Hard gates are never averaged: one failed
 // gate rules out every GO verdict.
-export type RoleId =
-  | "innovator"
-  | "policy_adviser"
-  | "security"
-  | "privacy"
-  | "compliance"
-  | "frontline"
-  | "finance"
-  | "coordinator";
+export type { RoleId, GateId, GateDef } from "./governance.ts";
+import { SEED, type GateDef, type GateId } from "./governance.ts";
 
-export type GateId =
+/** The nine shipped gates (see data/un-governance.json). */
+export type BuiltinGateId =
   | "approved_infrastructure"
   | "audit_log"
   | "data_lawful"
@@ -29,74 +23,17 @@ export type GateId =
  * has not been re-tested; pass/fail need evidence (see protocol.ts). */
 export type GateStatus = "unknown" | "pass" | "fail" | "fix_declared";
 
-/** optional = not applicable until a case adds it (an accepted message about
- * it puts it in CaseState.extraGates). Keeps S1/S3 outcomes unchanged. */
-export const GATES: Record<GateId, { label: string; owner: RoleId; clientFacingOnly: boolean; kbQuery: string; optional?: boolean }> = {
-  approved_infrastructure: {
-    label: "Model calls and data stay on approved (DESC-certified) infrastructure",
-    owner: "security",
-    clientFacingOnly: false,
-    kbQuery: "hosting certified cloud infrastructure data location security requirements",
-  },
-  audit_log: {
-    label: "Every action is written to the audit log",
-    owner: "security",
-    clientFacingOnly: false,
-    kbQuery: "logging audit trail traceability records of agent actions monitoring",
-  },
-  data_lawful: {
-    label: "Data is lawfully usable for this purpose",
-    owner: "privacy",
-    clientFacingOnly: false,
-    kbQuery: "personal data protection lawful processing consent privacy purpose limitation",
-  },
-  human_final_approval: {
-    label: "A person gives final approval before any output reaches a citizen",
-    owner: "compliance",
-    clientFacingOnly: true,
-    kbQuery: "human oversight review approve override before action human in the loop",
-  },
-  ai_disclosure: {
-    label: "The citizen is told they are dealing with an AI assistant",
-    owner: "compliance",
-    clientFacingOnly: true,
-    kbQuery: "inform users they are interacting with AI transparency disclosure",
-  },
-  hallucination_rate: {
-    label: "Measured hallucination rate stays under the agreed threshold",
-    owner: "compliance",
-    clientFacingOnly: false,
-    optional: true,
-    kbQuery: "accuracy reliability monitoring transparency inform users interacting with AI",
-  },
-  fee_accuracy: {
-    label: "Fees and amounts quoted to citizens match the published fee table",
-    owner: "compliance",
-    clientFacingOnly: true,
-    optional: true,
-    kbQuery: "accuracy of information given to citizens fees transparency reliability monitoring",
-  },
-  no_commercial_promotion: {
-    label: "The assistant does not promote paid third-party products to citizens",
-    owner: "compliance",
-    clientFacingOnly: true,
-    optional: true,
-    kbQuery: "AI systems should be fair transparent accountable understandable consumer commercial promotion",
-  },
-  purpose_limitation: {
-    label: "Data is used only for its declared purpose, with no inferred sensitive attributes",
-    owner: "privacy",
-    clientFacingOnly: false,
-    optional: true,
-    kbQuery: "collected for a specific and clear purpose, not processed at any later time in a manner incompatible with such purpose",
-  },
-};
+/** The shipped gates, seeded from data/un-governance.json. optional = not applicable until a case adds it
+ * (an accepted message about it puts it in CaseState.extraGates). Admin-added gates are not in here: they
+ * reach decide() as `catalog` (see gates.ts). */
+export const GATES: Record<GateId, GateDef> = SEED.gates;
+const SHIPPED = GATES;
 
 export type GateState = Partial<Record<GateId, GateStatus>>;
 
-export const applicableGates = (clientFacing: boolean, extra: GateId[] = []): GateId[] =>
-  (Object.keys(GATES) as GateId[]).filter(
-    (g) => (clientFacing || !GATES[g].clientFacingOnly) && (!GATES[g].optional || extra.includes(g)),
+export const applicableGates = (clientFacing: boolean, extra: GateId[] = [], catalog: Record<GateId, GateDef> = GATES): GateId[] =>
+  Object.keys(catalog).filter(
+    (g) => (clientFacing || !catalog[g].clientFacingOnly) && (!catalog[g].optional || extra.includes(g)),
   );
 
 export type Requested = Extract<Verdict, "GO_AUTONOMOUS" | "GO_SUPERVISED" | "ASSISTANT_ONLY">;
@@ -120,13 +57,21 @@ export function decide(opts: {
   hitlBreaches?: string[];
   /** Jurisdiction rule set (rulesets.ts). Omitted = today's UAE behaviour. */
   ruleset?: RuleSet;
+  /** Gate definitions including admin-added ones (gates.ts). Omitted = the shipped nine. */
+  catalog?: Record<GateId, GateDef>;
+  /** Gates this use case adds to its rule set's (always apply, whatever the flags). Add-only. */
+  useCaseGates?: GateId[];
+  /** Gates waived through governance: not required, but still listed on the trace by the caller. */
+  waived?: GateId[];
 }): Decision {
   const rs = opts.ruleset;
-  const ids = rs
-    ? (Object.keys(GATES) as GateId[]).filter(
+  const GATES = opts.catalog ?? SHIPPED;
+  const base = rs
+    ? Object.keys(GATES).filter(
         (g) => (opts.clientFacing || !GATES[g].clientFacingOnly) && (rs.gates.includes(g) || !!opts.extraGates?.includes(g)),
       )
-    : applicableGates(opts.clientFacing, opts.extraGates);
+    : applicableGates(opts.clientFacing, opts.extraGates, GATES);
+  const ids = [...new Set([...base, ...(opts.useCaseGates ?? []).filter((g) => Object.hasOwn(GATES, g))])].filter((g) => !opts.waived?.includes(g));
   const capped = opts.clientFacing || rs?.capAutonomy === "always";
   if (opts.hitlBreaches?.length) {
     const failed = ids.filter((g) => g !== "human_final_approval" && opts.gates[g] === "fail");

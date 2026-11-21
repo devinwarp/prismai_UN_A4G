@@ -3,6 +3,8 @@ import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeDashboard, deadlineText } from "@/lib/un/model";
+import { effectiveGates } from "@/lib/un/gates";
+import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { loadHitlConfig, loadPolicy, loadUnUseCases } from "@/lib/un/store";
 import AdminHeader from "../AdminHeader";
 import LangShell, { T } from "./_components/Lang";
@@ -19,12 +21,14 @@ export default async function FederalPage() {
   if (!user) redirect("/login?next=/admin/federal");
   if (!profile?.org_id) redirect("/login");
 
-  const [{ data: org }, policy, useCases, hitl] = await Promise.all([
+  const [{ data: org }, policy, useCases, hitl, gov] = await Promise.all([
     createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle(),
     loadPolicy(profile.org_id),
     loadUnUseCases(profile.org_id),
     loadHitlConfig(profile.org_id),
+    loadGov(profile.org_id),
   ]);
+  const gatesAdded = Object.fromEntries(useCases.map((u) => [u.ext_id, effectiveGates({ ext: u.ext_id, facts: factsOf(u), gov }).added.length]));
   const dashboard = computeDashboard(policy, useCases);
 
   return (
@@ -47,6 +51,7 @@ export default async function FederalPage() {
           useCases={useCases}
           canEdit={profile.role === "admin"}
           hitl={hitl}
+          gatesAdded={gatesAdded}
           asOf={new Date().toISOString()}
         />
         <CitizenMessageCheck />

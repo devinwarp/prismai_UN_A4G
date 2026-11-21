@@ -3,6 +3,8 @@ import { excerpt, type Chunk } from "./kb.ts";
 import { ROLES } from "./agents.ts";
 import type { Verdict } from "./model.ts";
 import { GATES, type RoleId } from "./policy.ts";
+import type { GateDef } from "./governance.ts";
+import { UAE_FEDERAL } from "./rulesets.ts";
 import { reconcile, type AgentMessage, type CaseState, type Rejection } from "./protocol.ts";
 
 // Append-only, hash-chained reasoning trace. Records hold a concise, citable
@@ -28,6 +30,8 @@ export interface TraceRecord {
   derived_from: string[];
   /** Verdict records only, and only when non-empty: the unmet HITL rules (I-2) that failed human_final_approval. */
   hitl_breaches?: string[];
+  /** Verdict records of use cases that add or waive gates: every gate that applied and the reason. */
+  effective_gates?: EffectiveGateRecord[];
   /** Present only on the final human signature record (I-4). */
   signature?: HumanSignature;
   /** Present only on records of model-written messages: model id and prompt hash. Older logs lack it and still verify. */
@@ -36,6 +40,8 @@ export interface TraceRecord {
   prev_hash: string;
   hash: string;
 }
+
+export interface EffectiveGateRecord { id: string; source: "ruleset" | "use_case"; reason: string; waived_by?: string; waiver_reason?: string }
 
 export interface HumanSignature {
   type: "HUMAN_SIGNATURE";
@@ -108,11 +114,14 @@ export function roundBodies(opts: {
   seen: (role: RoleId) => string[];
   firstId: number;
   hitlBreaches?: string[];
+  /** The effective gates and why each applies (gates.ts). Recorded only when the use case adds or waives gates, so older logs verify unchanged. */
+  effectiveGates?: EffectiveGateRecord[];
+  customGates?: Record<string, GateDef>;
 }): Body[] {
   const cite = (m: AgentMessage) =>
     m.kb.flatMap((id) => {
       const c = opts.chunkOf(id);
-      return c ? [{ chunk_id: id, quote: excerpt(c.text, `${m.gate ? GATES[m.gate].kbQuery : ROLES[m.from].kbQuery} ${m.reason}`) }] : [];
+      return c ? [{ chunk_id: id, quote: excerpt(c.text, `${m.gate ? (opts.customGates?.[m.gate] ?? GATES[m.gate]).kbQuery : ROLES[m.from].kbQuery} ${m.reason}`) }] : [];
     });
   const base = (m: AgentMessage) => ({
     run_id: opts.run_id,
@@ -142,6 +151,7 @@ export function roundBodies(opts: {
     message: opts.verdictMsg,
     derived_from: acceptedIds,
     ...(opts.hitlBreaches?.length ? { hitl_breaches: opts.hitlBreaches } : {}),
+    ...(opts.effectiveGates?.length ? { effective_gates: opts.effectiveGates } : {}),
   });
   return out;
 }
@@ -155,8 +165,12 @@ export function replayVerdicts(log: TraceRecord[], initial: CaseState, hasChunk:
   for (const step of steps) {
     const rows = log.filter((r) => r.step === step);
     const accepted = rows.filter((r) => r.disposition === "accepted" && r.message).map((r) => r.message!);
-    const breaches = rows.find((x) => x.disposition === "verdict")?.hitl_breaches;
-    const r = reconcile({ ...state, hitlBreaches: breaches ?? [] }, accepted, hasChunk);
+    const verdictRow = rows.find((x) => x.disposition === "verdict");
+    const breaches = verdictRow?.hitl_breaches;
+    // Added and waived gates are re-derived from the record, so the replay judges under the gates the run used.
+    const eg = verdictRow?.effective_gates;
+    const gateInputs = eg ? { useCaseGates: eg.filter((g) => !UAE_FEDERAL.gates.includes(g.id)).map((g) => g.id), waived: eg.filter((g) => g.waived_by).map((g) => g.id) } : {};
+    const r = reconcile({ ...state, ...gateInputs, hitlBreaches: breaches ?? [] }, accepted, hasChunk);
     state = r.state;
     const recorded = rows.find((x) => x.disposition === "verdict")?.proposal;
     if (recorded && recorded !== r.decision.verdict) mismatches.push(`${step}: log says ${recorded}, replay gives ${r.decision.verdict}`);

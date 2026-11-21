@@ -1,3 +1,4 @@
+import type { GateDef } from "./governance.ts";
 import { decide, GATES, type Decision, type GateId, type GateState, type GateStatus, type RoleId, type Requested } from "./policy.ts";
 
 // Coordination protocol. Agents exchange typed messages; the coordinator
@@ -48,6 +49,11 @@ export interface CaseState {
   extraGates?: GateId[];
   /** Unmet human-in-the-loop rules (hitl.ts), a hard human_final_approval failure. */
   hitlBreaches?: string[];
+  /** Gates this use case adds to its rule set's (gates.ts), the gates waived through governance, and the
+   * definitions of admin-added gates this case uses. All optional: absent = today's behaviour. */
+  useCaseGates?: GateId[];
+  waived?: GateId[];
+  customGates?: Record<GateId, GateDef>;
 }
 
 export interface Rejection {
@@ -67,18 +73,19 @@ export interface Reconciled {
  * - the applicant (innovator) may only declare a fix;
  * - fail and pass need evidence; any claim needs evidence or a KB citation
  *   ("uncited claims rejected"); cited chunks must exist. */
-export function refusal(m: AgentMessage, hasChunk: (id: string) => boolean): string | null {
+export function refusal(m: AgentMessage, hasChunk: (id: string) => boolean, customGates?: Record<GateId, GateDef>): string | null {
+  const G = customGates ? { ...GATES, ...customGates } : GATES;
   if (m.kb.some((id) => !hasChunk(id))) return "cites a knowledge-base chunk that does not exist";
   if (m.type === "PROPOSE") {
     return m.from === "innovator" && m.requested ? null : "only the innovator proposes, and must state the autonomy requested";
   }
   if (!m.gate || !m.status) return null; // chatter, requests and escalations change no gate
-  if (!GATES[m.gate]) return "unknown gate";
+  if (!G[m.gate]) return "unknown gate";
   if (!m.evidence.length && !m.kb.length) return "uncited claim: no evidence and no knowledge-base citation";
   if (m.status === "fix_declared") {
     return m.from === "innovator" ? null : "only the innovator declares a fix";
   }
-  if (m.from !== GATES[m.gate].owner) return `${m.from} does not own gate ${m.gate} (owner: ${GATES[m.gate].owner})`;
+  if (m.from !== G[m.gate].owner) return `${m.from} does not own gate ${m.gate} (owner: ${G[m.gate].owner})`;
   if (m.status === "pass" && !m.evidence.length) return "a pass needs evidence, not only a policy citation";
   if (m.status === "unknown") return "unknown is not a claim";
   return null;
@@ -99,7 +106,7 @@ export function reconcile(
       rejected.push({ msg: m, why: "about a different use case" });
       continue;
     }
-    const why = refusal(m, hasChunk);
+    const why = refusal(m, hasChunk, state.customGates);
     if (why) {
       rejected.push({ msg: m, why });
       continue;
@@ -114,7 +121,7 @@ export function reconcile(
     if (m.type === "PROPOSE") next.requested = m.requested!;
     else if (m.gate && m.status) {
       next.gates[m.gate] = m.status;
-      if (GATES[m.gate].optional && !next.extraGates?.includes(m.gate)) next.extraGates = [...(next.extraGates ?? []), m.gate];
+      if ((state.customGates?.[m.gate] ?? GATES[m.gate]).optional && !next.extraGates?.includes(m.gate)) next.extraGates = [...(next.extraGates ?? []), m.gate];
     }
     accepted.push(m);
   }
@@ -122,7 +129,7 @@ export function reconcile(
     state: next,
     accepted,
     rejected,
-    decision: decide({ clientFacing: next.clientFacing, requested: next.requested, gates: next.gates, extraGates: next.extraGates, hitlBreaches: next.hitlBreaches }),
+    decision: decide({ clientFacing: next.clientFacing, requested: next.requested, gates: next.gates, extraGates: next.extraGates, hitlBreaches: next.hitlBreaches, useCaseGates: next.useCaseGates, waived: next.waived, catalog: state.customGates ? { ...GATES, ...state.customGates } : undefined }),
   };
 }
 
