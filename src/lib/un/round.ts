@@ -29,7 +29,7 @@ export interface RoundResult extends Reconciled {
 
 const ORDER: RoleId[] = ["innovator", "policy_adviser", "security", "privacy", "compliance", "frontline", "finance"];
 
-const gateName = (g: GateId) => GATES[g].label.toLowerCase();
+
 
 /** The coordinator's own protocol moves for this round (C2-1). None of them
  * changes a gate, so the policy engine's verdict is unaffected:
@@ -44,10 +44,12 @@ export function coordinate(state: CaseState, thread: AgentMessage[], round: Agen
   const out: AgentMessage[] = [];
   const re = state.ext_id;
   const seen = [...thread, ...round];
-  const ids = applicableGates(state.clientFacing, state.extraGates);
+  const cat = state.customGates ? { ...GATES, ...state.customGates } : GATES;
+  const gateName = (g: GateId) => cat[g].label.toLowerCase();
+  const ids = [...new Set([...applicableGates(state.clientFacing, state.extraGates, cat), ...(state.useCaseGates ?? [])])].filter((g) => cat[g] && !state.waived?.includes(g));
   for (const g of ids) {
     const status = state.gates[g] ?? "unknown";
-    const owner = GATES[g].owner;
+    const owner = cat[g].owner;
     if (status === "unknown" && !seen.some((m) => m.type === "EVIDENCE_REQUEST" && m.gate === g)) {
       const req: AgentMessage = { msg_id: nextId(), from: "coordinator", to: [owner], type: "EVIDENCE_REQUEST", re, gate: g,
         reason: `No evidence yet for: ${gateName(g)}. ${ROLES[owner].label}, please provide it or say it is not available.`, evidence: [], kb: [] };
@@ -74,7 +76,7 @@ export function coordinate(state: CaseState, thread: AgentMessage[], round: Agen
 /** One coordinator round: each recipient runs on its own events (fixed order,
  * so message ids are stable), the coordinator applies the messages, the
  * policy engine decides, and a VERDICT message records why. */
-export async function runRound(input: RoundInput, deps: AgentDeps, hasChunk: (id: string) => boolean): Promise<RoundResult> {
+export async function runRound(input: RoundInput, deps: AgentDeps, hasChunk: (id: string) => boolean, hasEvent?: (id: string) => boolean): Promise<RoundResult> {
   const active = ORDER.filter((r) => input.events.some((e) => e.recipients.includes(r)));
   const msgs: AgentMessage[] = [];
   for (const role of active) {
@@ -96,9 +98,12 @@ export async function runRound(input: RoundInput, deps: AgentDeps, hasChunk: (id
       )),
     );
   }
-  const first = reconcile(input.state, msgs, hasChunk);
+  // Evidence a declared fix may cite: any case event that is not itself a fix declaration (default: this round's).
+  const evidenceIds = new Set(input.events.filter((e) => e.status !== "fix_declared").map((e) => e.id));
+  const has = hasEvent ?? ((id: string) => evidenceIds.has(id));
+  const first = reconcile(input.state, msgs, hasChunk, has);
   const extra = coordinate(first.state, input.thread, first.accepted, deps.nextId);
-  const r = extra.length ? reconcile(input.state, [...msgs, ...extra], hasChunk) : first;
+  const r = extra.length ? reconcile(input.state, [...msgs, ...extra], hasChunk, has) : first;
   const verdict: AgentMessage = {
     msg_id: deps.nextId(),
     from: "coordinator",

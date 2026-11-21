@@ -101,3 +101,36 @@ test("blind scenarios file: the loader rejects malformed input and says what is 
   assert.throws(bad((d) => { d.scenarios[0].steps[1].events[0].id = "B-EX1-T0-audit"; }), /duplicate event id/);
   assert.throws(bad((d) => { d.scenarios[0].client_facing = "yes"; }), /client_facing/);
 });
+
+test("declared fix: a bare declaration is rejected with the reason and lifts nothing; a resolvable reference is accepted", () => {
+  const failed = reconcile(state, [m("f0", "security", "approved_infrastructure", "fail")], has).state;
+  const fix = (evidence: string[], kb: string[] = ["real#1"]) => m("f1", "innovator", "approved_infrastructure", "fix_declared", { evidence, kb });
+  const hasEvent = (id: string) => id === "evt_record";
+  // bare: retrieval-attached kb ids do not count as the applicant's reference
+  const bare = reconcile(failed, [fix([])], has, hasEvent);
+  assert.match(bare.rejected[0].why, /no evidence reference/);
+  assert.equal(bare.state.gates.approved_infrastructure, "fail");
+  assert.equal(bare.decision.verdict, "NO_GO");
+  // unresolvable reference
+  const bogus = reconcile(failed, [fix(["bogus#999"])], has, hasEvent);
+  assert.match(bogus.rejected[0].why, /neither a knowledge-base chunk nor an evidence event/);
+  assert.equal(bogus.decision.verdict, "NO_GO");
+  // resolvable: an event of the case, or a real chunk id
+  for (const ref of ["evt_record", "real#1"]) {
+    const ok = reconcile(failed, [fix([ref])], has, hasEvent);
+    assert.equal(ok.rejected.length, 0, ref);
+    assert.equal(ok.state.gates.approved_infrastructure, "fix_declared");
+    assert.notEqual(ok.decision.verdict, "GO_AUTONOMOUS");
+  }
+});
+
+test("R3 end to end: bare, misrouted, bogus and self-referencing fixes stay NO_GO; the evidenced one reaches ASSISTANT_ONLY and is logged", async () => {
+  const sc = REDTEAM.R3;
+  let run = startRun(sc, "r3");
+  while (!run.done) run = await nextStep(sc, run, env);
+  assert.deepEqual(run.steps.map((s) => s.match), sc.steps.map(() => true));
+  const rejected = run.log.filter((r) => r.disposition.startsWith("rejected"));
+  assert.ok(rejected.some((r) => r.step === "F1" && /no evidence reference/.test(r.disposition)));
+  assert.equal(rejected.filter((r) => r.step === "F3").length, 2);
+  assert.equal(run.steps.find((s) => s.step === "F4")!.outcome, "ASSISTANT_ONLY");
+});

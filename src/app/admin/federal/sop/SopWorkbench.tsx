@@ -23,7 +23,7 @@ const chip = "inline-flex items-center gap-1.5 rounded-md bg-paper-deep px-1.5 p
 const num = (n: number) => n.toLocaleString("en-US");
 const MAX = 200_000;
 
-export default function SopWorkbench({ samples, canEdit }: { samples: Doc[]; canEdit: boolean }) {
+export default function SopWorkbench({ samples, canEdit, uc02Id }: { samples: Doc[]; canEdit: boolean; uc02Id?: string | null }) {
   const lang = useLang();
   const t = (k: string, en: string) => tr(lang, k, en);
   const [doc, setDoc] = useState<Doc>(samples[0]);
@@ -48,6 +48,13 @@ export default function SopWorkbench({ samples, canEdit }: { samples: Doc[]; can
   const post = async (url: string, body: unknown) => {
     const res = await fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
     return { ok: res.ok, data: (await res.json().catch(() => ({}))) as Record<string, any> }; // eslint-disable-line @typescript-eslint/no-explicit-any
+  };
+  const attachUc02 = async () => {
+    setBusy(true); setMsg(null);
+    const r = await post(`/api/admin/un/use-cases/${uc02Id}/profiles`, { action: "attach", sop_id: doc.id });
+    setBusy(false);
+    if (!r.ok) return setMsg({ ok: false, text: String(r.data.error ?? "Could not attach") });
+    setMsg({ ok: true, text: t("pf.sop.attached_uc02", "Attached to use case UC02") });
   };
   const body = () => (pick ? { sample: pick } : { text: doc.text, title: doc.title });
 
@@ -123,7 +130,7 @@ export default function SopWorkbench({ samples, canEdit }: { samples: Doc[]; can
             <div key={x.l}>
               <dd className="font-display text-4xl leading-none tabular-nums">{x.v}</dd>
               <dt className="mt-2 text-sm font-medium">{x.l}</dt>
-              <p className="mt-0.5 text-xs text-ink-soft">{x.s}</p>
+              <dd className="mt-0.5 text-xs text-ink-soft">{x.s}</dd>
             </div>
           ))}
         </dl>
@@ -216,6 +223,12 @@ export default function SopWorkbench({ samples, canEdit }: { samples: Doc[]; can
             <button type="button" onClick={promote} disabled={busy || a.steps.length === 0} className={btnPrimary}>{t("sop.promote", "Promote to governed use case")}</button>
           ) : (
             <p className="text-sm text-ink-soft">{t("sop.promote.admin", "Promoting to a governed use case needs an admin.")}</p>
+          )}
+          {uc02Id && doc.id === "SOP-LIC-014" && (
+            <>
+              {canEdit && <button type="button" onClick={attachUc02} disabled={busy} className={btnGhost}>{t("pf.sop.attach_uc02", "Attach to use case UC02")}</button>}
+              <Link href={`/admin/federal/use-cases/${uc02Id}/sop`} className="text-sm font-medium underline underline-offset-4">{t("pf.sop.open_uc02", "Open the job profiles in UC02")} <span aria-hidden className="inline-block rtl:rotate-180">→</span></Link>
+            </>
           )}
           {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "" : "text-ember"}`}>{msg.ok ? "✓ " : "✕ "}{msg.text}</p>}
           {link && <Link href={link} className="text-sm font-medium underline underline-offset-4">{t("sop.compare", "See the decision on the compare page")} <span aria-hidden className="inline-block rtl:rotate-180">→</span></Link>}

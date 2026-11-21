@@ -3,6 +3,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
+import { loadUnUseCases } from "@/lib/un/store";
 import { loadSamples } from "@/lib/un/sop/data";
 import AdminHeader from "../../AdminHeader";
 import LangShell, { T } from "../_components/Lang";
@@ -18,6 +19,7 @@ export default async function SopPage() {
   // The samples are a pure function of the fixtures, so the judge/viewer role sees them with no upload path.
   const samples = loadSamples().map(({ input, analysis }) => ({ id: input.sop_id, title: input.title, text: input.text, analysis }));
   const canEdit = profile.role === "admin";
+  const uc02Id = (await loadUnUseCases(profile.org_id)).find((u) => u.ext_id === "UC02")?.id ?? null;
   return (
     <div className="conduit-bg min-h-dvh">
       <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
@@ -29,7 +31,7 @@ export default async function SopPage() {
             <T k="sop.lede" en="Pick a sample procedure or add your own. Prism reads the steps, estimates what could be automated against a made-up baseline, flags the risks, and sends the result to the compare page for a decision." />{" "}
             <Link href="/admin/federal" className="underline"><T k="sop.back" en="Back to the dashboard" /></Link>
           </p>
-          <SopWorkbench samples={samples} canEdit={canEdit} />
+          <SopWorkbench samples={samples} canEdit={canEdit} uc02Id={uc02Id} />
         </main>
       </LangShell>
     </div>

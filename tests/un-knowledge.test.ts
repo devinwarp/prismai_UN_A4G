@@ -22,7 +22,7 @@ test("C2-2: the uneven distribution is visible: security never saw the T2 approv
   assert.ok(security.unaware.some((e) => e.id === "S1-T2-hitl"));
   assert.ok(!security.knows.some((e) => e.id === "S1-T2-hitl"));
   const innovator = knowledgeByAgent(run.steps).find((a) => a.role === "innovator")!;
-  assert.deepEqual(innovator.knows.map((e) => e.id), ["S1-T0-baseline", "S1-T3-hosting-fix", "S1-T3-hitl-fix"]);
+  assert.deepEqual(innovator.knows.map((e) => e.id), ["S1-T0-baseline", "S1-T3-hosting-record", "S1-T3-hosting-fix", "S1-T3-hitl-record", "S1-T3-hitl-fix"]);
 });
 
 test("C2-2: a step that has not been released yet shows nothing, and unreleased events are not listed", async () => {

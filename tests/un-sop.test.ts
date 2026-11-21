@@ -24,8 +24,8 @@ test("the synthetic baseline validates, and bad files are refused with every pro
   assert.throws(() => parseBaseline({ ...raw, default_step_minutes: { step: 0 } }), /default_step_minutes/);
 });
 
-test("all three fixtures parse: numbered, bulleted and headed prose", () => {
-  assert.deepEqual(samples.map((s) => [s.input.sop_id, s.analysis.steps.length]), [["licence-renewal", 13], ["records-archive", 7], ["fee-waiver", 12]]);
+test("all four fixtures parse: numbered, bulleted and headed prose", () => {
+  assert.deepEqual(samples.map((s) => [s.input.sop_id, s.analysis.steps.length]), [["licence-renewal", 13], ["records-archive", 7], ["fee-waiver", 12], ["SOP-LIC-014", 152]]);
   for (const { input, analysis } of samples) {
     const lines = input.text.split("\n");
     for (const s of analysis.steps) {

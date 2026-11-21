@@ -16,6 +16,11 @@ export function T({ k, en }: { k: string; en: string }) {
   return <>{tr(useLang(), k, en)}</>;
 }
 
+/** Translated text with {name} placeholders filled from v. */
+export function TV({ k, en, v }: { k: string; en: string; v: Record<string, string | number> }) {
+  return <>{tr(useLang(), k, en).replace(/\{(\w+)\}/g, (_, n: string) => String(v[n] ?? ""))}</>;
+}
+
 /** Wraps a federal page: language toggle (remembered per browser), dir and font. */
 export default function LangShell({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<Lang>("en");
@@ -28,6 +33,7 @@ export default function LangShell({ children }: { children: ReactNode }) {
   const pick = (l: Lang) => {
     setLang(l);
     try { localStorage.setItem("prism-un-lang", l); } catch {}
+    window.dispatchEvent(new Event("prism-un-lang")); // the journey bar sits outside this shell and follows it
   };
   return (
     <Ctx.Provider value={lang}>

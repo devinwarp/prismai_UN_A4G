@@ -1,13 +1,18 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadEntityGoals } from "@/lib/un/store";
 import { attest, TARGET_RUNS, DEFAULT_THRESHOLDS } from "@/lib/un/sijil";
 import { loadReports, loadRuns, loadUseCase } from "@/lib/un/sijil-store";
-import AdminHeader from "../../../AdminHeader";
 import { liveConfigFromEnv, liveNode } from "@/lib/un/sijil-live";
 import SijilPanel from "./SijilPanel";
+import UseCaseGates from "./UseCaseGates";
+import LangShell from "../../_components/Lang";
+import { effectiveGates } from "@/lib/un/gates";
+import { factsOf, loadGov } from "@/lib/un/gates-store";
+import { loadRun } from "@/lib/un/runs";
 
 const DUBAI = { timeZone: "Asia/Dubai" } as const;
 interface ChangeRow { seq: number; at: string; op: string; changes: Record<string, { from: unknown; to: unknown }>; actor: string; hash: string }
@@ -61,18 +66,21 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
   if (!profile?.org_id) redirect("/login");
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
-  const [goals, runs, reports, { data: org }] = await Promise.all([
+  const [goals, runs, reports] = await Promise.all([
     loadEntityGoals(profile.org_id, uc.entity),
     loadRuns(profile.org_id, id),
     loadReports(profile.org_id, id),
-    createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle(),
   ]);
+  const eff = effectiveGates({ ext: uc.ext_id, facts: factsOf(uc), gov: await loadGov(profile.org_id) });
+  const verdictRun = uc.verdict_run_id ? await loadRun(profile.org_id, uc.verdict_run_id) : null;
   let liveMode = false;
   try { liveMode = liveConfigFromEnv() !== null; } catch { liveMode = true; /* misconfigured: the pull reports the error */ }
   return (
-    <div className="conduit-bg min-h-dvh">
-      <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
+    <div>
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
+        <p className="mb-4 text-sm">
+          <Link href="/admin/federal/evals" className="underline underline-offset-4">All use cases side by side</Link>
+        </p>
         <SijilPanel
           uc={uc}
           runs={runs}
@@ -86,6 +94,11 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
           canEdit={profile.role === "admin"}
         />
       </main>
+      <LangShell>
+        <div className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
+          <UseCaseGates useCaseId={id} ext={uc.ext_id} eff={eff} runGates={verdictRun?.state.state?.gates ?? {}} canEdit={profile.role === "admin"} />
+        </div>
+      </LangShell>
       <ChangeHistory ext_id={uc.ext_id} />
       <div className="h-12" />
     </div>

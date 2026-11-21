@@ -76,8 +76,8 @@ import type { CaseState } from "../src/lib/un/protocol.ts";
 import type { RoleId } from "../src/lib/un/policy.ts";
 
 test("S1 replay: staged events, uneven routing, verdict path from the audit", async () => {
-  const ev = (id: string, to: RoleId[], summary: string, gate?: RoutedEvent["gate"], status?: RoutedEvent["status"]): RoutedEvent =>
-    ({ id, type: "event", summary, recipients: to, gate, status });
+  const ev = (id: string, to: RoleId[], summary: string, gate?: RoutedEvent["gate"], status?: RoutedEvent["status"], links?: string[]): RoutedEvent =>
+    ({ id, type: "event", summary, recipients: to, gate, status, links });
   const rounds: RoutedEvent[][] = [
     [ev("T0a", ["innovator", "frontline", "policy_adviser"], "Pilot baseline: 96.8% agreement with officers"),
      ev("T0b", ["security"], "Audit log covers every action", "audit_log", "pass"),
@@ -85,8 +85,9 @@ test("S1 replay: staged events, uneven routing, verdict path from the audit", as
      ev("T0d", ["compliance"], "Assistant disclosure shown on first message", "ai_disclosure", "pass")],
     [ev("T1", ["security"], "Model endpoint is not on certified hosting", "approved_infrastructure", "fail")],
     [ev("T2", ["compliance"], "Agent sends customer messages directly", "human_final_approval", "fail")],
-    [ev("T3a", ["innovator"], "Owner moved the model to approved hosting", "approved_infrastructure", "fix_declared"),
-     ev("T3b", ["innovator"], "Officer release restored", "human_final_approval", "fix_declared")],
+    [ev("T3r", ["innovator"], "Change record for both fixes"),
+     ev("T3a", ["innovator"], "Owner moved the model to approved hosting", "approved_infrastructure", "fix_declared", ["T3r"]),
+     ev("T3b", ["innovator"], "Officer release restored", "human_final_approval", "fix_declared", ["T3r"])],
     [ev("T4a", ["security"], "Re-test: endpoint is certified", "approved_infrastructure", "pass"),
      ev("T4b", ["compliance"], "Re-test: officer releases every message", "human_final_approval", "pass")],
   ];

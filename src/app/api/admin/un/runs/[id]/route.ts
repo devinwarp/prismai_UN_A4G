@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { CHAT_MODEL, chatCompletion } from "@/lib/llm";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bad, requireAdmin } from "@/lib/api-auth";
+import { effectiveFor } from "@/lib/un/gates-store";
 import { loadChunks } from "@/lib/un/kb";
 import { headOf, loadRun, storeTraceRows, verifyRun, verifyStoredRows } from "@/lib/un/runs";
 import { addStepMetering, type Usage } from "@/lib/un/metering";
@@ -46,6 +47,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const t0 = Date.now();
   const stepped = await nextStep(sc, row.state, {
     hitl,
+    effective: uc ? await effectiveFor(who.org_id!, uc) : undefined,
     now: () => new Date().toISOString(),
     chunks: loadChunks(),
     model: useLlm ? CHAT_MODEL : undefined,

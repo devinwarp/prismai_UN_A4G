@@ -4,6 +4,7 @@ import { useEffect, useRef } from "react";
 import type { TraceRecord, Verification } from "@/lib/un/trace";
 import { tr } from "@/lib/un/i18n/dict";
 import { useLang } from "./Lang";
+import { scrollFocus } from "./ui";
 
 type Rec = Pick<TraceRecord, "trace_id" | "agent" | "step" | "hash" | "signature">;
 
@@ -28,7 +29,7 @@ export default function Chain({ log, verification }: { log: Rec[]; verification:
       <div aria-hidden className="mb-2 flex flex-wrap gap-[3px]">
         {log.map((r, i) => <span key={r.trace_id} title={`#${i + 1}`} className="h-2 w-2 rounded-[2px]" style={{ background: i === bad ? "var(--color-ember)" : bad >= 0 && i > bad ? "var(--color-line)" : "var(--color-lit)" }} />)}
       </div>
-      <ol ref={scroller} className="chain" aria-label={tr(lang, "chain.label", "Logbook records, oldest first")}>
+      <ol ref={scroller} {...scrollFocus} className="chain" aria-label={tr(lang, "chain.label", "Logbook records, oldest first")}>
         <li className="flex items-center">
           <span className="chain-block" data-state="ok" style={{ width: "4.5rem", ["--i" as string]: 0 }}>
             <span className="font-mono text-[10px] tracking-widest text-ink-soft uppercase">{tr(lang, "chain.start", "Start")}</span>

@@ -62,3 +62,7 @@ __pycache__/
 
 # Offline demo store
 .data/
+
+# screenshots and scratch output from QA runs
+docs/final/*/
+var/

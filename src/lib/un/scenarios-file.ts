@@ -55,7 +55,8 @@ export function parseScenarios(json: string): GateScenario[] {
         if (Boolean(e?.gate) !== Boolean(e?.status)) eb("gate and status go together: set both or neither");
         if (e?.gate && !Object.hasOwn(GATES, e.gate as string)) eb(`unknown gate ${String(e.gate)}; known: ${Object.keys(GATES).join(", ")}`);
         if (e?.status && !["pass", "fail", "fix_declared"].includes(e.status as string)) eb("status must be pass, fail or fix_declared");
-        events.push({ id: String(e?.id), type: e?.gate ? "gate_evidence" : "context", summary: String(e?.summary ?? ""), recipients: (rec ?? []) as RoutedEvent["recipients"], gate: e?.gate as RoutedEvent["gate"], status: e?.status as RoutedEvent["status"] });
+        if (e?.links !== undefined && (!Array.isArray(e.links) || !e.links.every((x) => typeof x === "string"))) eb("links must be a list of event ids or chunk ids");
+        events.push({ id: String(e?.id), type: e?.gate ? "gate_evidence" : "context", summary: String(e?.summary ?? ""), recipients: (rec ?? []) as RoutedEvent["recipients"], gate: e?.gate as RoutedEvent["gate"], status: e?.status as RoutedEvent["status"], ...(Array.isArray(e?.links) && e.links.length ? { links: (e.links as unknown[]).map(String) } : {}) });
       });
       parsed.push({ step: String(st?.step), expected: st?.expected as GateScenario["steps"][number]["expected"], events });
     });

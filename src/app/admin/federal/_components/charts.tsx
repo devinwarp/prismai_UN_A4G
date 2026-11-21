@@ -1,5 +1,5 @@
 import { VERDICTS, QUADRANTS, type Dashboard, type Tally, type UnUseCaseState, type Verdict } from "@/lib/un/model";
-import { DataTableAlt, VERDICT_META, VerdictBadge, verdictLabel } from "./ui";
+import { DataTableAlt, scrollRegion, VERDICT_META, VerdictBadge, verdictLabel } from "./ui";
 
 const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
 
@@ -116,7 +116,7 @@ export function VerdictMix({
   const color = (k: VerdictFilter) => (k === "NONE" ? "var(--color-line)" : VERDICT_META[k].color);
   return (
     <div>
-      <div role="img" aria-label={`Verdict mix: ${all.filter((a) => a.n).map((a) => `${a.n} ${a.key === "NONE" ? "not yet assessed" : verdictLabel(a.key)}`).join(", ")}`} className="flex h-9 gap-0.5 overflow-hidden rounded-lg">
+      <div role="group" aria-label={`Verdict mix: ${all.filter((a) => a.n).map((a) => `${a.n} ${a.key === "NONE" ? "not yet assessed" : verdictLabel(a.key)}`).join(", ")}`} className="flex h-9 gap-0.5 overflow-hidden rounded-lg">
         {all.filter((a) => a.n).map((a) => (
           <button
             key={a.key}
@@ -125,7 +125,7 @@ export function VerdictMix({
             aria-pressed={active === a.key}
             title={`${a.key === "NONE" ? "Not yet assessed" : verdictLabel(a.key)}: ${a.n}`}
             className="flex min-w-6 items-center justify-center font-mono text-xs font-medium first:rounded-s-lg last:rounded-e-lg aria-pressed:outline-2 aria-pressed:outline-offset-1 aria-pressed:outline-ink"
-            style={{ width: `${(a.n / total) * 100}%`, background: color(a.key), color: a.key === "NONE" ? "var(--color-ink-soft)" : ["ASSISTANT_ONLY", "ESCALATE"].includes(a.key) ? "var(--color-v-on-light)" : "var(--color-v-on-dark)" }}
+            style={{ width: `${(a.n / total) * 100}%`, background: color(a.key), color: a.key === "NONE" ? "var(--color-ink)" : ["ASSISTANT_ONLY", "ESCALATE"].includes(a.key) ? "var(--color-v-on-light)" : "var(--color-v-on-dark)" }}
           >
             <span aria-hidden>{a.key === "NONE" ? "" : VERDICT_META[a.key].glyph}</span>
             <span className="ms-1 tabular-nums">{a.n}</span>
@@ -221,9 +221,9 @@ export function QuadrantVerdictMatrix({ useCases }: { useCases: UnUseCaseState[]
   const cols = [...VERDICTS, null] as (Verdict | null)[];
   const max = Math.max(1, ...QUADRANTS.flatMap((q) => cols.map((v) => cell(q, v))));
   return (
-    <div className="relative overflow-x-auto">
+    <div {...scrollRegion("qvm-cap")} className="relative overflow-x-auto">
       <table className="w-full min-w-[34rem] border-separate border-spacing-1 text-sm">
-        <caption className="sr-only">Number of use cases per quadrant and verdict</caption>
+        <caption id="qvm-cap" className="sr-only">Number of use cases per quadrant and verdict</caption>
         <thead>
           <tr>
             <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">Quadrant</th>

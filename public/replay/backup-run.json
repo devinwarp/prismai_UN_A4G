@@ -7,7 +7,7 @@
       "title": "UC02 Trade licence renewal and permit pre-check",
       "chain_ok": true,
       "records": 24,
-      "head_hash": "12c70ce7f6ca50c0231f33be05c0f59c0ee76b0aa7b250510450798fc909a33b",
+      "head_hash": "372e24de55f13a39668f5d0c0b640cb7916684631efd77f8117d6ad14d5d8986",
       "steps": [
         {
           "step": "T0",
@@ -61,7 +61,9 @@
             "Fix declared, not yet re-tested: A person gives final approval before any output reaches a citizen"
           ],
           "events": [
+            "Change record attached by the owner: owner moved the model to approved hosting",
             "Owner moved the model to approved hosting",
+            "Change record attached by the owner: owner restored officer release of every customer message",
             "Owner restored officer release of every customer message"
           ]
         },
@@ -85,7 +87,7 @@
       "title": "UC01 Voice contact centre: hallucination alert on a live pilot",
       "chain_ok": true,
       "records": 27,
-      "head_hash": "71471ef9d5ce326448cdbbb61ddd4bf678787306e26de180c5ea2dd63e4d671e",
+      "head_hash": "a2c48ae097a9450fa6f57c7122c05d6e29d6e92e238e784e50af9fb587b07dfc",
       "steps": [
         {
           "step": "T0",
@@ -114,6 +116,7 @@
           ],
           "events": [
             "Sijil alert: hallucination rate 6.1% over the last 3 runs, above the 1% threshold",
+            "Change record attached by the owner: owner restricted fee answers to the retrieved fee table; the agent now drafts and an officer sends",
             "Owner restricted fee answers to the retrieved fee table; the agent now drafts and an officer sends"
           ]
         },
@@ -155,7 +158,9 @@
             "Fix declared, not yet re-tested: Fees and amounts quoted to citizens match the published fee table"
           ],
           "events": [
+            "Change record attached by the owner: owner limited fee answers to the fee table and retuned retrieval",
             "Owner limited fee answers to the fee table and retuned retrieval",
+            "Change record attached by the owner: owner added to the call opening that answers may be inaccurate and an officer should confirm fees",
             "Owner added to the call opening that answers may be inaccurate and an officer should confirm fees"
           ]
         },
@@ -237,7 +242,7 @@
       "title": "UC13 Citizen mobility and fines assistant: promotions escalate into a privacy breach",
       "chain_ok": true,
       "records": 29,
-      "head_hash": "4e76fc6037f6397b5566f9d01c4018620879f7fff5263d2a6e2fc9868cedf6bd",
+      "head_hash": "58e3811cff42d8c3745d3f4d975448e441006b50eadfb20f2f2edd9a2268ac58",
       "steps": [
         {
           "step": "T0",
@@ -306,7 +311,9 @@
             "Fix declared, not yet re-tested: Data is used only for its declared purpose, with no inferred sensitive attributes"
           ],
           "events": [
+            "Change record attached by the owner: owner removed the promotions module from the assistant",
             "Owner removed the promotions module from the assistant",
+            "Change record attached by the owner: owner blocked the use of inferred attributes from fines and permit data",
             "Owner blocked the use of inferred attributes from fines and permit data"
           ]
         },

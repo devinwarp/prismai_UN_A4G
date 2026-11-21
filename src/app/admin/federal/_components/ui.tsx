@@ -53,7 +53,7 @@ export function GateChip({ gate, status }: { gate: string; status: GateStatus })
   const m = STATUS_META[status];
   return (
     <span
-      className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 font-mono text-[11px] whitespace-nowrap"
+      className="inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 font-mono text-[11px] max-w-full flex-wrap"
       style={{
         borderColor: `color-mix(in srgb, ${m.color} 50%, transparent)`,
         background: `color-mix(in srgb, ${m.color} 11%, transparent)`,
@@ -69,7 +69,7 @@ export function GateChip({ gate, status }: { gate: string; status: GateStatus })
 /** Small-caps mono label + serif title, with an optional lede. */
 export function Section({
   id, eyebrow, title, lede, aside, children,
-}: { id?: string; eyebrow: string; title: string; lede?: ReactNode; aside?: ReactNode; children: ReactNode }) {
+}: { id?: string; eyebrow: ReactNode; title: ReactNode; lede?: ReactNode; aside?: ReactNode; children: ReactNode }) {
   return (
     <section aria-labelledby={id ? `${id}-h` : undefined} id={id} className="scroll-mt-6">
       <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 border-b border-line pb-3">
@@ -122,3 +122,10 @@ export function DataTableAlt({ caption, head, rows }: { caption: string; head: s
     </details>
   );
 }
+
+/** Props for a horizontally scrolling wrapper: focusable so a keyboard user can scroll it (WCAG 2.1.1, axe
+ * scrollable-region-focusable), named by the table caption. A spread because jsx-a11y's no-noninteractive-tabindex
+ * does not know about scroll regions. */
+/** Just the focus part, for a scroller that already has its own role and name (an ol with aria-label). */
+export const scrollFocus = { tabIndex: 0 };
+export const scrollRegion = (captionId: string) => ({ role: "region", tabIndex: 0, "aria-labelledby": captionId });

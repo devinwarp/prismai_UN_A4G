@@ -34,7 +34,13 @@ function db(): Db {
   // module instances, so an in-memory copy goes stale after the other side writes.
   const f = FILE();
   if (existsSync(f)) mem = JSON.parse(readFileSync(f, "utf8")) as Db;
-  else mem ??= seed();
+  else {
+    // Persist the seed at once. Seeded use cases get random ids, so without this every module
+    // instance (each page, each route) would seed different ids and a route could not find a
+    // use case a page had just listed.
+    mem ??= seed();
+    save();
+  }
   return mem;
 }
 const save = () => {
@@ -68,6 +74,7 @@ class Query implements PromiseLike<Result> {
   neq(k: string, v: unknown) { this.filters.push((r) => r[k] !== v); return this; }
   in(k: string, v: unknown[]) { this.filters.push((r) => v.includes(r[k])); return this; }
   is(k: string, v: unknown) { this.filters.push((r) => (r[k] ?? null) === v); return this; }
+  like(k: string, pat: string) { const re = new RegExp(`^${pat.replace(/[.*+?^${}()|[\]\\]/g, "\\$&").replace(/%/g, ".*").replace(/_/g, ".")}$`); this.filters.push((r) => re.test(String(r[k] ?? ""))); return this; }
   order(k: string, o: { ascending?: boolean } = {}) { this.ord = [k, o.ascending !== false]; return this; }
   limit(n: number) { this.lim = n; return this; }
   maybeSingle() { this.shape = "maybe"; return this; }

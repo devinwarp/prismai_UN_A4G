@@ -96,17 +96,20 @@ export function classify(t: string): Cls {
 
 // ---- 4. Risk flags -----------------------------------------------------------
 const EXTERNAL = /\b(applicants?|citizens?|customers?|clients?|residents?|requesters?|complainants?|licensees?|business owners?|members of the public)\b/i;
-const OUTBOUND = /\b(send\w*|email\w*|notif\w*|repl(?:y|ies)|respond\w*|inform\w*|contact\w*|call\w*|letter|message|issu\w*|explain\w*|payment link|receipt)\b/i;
+const OUTBOUND = /\b(send\w*|tell\w*|email\w*|notif\w*|repl(?:y|ies)|respond\w*|inform\w*|contact\w*|call\w*|letter|message|issu\w*|explain\w*|payment link|receipt)\b/i;
 const RIGHTS = /\b(eligib\w*|entitle\w*|waiv\w*|penalt\w*|fines?|suspend\w*|revok\w*|appeal\w*|refund\w*|sanction\w*|exempt\w*|benefit\w*|denied|deny|denies|reject\w*|disqualif\w*)\b/i;
 const IRREVERSIBLE = /\b(cannot be undone|can't be undone|irreversib\w*|permanent\w*|final|delet\w*|destroy\w*|purge\w*|terminat\w*|disburs\w*|pay(?:s)? out|releas\w* (?:any |the )?(?:refund|payment|funds))\b/i;
 
+/** The three flags for one piece of text (a step or a task). Same cues as the whole-SOP result. */
+export const flagsOfText = (t: string): Record<FlagId, boolean> => ({
+  client_facing: EXTERNAL.test(t) && OUTBOUND.test(t),
+  affects_rights: RIGHTS.test(t),
+  irreversible: IRREVERSIBLE.test(t),
+});
+
 function flagsFor(steps: SopStep[]): RiskFlags {
-  const hit = (test: (t: string) => boolean): LineRef[] => steps.filter((s) => test(s.text)).map((s) => s.cite).slice(0, 3);
-  const evidence: Record<FlagId, LineRef[]> = {
-    client_facing: hit((t) => EXTERNAL.test(t) && OUTBOUND.test(t)),
-    affects_rights: hit((t) => RIGHTS.test(t)),
-    irreversible: hit((t) => IRREVERSIBLE.test(t)),
-  };
+  const hit = (f: FlagId): LineRef[] => steps.filter((s) => flagsOfText(s.text)[f]).map((s) => s.cite).slice(0, 3);
+  const evidence: Record<FlagId, LineRef[]> = { client_facing: hit("client_facing"), affects_rights: hit("affects_rights"), irreversible: hit("irreversible") };
   return {
     client_facing: evidence.client_facing.length > 0,
     affects_rights: evidence.affects_rights.length > 0,

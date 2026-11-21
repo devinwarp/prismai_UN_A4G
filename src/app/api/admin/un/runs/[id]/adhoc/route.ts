@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { CHAT_MODEL, chatCompletion } from "@/lib/llm";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { bad, requireAdmin } from "@/lib/api-auth";
+import { effectiveFor } from "@/lib/un/gates-store";
 import { loadChunks } from "@/lib/un/kb";
 import { headOf, loadRun, storeTraceRows, verifyRun, verifyStoredRows } from "@/lib/un/runs";
 import { adhocError, adhocStep, type AdhocInput } from "@/lib/un/scenario";
@@ -17,10 +18,10 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const b = (await request.json().catch(() => null)) as (AdhocInput & { llm?: boolean }) | null;
   if (!b || typeof b !== "object") return bad("Invalid JSON");
-  const invalid = adhocError(b);
-  if (invalid) return bad(invalid);
   const row = await loadRun(who.org_id!, id);
   if (!row) return NextResponse.json({ error: "Run not found" }, { status: 404 });
+  const invalid = adhocError(b, row.state.state?.customGates);
+  if (invalid) return bad(invalid);
   const sc = SCENARIOS[row.scenario_id];
   if (!sc || sc.kind !== "gate") return bad("Ad-hoc steps are only for use-case scenarios");
   if (row.state.log[row.state.log.length - 1]?.signature) return bad("This run is already signed");
@@ -42,6 +43,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   try {
     next = await adhocStep(sc, row.state, b, {
       hitl,
+      effective: uc ? await effectiveFor(who.org_id!, uc) : undefined,
       now: () => new Date().toISOString(),
       chunks: loadChunks(),
       model: useLlm ? CHAT_MODEL : undefined,

@@ -1,5 +1,10 @@
 import { VERDICTS } from "../model.ts";
 import { GATES } from "../policy.ts";
+import { JOURNEY_AR } from "./journey-ar.ts";
+import { AGENT_RUNTIME_AR } from "./agent-runtime-ar.ts";
+import { LIFECYCLE_AR } from "./lifecycle-ar.ts";
+import { GATES_AR } from "./gates-ar.ts";
+import { TUNING_AR } from "./tuning-ar.ts";
 
 // Lightweight Arabic/English dictionary for the federal admin UI. Pure, no
 // library. Keys not found fall back to the English text passed by the caller,
@@ -214,7 +219,10 @@ export const AR: Record<string, string> = {
   "sc.back": "العودة إلى لوحة المتابعة",
   "sc.choose": "اختر سيناريو",
   "sc.kind.gate": "حالة استخدام واحدة: قرار عند كل خطوة",
-  "sc.kind.fed": "المحفظة كلها: اللوحة عند كل خطوة",
+  "sc.kind.fed": "المحفظة كلها: نسخة تجريبية من اللوحة عند كل خطوة (وليست السجل الحي)",
+  "sbx.label": "نسخة تجريبية، وليست السجل الحي",
+  "ed.evref": "مرجع الدليل على الإصلاح",
+  "ed.evref_h": "معرّف حدث من هذا التشغيل أو معرّف مقطع من قاعدة المعرفة. دونه يُرفض الإعلان ولا يرفع أي قرار. يُتحقق أن المرجع موجود، لا أنه يثبت الإصلاح.",
   "sc.first": "ابدأ بهذا",
   "sc.past": "التشغيلات السابقة",
   "sc.nopast": "لا تشغيلات بعد. ابدأ بالسيناريو الأول أعلاه: نحو دقيقتين، وسترى قراراً يُتخذ ويُوقَّع ويُقفل في السجل.",
@@ -297,6 +305,11 @@ export const AR: Record<string, string> = {
   "sop.promote.admin": "ترقية الإجراء إلى حالة استخدام تتطلب مديراً.",
   "sop.created": "أُنشئت",
   "sop.compare": "شاهد القرار في صفحة المقارنة",
+  ...LIFECYCLE_AR,
+  ...GATES_AR,
+  ...JOURNEY_AR,
+  ...TUNING_AR,
+  ...AGENT_RUNTIME_AR,
 };
 
 /** Look up a key; fall back to the English text supplied at the call site. */

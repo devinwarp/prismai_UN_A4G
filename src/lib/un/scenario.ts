@@ -7,6 +7,7 @@ import type { Metering } from "./metering.ts";
 import { type AgentMessage, type CaseState } from "./protocol.ts";
 import { runRound, type RoutedEvent } from "./round.ts";
 import { appendTrace, roundBodies, type TraceRecord } from "./trace.ts";
+import { traceGates, type Effective } from "./gates.ts";
 
 // Staged scenarios. Events are released one step at a time (never all at
 // once), each to a subset of roles. State is plain JSON so a run can be saved
@@ -82,6 +83,8 @@ export interface RunEnv {
   /** The entity's HITL configuration and the use case's facts (I-2). Default:
    * every rule on, facts from the scenario (client-facing as declared). */
   hitl?: { config: HitlConfig; entity: string; facts: HitlFacts };
+  /** The use case's effective gates (gates.ts), computed by the caller when the verdict runs. Omitted = the shipped rule set. */
+  effective?: Effective;
 }
 
 export const fmt = (d: Dashboard) =>
@@ -125,10 +128,18 @@ async function gateStep(sc: GateScenario, run: RunState, env: RunEnv, adhoc?: { 
   }
   const h = env.hitl ?? { config: {}, entity: sc.ext_id, facts: { client_facing: sc.clientFacing, affects_rights: false, irreversible: false } };
   const breaches = hitlBreaches(h.config, h.entity, h.facts, [...unmet]);
+  // Added and waived gates ride on the case state, so the run replays under the gates it was judged by.
+  const eff = env.effective;
+  const gateInputs = eff
+    ? { useCaseGates: eff.added, waived: eff.waived, customGates: Object.fromEntries(Object.entries(eff.catalog).filter(([, d]) => d.custom)) }
+    : {};
+  const tracedGates = eff && (eff.added.length || eff.waived.length) ? traceGates(eff) : undefined;
   const r = await runRound(
-    { state: { ...run.state!, hitlBreaches: breaches }, title: sc.title, requested: !adhoc && run.next === 0 ? sc.requested : undefined, thread: run.thread!, events: def.events },
+    { state: { ...run.state!, hitlBreaches: breaches, ...gateInputs }, title: sc.title, requested: !adhoc && run.next === 0 ? sc.requested : undefined, thread: run.thread!, events: def.events },
     deps,
     (id) => byId.has(id),
+    // A declared fix may cite any earlier or current event that is not itself a fix declaration.
+    (id) => [...run.steps.flatMap((s) => s.events), ...def.events].some((e) => e.id === id && e.status !== "fix_declared"),
   );
   const verdictMsg = r.thread[r.thread.length - 1];
   const before = run.log.length;
@@ -139,6 +150,8 @@ async function gateStep(sc: GateScenario, run: RunState, env: RunEnv, adhoc?: { 
     seen: (role) => def.events.filter((e) => e.recipients.includes(role)).map((e) => e.id),
     firstId: before + 1,
     hitlBreaches: breaches,
+    effectiveGates: tracedGates,
+    customGates: gateInputs.customGates,
   });
   const log = bodies.reduce(appendTrace, run.log);
   return {
@@ -158,6 +171,8 @@ export interface AdhocInput {
   gate?: GateId;
   status?: GateStatus;
   recipients: RoleId[];
+  /** For fix_declared: the evidence reference(s), a chunk id or an event id of this run. A bare declaration is rejected and logged. */
+  evidence?: string[];
   /** Optional expected verdict; without it the step is logged but not scored. */
   expected?: string;
 }
@@ -166,13 +181,14 @@ export const AGENT_ROLES = Object.keys(ROLES).filter((r) => r !== "coordinator")
 export const MAX_ADHOC = 20;
 
 /** Why an ad-hoc input is not acceptable, or null. */
-export function adhocError(input: AdhocInput): string | null {
+export function adhocError(input: AdhocInput, customGates: Record<string, unknown> = {}): string | null {
   const summary = typeof input.summary === "string" ? input.summary.trim() : "";
   if (!summary || summary.length > 500) return "Summary is required (up to 500 characters)";
   if (!Array.isArray(input.recipients) || !input.recipients.length || !input.recipients.every((r) => AGENT_ROLES.includes(r))) return "Pick at least one recipient role";
   if (Boolean(input.gate) !== Boolean(input.status)) return "Gate and status go together: set both or neither";
-  if (input.gate && !Object.hasOwn(GATES, input.gate)) return "Unknown gate";
+  if (input.gate && !Object.hasOwn(GATES, input.gate) && !Object.hasOwn(customGates, input.gate)) return "Unknown gate";
   if (input.status && !["pass", "fail", "fix_declared"].includes(input.status)) return "Status must be pass, fail or fix_declared";
+  if (input.evidence !== undefined && (!Array.isArray(input.evidence) || input.evidence.length > 10 || !input.evidence.every((x) => typeof x === "string" && x.length <= 120))) return "Evidence references must be a short list of ids";
   if (input.expected && !(VERDICTS as readonly string[]).includes(input.expected)) return "Unknown expected verdict";
   return null;
 }
@@ -183,12 +199,12 @@ export function adhocError(input: AdhocInput): string | null {
 export async function adhocStep(sc: Scenario, run: RunState, input: AdhocInput, env: RunEnv): Promise<RunState> {
   if (sc.kind !== "gate") throw new Error("ad-hoc steps are only for use-case (gate) scenarios");
   if (run.log[run.log.length - 1]?.signature) throw new Error("run is already signed");
-  const bad = adhocError(input);
+  const bad = adhocError(input, run.state?.customGates);
   if (bad) throw new Error(bad);
   const n = run.steps.filter((s) => s.adhoc).length;
   if (n >= MAX_ADHOC) throw new Error(`at most ${MAX_ADHOC} ad-hoc steps per run`);
   const step = `A${n + 1}`;
-  const ev: RoutedEvent = { id: `${sc.id}-${step}-adhoc`, type: input.gate ? "gate_evidence" : "context", summary: input.summary.trim(), recipients: input.recipients, gate: input.gate, status: input.status };
+  const ev: RoutedEvent = { id: `${sc.id}-${step}-adhoc`, type: input.gate ? "gate_evidence" : "context", summary: input.summary.trim(), recipients: input.recipients, gate: input.gate, status: input.status, ...(input.evidence?.length ? { links: input.evidence } : {}) };
   return gateStep(sc, run, env, { step, events: [ev], expected: input.expected ?? "" });
 }
 

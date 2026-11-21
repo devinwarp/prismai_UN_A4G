@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { loadReplays } from "@/lib/un/replay";
+import { isSandboxOutcome, SANDBOX_EN } from "@/lib/un/sandbox";
 
 export const metadata: Metadata = {
   title: "Scenario replay",
@@ -28,6 +29,7 @@ export default async function ReplayPage() {
                 <li key={s.step} className="border-t border-line pt-3">
                   <p className="font-medium">
                     {s.step}: {s.outcome}{" "}
+                    {isSandboxOutcome(s.outcome) && <span className="rounded-md border border-ember/60 px-2 py-0.5 font-mono text-[11px] text-ember">{SANDBOX_EN}</span>}{" "}
                     <span className="font-mono text-xs">{s.match ? "(as expected)" : `(expected ${s.expected})`}</span>
                   </p>
                   {s.events.map((e, i) => <p key={i} className="text-sm">{e}</p>)}

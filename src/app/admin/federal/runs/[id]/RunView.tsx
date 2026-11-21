@@ -12,13 +12,14 @@ import { expectedCsv, expectedVsActual, matchSummary } from "@/lib/un/expected";
 import { ROLES } from "@/lib/un/roles";
 import type { RoleId } from "@/lib/un/policy";
 import { T, useLang } from "../../_components/Lang";
-import { tr } from "@/lib/un/i18n/dict";
+import { tr, type Lang } from "@/lib/un/i18n/dict";
+import { isSandboxOutcome, SANDBOX_EN, SANDBOX_KEY } from "@/lib/un/sandbox";
 import Chain from "../../_components/Chain";
 import { Term } from "../../_components/Gloss";
 import { Tour, TourButton, type TourStep } from "../../_components/Coach";
 import { Pipeline, VerdictHero } from "./RunParts";
 import RunMetering from "./RunMetering";
-import { GateChip, Section, VerdictBadge, STATUS_META, btnGhost, btnPrimary, card, field } from "../../_components/ui";
+import { GateChip, scrollRegion, Section, VerdictBadge, STATUS_META, btnGhost, btnPrimary, card, field } from "../../_components/ui";
 
 const isVerdict = (s: string): s is Verdict => (VERDICTS as readonly string[]).includes(s);
 const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai" });
@@ -28,16 +29,19 @@ function dash(outcome: string) {
   return m ? { deployed: +m[1], total: +m[2], compliant: +m[3], target: +m[4] } : null;
 }
 
-function PortfolioBars({ outcome }: { outcome: string }) {
+function PortfolioBars({ outcome, lang }: { outcome: string; lang: Lang }) {
   const d = dash(outcome);
   if (!d) return null;
   const w = (n: number) => `${(n / d.total) * 100}%`;
   return (
-    <div className="mt-3" role="img" aria-label={`Deployed ${d.deployed} of ${d.total}, compliant ${d.compliant}, target ${d.target}`}>
-      <div className="relative h-3 rounded-full bg-paper-deep">
-        <div className="absolute inset-y-0 start-0 rounded-full bg-lit" style={{ width: w(d.deployed) }} />
-        <div className="absolute inset-y-0 start-0 rounded-full" style={{ width: w(d.compliant), background: "var(--color-v-sup)" }} />
-        <div aria-hidden className="absolute -top-1 -bottom-1 w-0.5 bg-ink" style={{ insetInlineStart: `calc(${w(d.target)} - 1px)` }} />
+    <div className="mt-3">
+      <p className="mb-1 inline-block rounded-md border border-ember/60 px-2 py-0.5 font-mono text-[11px] font-medium text-ember">{tr(lang, SANDBOX_KEY, SANDBOX_EN)}</p>
+      <div role="img" aria-label={`${tr(lang, SANDBOX_KEY, SANDBOX_EN)}. Deployed ${d.deployed} of ${d.total}, compliant ${d.compliant}, target ${d.target}`}>
+        <div className="relative h-3 rounded-full bg-paper-deep">
+          <div className="absolute inset-y-0 start-0 rounded-full bg-lit" style={{ width: w(d.deployed) }} />
+          <div className="absolute inset-y-0 start-0 rounded-full" style={{ width: w(d.compliant), background: "var(--color-v-sup)" }} />
+          <div aria-hidden className="absolute -top-1 -bottom-1 w-0.5 bg-ink" style={{ insetInlineStart: `calc(${w(d.target)} - 1px)` }} />
+        </div>
       </div>
       <p className="mt-1 font-mono text-[11px] text-ink-soft">deployed {d.deployed} (green) · compliant {d.compliant} (blue) · target line {d.target} of {d.total}</p>
     </div>
@@ -140,7 +144,7 @@ export default function RunView({
 
   // Live scenario editor: one operator-written step, run through the same agents and engine.
   const agentRoles = (Object.keys(ROLES) as RoleId[]).filter((r) => r !== "coordinator");
-  const [form, setForm] = useState({ summary: "", gate: "", status: "fail", expected: "", recipients: [] as RoleId[] });
+  const [form, setForm] = useState({ summary: "", gate: "", status: "fail", expected: "", evidence: "", recipients: [] as RoleId[] });
   async function addStep() {
     setBusy(true);
     setErr(null);
@@ -148,7 +152,7 @@ export default function RunView({
     const res = await fetch(`/api/admin/un/runs/${runId}/adhoc`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ summary: form.summary, recipients: form.recipients, llm, ...(form.gate ? { gate: form.gate, status: form.status } : {}), ...(form.expected ? { expected: form.expected } : {}) }),
+      body: JSON.stringify({ summary: form.summary, recipients: form.recipients, llm, ...(form.gate ? { gate: form.gate, status: form.status } : {}), ...(form.expected ? { expected: form.expected } : {}), ...(form.gate && form.status === "fix_declared" && form.evidence.trim() ? { evidence: form.evidence.split(/[\s,;]+/).filter(Boolean) } : {}) }),
     });
     const data = (await res.json().catch(() => ({}))) as { error?: string };
     setBusy(false);
@@ -231,7 +235,7 @@ export default function RunView({
       {lastStep && !heroVerdict && (
         <section key={lastStep.step} aria-label="Current state" className="fx-fade rounded-2xl border border-line bg-card p-6">
           <p className="font-display text-2xl">{lastStep.outcome}</p>
-          <PortfolioBars outcome={lastStep.outcome} />
+          <PortfolioBars outcome={lastStep.outcome} lang={lang} />
         </section>
       )}
       {!lastStep && (
@@ -318,6 +322,13 @@ export default function RunView({
                       </label>
                     ))}
                   </div>
+                  {gateOn && form.status === "fix_declared" && (
+                    <label className="mt-3 block text-sm">
+                      <span className="font-medium">{tr(lang, "ed.evref", "Evidence reference for the fix")}</span>
+                      <input value={form.evidence} onChange={(e) => setForm({ ...form, evidence: e.target.value })} className={`${field} mt-1 w-full font-mono`} placeholder="S1-T0-audit" />
+                      <span className="mt-0.5 block text-xs text-ink-soft">{tr(lang, "ed.evref_h", "An event id from this run or a knowledge-base chunk id. Without one the declaration is rejected and lifts nothing. The reference is checked to exist, not to prove the fix.")}</span>
+                    </label>
+                  )}
                 </fieldset>
               </li>
               <li>
@@ -390,14 +401,14 @@ export default function RunView({
       <RunMetering metering={state.metering} />
 
       <Section eyebrow={tr(lang, "tl.eyebrow", "Timeline")} title={tr(lang, "tl.title", "Step by step")} lede={tr(lang, "tl.lede", "Each step releases new events to only some of the agents. The outcome is the decision the policy engine reaches from what has been shown so far.")}>
-        <div className="relative overflow-x-auto pb-2">
-        <ol className="flex gap-2" aria-label="Run progress">
+        <div {...scrollRegion("rv-prog")} className="relative overflow-x-auto pb-2">
+        <ol id="rv-prog" className="flex gap-2" aria-label="Run progress">
           {slots.map((s, i) => (
             <li key={i} className="min-w-[8.5rem] flex-1">
               <a href={s ? `#step-${s.step}` : undefined} aria-current={s && i === state.steps.length - 1 ? "step" : undefined} className={`block rounded-xl border p-2.5 text-center ${s ? "border-line bg-card hover:border-ink-soft" : "border-dashed border-line text-ink-soft"} ${s && i === state.steps.length - 1 ? "outline-2 outline-offset-2 outline-ink" : ""}`}>
                 <span className="font-mono text-xs">{s ? s.step : `T${i}`}</span>
                 <span className="mt-1.5 flex min-h-6 items-center justify-center">
-                  {s ? (isVerdict(s.outcome) ? <VerdictBadge verdict={s.outcome} /> : <span className="font-mono text-[11px] tabular-nums">{dash(s.outcome) ? `${dash(s.outcome)!.deployed}/${dash(s.outcome)!.total}` : "·"}</span>) : <span className="text-[11px]">to come</span>}
+                  {s ? (isVerdict(s.outcome) ? <VerdictBadge verdict={s.outcome} /> : <span className="font-mono text-[11px] tabular-nums" title={tr(lang, SANDBOX_KEY, SANDBOX_EN)}>{dash(s.outcome) ? `${dash(s.outcome)!.deployed}/${dash(s.outcome)!.total}` : "·"}</span>) : <span className="text-[11px]">to come</span>}
                 </span>
                 {s && <span className={`mt-1 block text-[11px] ${s.match ? "text-lit-deep" : "font-medium text-ember"}`}><span aria-hidden>{s.match ? "✓" : "✕"}</span> {s.match ? "as expected" : "unexpected"}</span>}
               </a>
@@ -407,9 +418,9 @@ export default function RunView({
         </div>
 
         {showGates && (
-          <div className="relative mt-6 overflow-x-auto">
+          <div {...scrollRegion("rv-gates")} className="relative mt-6 overflow-x-auto">
             <table className="w-full min-w-[28rem] border-separate border-spacing-1 text-sm">
-              <caption className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">Gate status after each step</caption>
+              <caption id="rv-gates" className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">Gate status after each step</caption>
               <thead>
                 <tr>
                   <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">Gate</th>
@@ -438,9 +449,9 @@ export default function RunView({
         )}
 
         {expected.length > 0 && (
-          <div className="relative mt-8 overflow-x-auto">
+          <div {...scrollRegion("rv-exp")} className="relative mt-8 overflow-x-auto">
             <table className="w-full min-w-[28rem] border-separate border-spacing-y-1 text-sm">
-              <caption className="mb-2 flex flex-wrap items-center justify-between gap-3 text-start">
+              <caption id="rv-exp" className="mb-2 flex flex-wrap items-center justify-between gap-3 text-start">
                 <span className="font-mono text-[11px] tracking-widest text-ink-soft uppercase">Expected vs actual · {matchSummary(expected)}</span>
                 <button type="button" onClick={downloadExpected} className="text-xs underline underline-offset-2">Download CSV</button>
               </caption>
@@ -454,7 +465,7 @@ export default function RunView({
                   <tr key={r.step}>
                     <th scope="row" className="py-1 pe-3 text-start font-mono text-xs font-normal">{r.step}</th>
                     <td className="pe-3">{isVerdict(r.expected) ? <VerdictBadge verdict={r.expected} /> : <span className="text-xs">{r.expected}</span>}</td>
-                    <td className="pe-3">{isVerdict(r.actual) ? <VerdictBadge verdict={r.actual} /> : <span className="text-xs">{r.actual}</span>}</td>
+                    <td className="pe-3">{isVerdict(r.actual) ? <VerdictBadge verdict={r.actual} /> : <span className="text-xs">{r.actual}</span>}{isSandboxOutcome(r.actual) && <span className="block text-[11px] text-ember">{tr(lang, SANDBOX_KEY, SANDBOX_EN)}</span>}</td>
                     <td className={r.match ? "text-lit-deep" : "font-medium text-ember"}><span aria-hidden>{r.match ? "✓" : "✕"}</span> {r.match ? "match" : "differs"}</td>
                   </tr>
                 ))}
@@ -464,9 +475,9 @@ export default function RunView({
         )}
 
         {know.length > 1 && (
-          <div className="relative mt-8 overflow-x-auto">
+          <div {...scrollRegion("rv-know")} className="relative mt-8 overflow-x-auto">
             <table className="w-full min-w-[40rem] border-separate border-spacing-1 text-sm">
-              <caption className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">What each agent knows after each step</caption>
+              <caption id="rv-know" className="mb-2 text-start font-mono text-[11px] tracking-widest text-ink-soft uppercase">What each agent knows after each step</caption>
               <thead>
                 <tr>
                   <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">Step</th>
@@ -505,7 +516,7 @@ export default function RunView({
                 {isVerdict(s.outcome) && <VerdictBadge verdict={s.outcome} size="lg" />}
                 <p className={`font-display ${isVerdict(s.outcome) ? "text-lg text-ink-soft" : "text-xl"}`}>{isVerdict(s.outcome) ? "verdict after this step" : s.outcome}</p>
               </div>
-              {!isVerdict(s.outcome) && <PortfolioBars outcome={s.outcome} />}
+              {!isVerdict(s.outcome) && <PortfolioBars outcome={s.outcome} lang={lang} />}
               {s.reasons.length > 0 && (
                 <ul className="mt-3 space-y-1 text-sm">
                   {s.reasons.map((r) => <li key={r} className="flex gap-2"><span aria-hidden className="text-ink-soft">→</span><span>{r}</span></li>)}

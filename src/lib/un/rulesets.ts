@@ -1,6 +1,7 @@
 import type { GateId } from "./policy.ts";
 import type { HitlConfig, HitlFacts, HitlRuleId } from "./hitl.ts";
 import { HITL_RULE_IDS } from "./hitl.ts";
+import { SEED } from "./governance.ts";
 
 // Per-jurisdiction rule sets. SIMPLIFIED DEMO ENCODINGS, NOT LEGAL ADVICE: each
 // maps a few ingested provisions onto the existing gate vocabulary so the same
@@ -27,56 +28,11 @@ export interface RuleSet {
   gapIds: string[];
 }
 
-export const UAE_FEDERAL: RuleSet = {
-  id: "uae-federal",
-  name: "UAE federal (reference implementation)",
-  gates: ["approved_infrastructure", "audit_log", "data_lawful", "human_final_approval", "ai_disclosure"],
-  capAutonomy: "client_facing",
-  hitlDefaults: [...HITL_RULE_IDS],
-  thresholds: { hallucination_rate_max: 0.05 },
-  cites: {
-    approved_infrastructure: ["desc-isr-excerpts#0"],
-    data_lawful: ["uae-data-protection-laws#4"],
-    human_final_approval: ["uae-data-protection-laws#11"],
-  },
-  notIngested: [],
-  gapIds: ["G1", "G5", "G9"],
-};
-
-export const EU_AI_ACT: RuleSet = {
-  id: "eu-ai-act",
-  name: "EU AI Act (deployer view)",
-  gates: ["data_lawful", "ai_disclosure"],
-  capAutonomy: "client_facing",
-  hitlDefaults: [...HITL_RULE_IDS],
-  thresholds: {},
-  cites: {},
-  notIngested: ["Art. 50 transparency duties", "GDPR (incl. Art. 22 automated decisions)", "Art. 15 accuracy"],
-  highRisk: {
-    label: "Annex III point 5 (essential public services): high-risk",
-    applies: (f) => !!f.affects_rights,
-    gates: ["data_lawful", "ai_disclosure", "audit_log", "human_final_approval"],
-    capAutonomy: "always",
-    cites: ["eu-ai-act-articles#7", "eu-ai-act-articles#8", "eu-ai-act-articles#0", "eu-ai-act-articles#2", "eu-ai-act-articles#3", "eu-ai-act-articles#4"],
-  },
-  gapIds: ["G4", "G7", "G8"],
-};
-
-export const SG_IMDA: RuleSet = {
-  id: "sg-imda",
-  name: "Singapore IMDA agentic AI framework",
-  gates: ["audit_log", "data_lawful", "human_final_approval", "hallucination_rate"],
-  capAutonomy: "client_facing",
-  hitlDefaults: ["client_facing_final_approval", "irreversible_human_approval"],
-  thresholds: { human_override_rate_min: 0.02 },
-  cites: {
-    audit_log: ["sg-imda-agentic-mgf#6"],
-    human_final_approval: ["sg-imda-agentic-mgf#2", "sg-imda-agentic-mgf#1"],
-    hallucination_rate: ["sg-imda-agentic-mgf#11"],
-  },
-  notIngested: ["Singapore PDPA"],
-  gapIds: ["G2", "G3", "G6"],
-};
+// The three shipped rule sets are seeded from data/un-governance.json (governance.ts validates them).
+const seeded = (id: RuleSet["id"]): RuleSet => SEED.rulesets.find((r) => r.id === id)!;
+export const UAE_FEDERAL: RuleSet = seeded("uae-federal");
+export const EU_AI_ACT: RuleSet = seeded("eu-ai-act");
+export const SG_IMDA: RuleSet = seeded("sg-imda");
 
 export const RULESETS: RuleSet[] = [UAE_FEDERAL, EU_AI_ACT, SG_IMDA];
 export const DEFAULT_RULESET = UAE_FEDERAL;
@@ -95,7 +51,7 @@ export const hitlConfigFor = (rs: RuleSet, entity: string): HitlConfig => ({
 
 /** All chunk ids a rule set cites. */
 export const citedChunks = (rs: RuleSet): string[] => [
-  ...new Set([...Object.values(rs.cites).flat(), ...(rs.highRisk?.cites ?? [])]),
+  ...new Set([...Object.values(rs.cites).flatMap((c) => c ?? []), ...(rs.highRisk?.cites ?? [])]),
 ];
 
 /** Gaps this comparison derives. Not in kb/gaps.json (that file is the curated

@@ -4,7 +4,7 @@
     "base": "https://openrouter.ai/api/v1",
     "n": 10,
     "dry": false,
-    "at": "2026-11-20T12:22:39.803Z"
+    "at": "2026-11-21T06:47:14.813Z"
   },
   "rows": [
     {
@@ -25,25 +25,25 @@
         "hi": 1
       },
       "citation_exists": {
-        "k": 165,
-        "n": 165,
+        "k": 108,
+        "n": 108,
         "p": 1,
-        "lo": 0.9772473134582946,
-        "hi": 1
+        "lo": 0.9656514212958325,
+        "hi": 0.9999999999999998
       },
       "citation_retrieved": {
-        "k": 144,
-        "n": 165,
-        "p": 0.8727272727272727,
-        "lo": 0.813264766088826,
-        "hi": 0.9152286857619026
+        "k": 94,
+        "n": 108,
+        "p": 0.8703703703703703,
+        "lo": 0.79410934004977,
+        "hi": 0.9211880090582542
       },
       "rejected": {
-        "k": 13,
-        "n": 148,
-        "p": 0.08783783783783784,
-        "lo": 0.05205044562132614,
-        "hi": 0.14448067628466013
+        "k": 5,
+        "n": 120,
+        "p": 0.041666666666666664,
+        "lo": 0.017926452505837805,
+        "hi": 0.0938421292954309
       },
       "model_json_failures": {
         "k": 0,
@@ -52,20 +52,20 @@
         "lo": 0,
         "hi": 0.02670715564899167
       },
-      "accepted_per_run": 13.5,
-      "proposed_per_run": 19.6,
-      "dropped_per_run": 4.8,
+      "accepted_per_run": 11.5,
+      "proposed_per_run": 15.8,
+      "dropped_per_run": 3.8,
       "added_evidence": {
-        "k": 89,
-        "n": 135,
-        "p": 0.6592592592592592,
-        "lo": 0.5758915234643873,
-        "hi": 0.7338139250467217
+        "k": 55,
+        "n": 115,
+        "p": 0.4782608695652174,
+        "lo": 0.38914955162077935,
+        "hi": 0.5687776388579755
       },
-      "tokens_per_run": 26066.6,
-      "seconds_per_run": 36.82959999999999,
-      "cost_per_run": 0.08130519999999998,
-      "cost_total": 0.8130519999999998
+      "tokens_per_run": 25175.9,
+      "seconds_per_run": 28.95700000000001,
+      "cost_per_run": 0.07261820000000001,
+      "cost_total": 0.7261820000000001
     },
     {
       "scenario": "R2",
@@ -85,25 +85,25 @@
         "hi": 1
       },
       "citation_exists": {
-        "k": 68,
-        "n": 68,
+        "k": 72,
+        "n": 72,
         "p": 1,
-        "lo": 0.9465268034119508,
+        "lo": 0.9493470601886036,
         "hi": 1
       },
       "citation_retrieved": {
-        "k": 68,
-        "n": 68,
+        "k": 72,
+        "n": 72,
         "p": 1,
-        "lo": 0.9465268034119508,
+        "lo": 0.9493470601886036,
         "hi": 1
       },
       "rejected": {
-        "k": 0,
-        "n": 63,
-        "p": 0,
-        "lo": 0,
-        "hi": 0.057473190348525466
+        "k": 9,
+        "n": 80,
+        "p": 0.1125,
+        "lo": 0.06032618694827016,
+        "hi": 0.20018410865677552
       },
       "model_json_failures": {
         "k": 0,
@@ -112,20 +112,20 @@
         "lo": 0,
         "hi": 0.05202487486728348
       },
-      "accepted_per_run": 6.3,
-      "proposed_per_run": 6.3,
+      "accepted_per_run": 7.1,
+      "proposed_per_run": 8,
       "dropped_per_run": 0,
       "added_evidence": {
-        "k": 34,
-        "n": 63,
-        "p": 0.5396825396825397,
-        "lo": 0.41789036921596123,
-        "hi": 0.656913345835743
+        "k": 37,
+        "n": 71,
+        "p": 0.5211267605633803,
+        "lo": 0.40685796250044975,
+        "hi": 0.6332266962989344
       },
-      "tokens_per_run": 10152.5,
-      "seconds_per_run": 12.663799999999995,
-      "cost_per_run": 0.0292138,
-      "cost_total": 0.292138
+      "tokens_per_run": 10795.2,
+      "seconds_per_run": 14.034900000000002,
+      "cost_per_run": 0.03245279999999999,
+      "cost_total": 0.3245279999999999
     },
     {
       "scenario": "R3",
@@ -138,54 +138,54 @@
         "hi": 1
       },
       "step_match": {
-        "k": 40,
-        "n": 40,
+        "k": 60,
+        "n": 60,
         "p": 1,
-        "lo": 0.9123754607496077,
-        "hi": 1
+        "lo": 0.9398260695220669,
+        "hi": 0.9999999999999999
       },
       "citation_exists": {
-        "k": 99,
-        "n": 99,
+        "k": 102,
+        "n": 102,
         "p": 1,
-        "lo": 0.9626454664260378,
+        "lo": 0.9637042523922542,
         "hi": 1
       },
       "citation_retrieved": {
         "k": 85,
-        "n": 99,
-        "p": 0.8585858585858586,
-        "lo": 0.7765261713095185,
-        "hi": 0.9138559308748114
+        "n": 102,
+        "p": 0.8333333333333334,
+        "lo": 0.7492107842584269,
+        "hi": 0.8932587173364094
       },
       "rejected": {
         "k": 0,
-        "n": 67,
+        "n": 99,
         "p": 0,
         "lo": 0,
-        "hi": 0.05422802421176257
+        "hi": 0.03735453357396229
       },
       "model_json_failures": {
         "k": 0,
-        "n": 100,
+        "n": 120,
         "p": 0,
         "lo": 0,
-        "hi": 0.03699480747600191
+        "hi": 0.031020271055929513
       },
-      "accepted_per_run": 6.7,
-      "proposed_per_run": 9.1,
-      "dropped_per_run": 2.4,
+      "accepted_per_run": 9.9,
+      "proposed_per_run": 11.8,
+      "dropped_per_run": 1.9,
       "added_evidence": {
-        "k": 50,
-        "n": 67,
-        "p": 0.746268656716418,
-        "lo": 0.6307057838517774,
-        "hi": 0.8351222042230261
+        "k": 60,
+        "n": 99,
+        "p": 0.6060606060606061,
+        "lo": 0.5075782136685492,
+        "hi": 0.6966193095127315
       },
-      "tokens_per_run": 16066.3,
-      "seconds_per_run": 19.262700000000006,
-      "cost_per_run": 0.04595899999999999,
-      "cost_total": 0.45958999999999994
+      "tokens_per_run": 21258.8,
+      "seconds_per_run": 22.9612,
+      "cost_per_run": 0.059311999999999976,
+      "cost_total": 0.5931199999999998
     },
     {
       "scenario": "R4",
@@ -205,25 +205,25 @@
         "hi": 1
       },
       "citation_exists": {
-        "k": 151,
-        "n": 151,
+        "k": 129,
+        "n": 129,
         "p": 1,
-        "lo": 0.9751901297842439,
+        "lo": 0.9710813480114663,
         "hi": 0.9999999999999999
       },
       "citation_retrieved": {
-        "k": 135,
-        "n": 151,
-        "p": 0.8940397350993378,
-        "lo": 0.8348078487208429,
-        "hi": 0.9337194721025016
+        "k": 107,
+        "n": 129,
+        "p": 0.8294573643410853,
+        "lo": 0.7552650521256196,
+        "hi": 0.8845947508276722
       },
       "rejected": {
-        "k": 1,
-        "n": 116,
-        "p": 0.008620689655172414,
-        "lo": 0.0015233485646961933,
-        "hi": 0.04722099396744623
+        "k": 4,
+        "n": 124,
+        "p": 0.03225806451612903,
+        "lo": 0.012614414984325008,
+        "hi": 0.08001271108418476
       },
       "model_json_failures": {
         "k": 0,
@@ -232,20 +232,20 @@
         "lo": 0,
         "hi": 0.03699480747600191
       },
-      "accepted_per_run": 11.5,
-      "proposed_per_run": 15.6,
-      "dropped_per_run": 4,
+      "accepted_per_run": 12,
+      "proposed_per_run": 15.9,
+      "dropped_per_run": 3.5,
       "added_evidence": {
-        "k": 71,
-        "n": 115,
-        "p": 0.6173913043478261,
-        "lo": 0.5261307170981498,
-        "hi": 0.7010624543165737
+        "k": 54,
+        "n": 120,
+        "p": 0.45,
+        "lo": 0.3639158452162006,
+        "hi": 0.5391861818893925
       },
-      "tokens_per_run": 17442.1,
-      "seconds_per_run": 28.597600000000007,
-      "cost_per_run": 0.05581780000000001,
-      "cost_total": 0.5581780000000001
+      "tokens_per_run": 18350.9,
+      "seconds_per_run": 24.667599999999993,
+      "cost_per_run": 0.057161800000000006,
+      "cost_total": 0.5716180000000001
     },
     {
       "scenario": "R5",
@@ -265,25 +265,25 @@
         "hi": 1
       },
       "citation_exists": {
-        "k": 53,
-        "n": 53,
+        "k": 47,
+        "n": 47,
         "p": 1,
-        "lo": 0.9324156955469234,
+        "lo": 0.9244398288016114,
         "hi": 1
       },
       "citation_retrieved": {
-        "k": 53,
-        "n": 53,
+        "k": 47,
+        "n": 47,
         "p": 1,
-        "lo": 0.9324156955469234,
+        "lo": 0.9244398288016114,
         "hi": 1
       },
       "rejected": {
         "k": 0,
-        "n": 55,
+        "n": 46,
         "p": 0,
         "lo": 0,
-        "hi": 0.06528714378942788
+        "hi": 0.07707617732978073
       },
       "model_json_failures": {
         "k": 0,
@@ -292,20 +292,20 @@
         "lo": 0,
         "hi": 0.03374513358912735
       },
-      "accepted_per_run": 5.5,
-      "proposed_per_run": 5.5,
-      "dropped_per_run": 0,
+      "accepted_per_run": 4.6,
+      "proposed_per_run": 5,
+      "dropped_per_run": 0.4,
       "added_evidence": {
-        "k": 36,
-        "n": 55,
-        "p": 0.6545454545454545,
-        "lo": 0.5225365801066263,
-        "hi": 0.7663746663584595
+        "k": 29,
+        "n": 46,
+        "p": 0.6304347826086957,
+        "lo": 0.48599833149184785,
+        "hi": 0.7547644048569049
       },
-      "tokens_per_run": 17465.7,
-      "seconds_per_run": 17.525499999999994,
-      "cost_per_run": 0.04423059999999998,
-      "cost_total": 0.4423059999999998
+      "tokens_per_run": 17846.6,
+      "seconds_per_run": 17.383199999999995,
+      "cost_per_run": 0.0449892,
+      "cost_total": 0.449892
     }
   ],
   "tallies": {
@@ -314,74 +314,74 @@
       "pathMatch": 10,
       "steps": 40,
       "stepMatch": 40,
-      "llmMessages": 148,
-      "rejected": 13,
-      "citedKb": 165,
-      "citedKbExists": 165,
-      "citedKbRetrieved": 144,
+      "llmMessages": 120,
+      "rejected": 5,
+      "citedKb": 108,
+      "citedKbExists": 108,
+      "citedKbRetrieved": 94,
       "calls": 140,
       "parseFailures": 0,
       "reasons": {},
-      "proposed": 196,
-      "kept": 135,
-      "added": 89,
-      "tokensIn": 224201,
-      "tokensOut": 36465,
-      "seconds": 368.29599999999994,
-      "cost": 0.8130519999999998,
+      "proposed": 158,
+      "kept": 115,
+      "added": 55,
+      "tokensIn": 223926,
+      "tokensOut": 27833,
+      "seconds": 289.5700000000001,
+      "cost": 0.7261820000000001,
       "costCalls": 140,
       "flips": 0,
       "stepMisses": {},
       "rejectedCitation": 0,
-      "rejectedOther": 13
+      "rejectedOther": 5
     },
     "R2": {
       "runs": 10,
       "pathMatch": 10,
       "steps": 20,
       "stepMatch": 20,
-      "llmMessages": 63,
-      "rejected": 0,
-      "citedKb": 68,
-      "citedKbExists": 68,
-      "citedKbRetrieved": 68,
+      "llmMessages": 80,
+      "rejected": 9,
+      "citedKb": 72,
+      "citedKbExists": 72,
+      "citedKbRetrieved": 72,
       "calls": 70,
       "parseFailures": 0,
       "reasons": {},
-      "proposed": 63,
-      "kept": 63,
-      "added": 34,
-      "tokensIn": 90389,
-      "tokensOut": 11136,
-      "seconds": 126.63799999999995,
-      "cost": 0.292138,
+      "proposed": 80,
+      "kept": 71,
+      "added": 37,
+      "tokensIn": 94374,
+      "tokensOut": 13578,
+      "seconds": 140.34900000000002,
+      "cost": 0.3245279999999999,
       "costCalls": 70,
       "flips": 0,
       "stepMisses": {},
       "rejectedCitation": 0,
-      "rejectedOther": 0
+      "rejectedOther": 9
     },
     "R3": {
       "runs": 10,
       "pathMatch": 10,
-      "steps": 40,
-      "stepMatch": 40,
-      "llmMessages": 67,
+      "steps": 60,
+      "stepMatch": 60,
+      "llmMessages": 99,
       "rejected": 0,
-      "citedKb": 99,
-      "citedKbExists": 99,
+      "citedKb": 102,
+      "citedKbExists": 102,
       "citedKbRetrieved": 85,
-      "calls": 100,
+      "calls": 120,
       "parseFailures": 0,
       "reasons": {},
-      "proposed": 91,
-      "kept": 67,
-      "added": 50,
-      "tokensIn": 143380,
-      "tokensOut": 17283,
-      "seconds": 192.62700000000007,
-      "cost": 0.45958999999999994,
-      "costCalls": 100,
+      "proposed": 118,
+      "kept": 99,
+      "added": 60,
+      "tokensIn": 191595,
+      "tokensOut": 20993,
+      "seconds": 229.61200000000002,
+      "cost": 0.5931199999999998,
+      "costCalls": 120,
       "flips": 0,
       "stepMisses": {},
       "rejectedCitation": 0,
@@ -392,47 +392,47 @@
       "pathMatch": 10,
       "steps": 40,
       "stepMatch": 40,
-      "llmMessages": 116,
-      "rejected": 1,
-      "citedKb": 151,
-      "citedKbExists": 151,
-      "citedKbRetrieved": 135,
+      "llmMessages": 124,
+      "rejected": 4,
+      "citedKb": 129,
+      "citedKbExists": 129,
+      "citedKbRetrieved": 107,
       "calls": 100,
       "parseFailures": 0,
       "reasons": {},
-      "proposed": 156,
-      "kept": 115,
-      "added": 71,
-      "tokensIn": 148254,
-      "tokensOut": 26167,
-      "seconds": 285.97600000000006,
-      "cost": 0.5581780000000001,
+      "proposed": 159,
+      "kept": 120,
+      "added": 54,
+      "tokensIn": 157934,
+      "tokensOut": 25575,
+      "seconds": 246.67599999999993,
+      "cost": 0.5716180000000001,
       "costCalls": 100,
       "flips": 0,
       "stepMisses": {},
       "rejectedCitation": 0,
-      "rejectedOther": 1
+      "rejectedOther": 4
     },
     "R5": {
       "runs": 10,
       "pathMatch": 10,
       "steps": 40,
       "stepMatch": 40,
-      "llmMessages": 55,
+      "llmMessages": 46,
       "rejected": 0,
-      "citedKb": 53,
-      "citedKbExists": 53,
-      "citedKbRetrieved": 53,
+      "citedKb": 47,
+      "citedKbExists": 47,
+      "citedKbRetrieved": 47,
       "calls": 110,
       "parseFailures": 0,
       "reasons": {},
-      "proposed": 55,
-      "kept": 55,
-      "added": 36,
-      "tokensIn": 163033,
-      "tokensOut": 11624,
-      "seconds": 175.25499999999994,
-      "cost": 0.4423059999999998,
+      "proposed": 50,
+      "kept": 46,
+      "added": 29,
+      "tokensIn": 166846,
+      "tokensOut": 11620,
+      "seconds": 173.83199999999997,
+      "cost": 0.449892,
       "costCalls": 110,
       "flips": 0,
       "stepMisses": {},
