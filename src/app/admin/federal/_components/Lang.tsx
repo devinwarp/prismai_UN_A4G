@@ -16,6 +16,11 @@ export function T({ k, en }: { k: string; en: string }) {
   return <>{tr(useLang(), k, en)}</>;
 }
 
+/** Translated text with {name} placeholders filled from v. */
+export function TV({ k, en, v }: { k: string; en: string; v: Record<string, string | number> }) {
+  return <>{tr(useLang(), k, en).replace(/\{(\w+)\}/g, (_, n: string) => String(v[n] ?? ""))}</>;
+}
+
 /** Wraps a federal page: language toggle (remembered per browser), dir and font. */
 export default function LangShell({ children }: { children: ReactNode }) {
   const [lang, setLang] = useState<Lang>("en");

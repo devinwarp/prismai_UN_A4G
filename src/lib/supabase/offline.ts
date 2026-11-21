@@ -34,7 +34,13 @@ function db(): Db {
   // module instances, so an in-memory copy goes stale after the other side writes.
   const f = FILE();
   if (existsSync(f)) mem = JSON.parse(readFileSync(f, "utf8")) as Db;
-  else mem ??= seed();
+  else {
+    // Persist the seed at once. Seeded use cases get random ids, so without this every module
+    // instance (each page, each route) would seed different ids and a route could not find a
+    // use case a page had just listed.
+    mem ??= seed();
+    save();
+  }
   return mem;
 }
 const save = () => {
