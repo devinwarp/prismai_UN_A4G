@@ -97,7 +97,7 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
                           </p>
                         )}
                       </td>
-                      <td className="px-3 py-2.5"><span className="font-medium">{r.name}</span><span className="block text-xs text-ink-soft"><TV k="pf.tasks" en="{n} tasks" v={{ n: r.tasks }} /></span></td>
+                      <td className="px-3 py-2.5"><span className="font-medium">{r.name}</span><span className="block text-xs text-ink-soft"><TV k="pf.tasks" en="{n} tasks" one="1 task" v={{ n: r.tasks }} /></span></td>
                       <td className="px-3 py-2.5 text-xs">
                         {(Object.keys(FLAG_EN) as (keyof typeof FLAG_EN)[]).filter((f) => r.flags[f]).map((f) => <span key={f} className="me-1 mb-1 inline-block rounded-md bg-paper-deep px-1.5 py-0.5 font-mono"><T k={FLAG_KEY[f]} en={FLAG_EN[f]} /></span>)}
                         {!Object.values(r.flags).some(Boolean) && <span className="text-ink-soft"><T k="pf.noflags" en="none" /></span>}

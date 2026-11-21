@@ -304,7 +304,7 @@ export default function FederalPanel({
                     <VerdictBadge verdict={u.verdict} />
                     {(gatesAdded[u.ext_id] ?? 0) > 0 && (
                       <span className="mt-1 block font-mono text-[11px] text-ink-soft" title={tr(lang, "gt.added.h", "Judged under more gates than the shipped rule set; read older figures with care.")}>
-                        <span aria-hidden>+ </span><TV k="gt.added" en="{n} gates added" v={{ n: gatesAdded[u.ext_id] }} />
+                        <span aria-hidden>+ </span><TV k="gt.added" en="{n} gates added" one="1 gate added" v={{ n: gatesAdded[u.ext_id] }} />
                       </span>
                     )}
                   </td>
