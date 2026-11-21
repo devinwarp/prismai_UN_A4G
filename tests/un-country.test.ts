@@ -97,6 +97,8 @@ async function fullFlow(store: CountryStore) {
   assert.ok(pol.run.cited.some((c) => c.source_id.startsWith("eu-ai-act-art")), "the live-built EU sources are cited");
   assert.equal((await A.addPolicy(d, "admin@x", "EU")).ok, false);
   assert.ok(await store.getBlob("vectors:EU"));
+  const eu = await A.indexOfCountry(d, (await A.loadState(d)).state, "EU");
+  assert.ok(eu?.vectors && eu.vectors.have <= eu.vectors.of, "the vector count can never exceed the chunk count (a chunk is counted once)");
   const on = await A.onboardCompany(d, "admin@x", { sample: "sg-mbla", country: "SG" });
   assert.ok(on.ok);
   if (!on.ok) return;
@@ -255,4 +257,10 @@ test("reset at the starting state is a no-op (no log entry); a repeated or concu
   const again = await A.resetDemo(d, "a");
   assert.ok(again.ok && again.noop === true);
   assert.equal((await A.loadState(d)).entries.length, n + 1, "a later request is a no-op");
+});
+
+test("the country demo ignores use-case gates and waivers added on the lifecycle screens (hosted and offline give the same UAE result)", () => {
+  const app = readFileSync("src/lib/un/country-app.ts", "utf8");
+  assert.match(app, /gov: noGov/);
+  assert.doesNotMatch(app, /loadGov|gates-store/);
 });
