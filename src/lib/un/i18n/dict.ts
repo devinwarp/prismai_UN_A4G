@@ -1,5 +1,6 @@
 import { VERDICTS } from "../model.ts";
 import { GATES } from "../policy.ts";
+import { JOURNEY_AR } from "./journey-ar.ts";
 import { LIFECYCLE_AR } from "./lifecycle-ar.ts";
 
 // Lightweight Arabic/English dictionary for the federal admin UI. Pure, no
@@ -299,6 +300,7 @@ export const AR: Record<string, string> = {
   "sop.created": "أُنشئت",
   "sop.compare": "شاهد القرار في صفحة المقارنة",
   ...LIFECYCLE_AR,
+  ...JOURNEY_AR,
 };
 
 /** Look up a key; fall back to the English text supplied at the call site. */

@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { computeDashboard, deadlineText } from "@/lib/un/model";
+import { loadJourneys } from "@/lib/un/journey-store";
 import { loadHitlConfig, loadPolicy, loadUnUseCases } from "@/lib/un/store";
 import AdminHeader from "../AdminHeader";
 import LangShell, { T } from "./_components/Lang";
@@ -26,6 +27,7 @@ export default async function FederalPage() {
     loadHitlConfig(profile.org_id),
   ]);
   const dashboard = computeDashboard(policy, useCases);
+  const journeys = Object.fromEntries(await loadJourneys(profile.org_id, useCases));
 
   return (
     <div className="conduit-bg min-h-dvh">
@@ -47,6 +49,7 @@ export default async function FederalPage() {
           useCases={useCases}
           canEdit={profile.role === "admin"}
           hitl={hitl}
+          journeys={journeys}
           asOf={new Date().toISOString()}
         />
         <CitizenMessageCheck />

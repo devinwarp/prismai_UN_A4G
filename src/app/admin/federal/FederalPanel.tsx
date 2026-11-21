@@ -10,6 +10,8 @@ import { Term } from "./_components/Gloss";
 import { StartHere, Tour, TourButton, type StartStep, type TourStep } from "./_components/Coach";
 import HitlEditor from "./HitlEditor";
 import ImportCsv from "./_components/ImportCsv";
+import { JourneyLine } from "./_components/JourneyBar";
+import type { Journey } from "@/lib/un/journey";
 import {
   QuadrantVerdictMatrix, StagePipeline, TallyList, TargetProgress, VerdictMix, type VerdictFilter,
 } from "./_components/charts";
@@ -52,7 +54,7 @@ const TOUR: TourStep[] = [
 ];
 
 export default function FederalPanel({
-  policy, dashboard: d, useCases, canEdit, hitl, asOf,
+  policy, dashboard: d, useCases, canEdit, hitl, asOf, journeys = {},
 }: {
   policy: Policy;
   dashboard: Dashboard;
@@ -60,6 +62,7 @@ export default function FederalPanel({
   canEdit: boolean;
   hitl: HitlConfig;
   asOf: string;
+  journeys?: Record<string, Journey>;
 }) {
   const router = useRouter();
   const lang = useLang();
@@ -255,7 +258,7 @@ export default function FederalPanel({
           </p>
         )}
         <div className="mt-4 relative max-h-[34rem] overflow-auto rounded-2xl border border-line bg-card">
-          <table className="w-full min-w-[56rem] text-sm">
+          <table className="w-full min-w-[72rem] text-sm">
             <caption className="sr-only">Use cases with stage, verdict and compliance</caption>
             <thead className="sticky top-0 z-10 bg-card text-start font-mono text-[11px] tracking-wide text-ink-soft uppercase shadow-[0_1px_0_var(--color-line)]">
               <tr>
@@ -265,6 +268,7 @@ export default function FederalPanel({
                 <th scope="col" className="font-normal">Oversight</th>
                 <th scope="col" className="font-normal">Stage</th>
                 <th scope="col" className="font-normal">Verdict</th>
+                <th scope="col" className="font-normal"><T k="jb.col" en="Journey" /></th>
                 <th scope="col" className="pe-4 text-center font-normal">Compliant</th>
               </tr>
             </thead>
@@ -291,13 +295,14 @@ export default function FederalPanel({
                   <td className="pe-3">
                     <VerdictBadge verdict={u.verdict} />
                   </td>
+                  <td className="pe-3 whitespace-nowrap">{journeys[u.id] ? <JourneyLine journey={journeys[u.id]} /> : null}</td>
                   <td className="pe-4 text-center">
                     <span aria-label={`Compliant ${u.ext_id}: ${u.compliant ? "yes" : "no"}`} title="Set only by a passing Sijil attestation">{u.compliant ? "✓" : "–"}</span>
                   </td>
                 </tr>
               ))}
               {!filtered.length && (
-                <tr><td colSpan={7} className="px-4 py-10 text-center text-ink-soft">
+                <tr><td colSpan={8} className="px-4 py-10 text-center text-ink-soft">
                   {useCases.length ? <>{noVerdicts && !filtering ? null : <>No use case matches. <button type="button" onClick={clear} className="font-medium underline">Clear filters</button></>}</> : "No use cases yet. Import a CSV below (a sample is in data/un-use-cases.csv)."}
                 </td></tr>
               )}

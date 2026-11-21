@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { activeCases, evalSetFor } from "@/lib/un/evalset";
 import { alignment, type CaseResult, type Tally } from "@/lib/un/eval-run";
 import { loadEvalRuns } from "@/lib/un/eval-store";
@@ -10,7 +9,6 @@ import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { designationOf } from "@/lib/un/tuning";
 import { loadLog } from "@/lib/un/tuning-store";
-import AdminHeader from "../../../../AdminHeader";
 import { CaseText, FindingText, ReasonText } from "../../../_components/EvalText";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card } from "../../../_components/ui";
@@ -57,8 +55,7 @@ export default async function EvalsPage({ params }: { params: Promise<{ id: stri
   if (!isUuid(id)) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
-  const [{ data: org }, runs, log] = await Promise.all([
-    createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle(),
+  const [runs, log] = await Promise.all([
     loadEvalRuns(profile.org_id, id),
     loadLog(profile.org_id, id),
   ]);
@@ -69,8 +66,7 @@ export default async function EvalsPage({ params }: { params: Promise<{ id: stri
   const k = (x: Tally) => x.correct;
 
   return (
-    <div className="conduit-bg min-h-dvh">
-      <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
+    <div>
       <LangShell>
         <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
           <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase">

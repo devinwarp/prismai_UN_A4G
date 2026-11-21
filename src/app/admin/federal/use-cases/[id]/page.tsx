@@ -6,7 +6,6 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { loadEntityGoals } from "@/lib/un/store";
 import { attest, TARGET_RUNS, DEFAULT_THRESHOLDS } from "@/lib/un/sijil";
 import { loadReports, loadRuns, loadUseCase } from "@/lib/un/sijil-store";
-import AdminHeader from "../../../AdminHeader";
 import { liveConfigFromEnv, liveNode } from "@/lib/un/sijil-live";
 import SijilPanel from "./SijilPanel";
 
@@ -62,21 +61,17 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
   if (!profile?.org_id) redirect("/login");
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
-  const [goals, runs, reports, { data: org }] = await Promise.all([
+  const [goals, runs, reports] = await Promise.all([
     loadEntityGoals(profile.org_id, uc.entity),
     loadRuns(profile.org_id, id),
     loadReports(profile.org_id, id),
-    createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle(),
   ]);
   let liveMode = false;
   try { liveMode = liveConfigFromEnv() !== null; } catch { liveMode = true; /* misconfigured: the pull reports the error */ }
   return (
-    <div className="conduit-bg min-h-dvh">
-      <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
+    <div>
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <p className="mb-4 text-sm">
-          <Link href={`/admin/federal/use-cases/${id}/evals`} className="underline underline-offset-4">Pilot evals: expected against actual output</Link>
-          {" · "}
           <Link href="/admin/federal/evals" className="underline underline-offset-4">All use cases side by side</Link>
         </p>
         <SijilPanel

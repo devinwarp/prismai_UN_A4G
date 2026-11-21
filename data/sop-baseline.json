@@ -7,6 +7,7 @@
   "default_step_minutes": { "start": 3, "step": 8, "decision": 6, "handoff": 10, "exception": 15, "end": 2 },
   "cases_per_year": {
     "licence-renewal": 9600,
+    "SOP-LIC-014": 9600,
     "records-archive": 21000,
     "fee-waiver": 2400
   },
