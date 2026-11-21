@@ -116,3 +116,39 @@ What it does: one log per use case and job profile. It starts as the tests deriv
 Files that existed before and were edited: `src/lib/un/authz.ts` (`scenario.edit` and `scenario.approve` are now wired; `scenario.propose` is not), `tests/un-authz.test.ts` (the "wired actions" test ignores `view`).
 
 Not done: a screen for the editor (the route is the only way in today), linking tests to runs, the verdict parameters, and running the pilot. The role `test_author` cannot yet propose changes.
+
+# Edits to shared files (verdict parameters)
+
+New only: `src/lib/un/verdict-params.ts` (the thresholds, the governance floors, the log and its rules; pure), `src/lib/un/verdict-param-store.ts`, `src/app/api/admin/un/use-cases/[id]/params/route.ts`, `supabase/un-verdict-params.sql` (**written, not applied**), `tests/un-verdict-params.test.ts`. No existing file is edited.
+
+What it does: the thresholds a pilot is judged against (accuracy lower bound, alignment on controls and on goals, hallucination, rejected calls, refusal, consistency, audit completeness, client-facing compliance, optional latency and cost ceilings, how often each test is repeated and the smallest sample per task). The process owner proposes them; they cannot be looser than the governance floors in `FLOORS` (checked when proposed and again when approved); they are approved and locked at a hash, and the proposer cannot approve without a stated, logged reason. A proposal never changes what is approved until it is approved itself. A pilot run will record the hash it ran under, so a threshold cannot be moved after the results are seen. The default values are illustrative; the owner must set and approve them.
+
+Uses the same permissions as the test set (`scenario.edit` to propose, `scenario.approve` to approve or withdraw). The parameters are per job profile, like the test set; whether they should be per use case is an open decision.
+
+Not done: a screen, and the pilot run that applies them.
+
+# Edits to shared files (the pilot engine)
+
+New only: `src/lib/un/pilot.ts` (pure) and `tests/un-pilot.test.ts`. No existing file is edited.
+
+`measure()` turns a list of `PilotRun` records (one per repetition of each approved test: did it match the expected output, the answer, latency, cost, hallucination, controls and goals, refusal, logging, Sijil rejections, client-facing checks) into measures. `judge()` compares them with the approved parameters (verdict-params.ts) and says whether the sample is large enough (the smallest number of tests per task of the profile, and of repetitions per test). `measuredGates()` turns the measures into evidence for the gates that rest on evals or Sijil: `ai_disclosure`, `hallucination_rate`, `fee_accuracy`, `no_commercial_promotion`, `audit_log`. Gates that rest on a reviewer are left as the reviewer set them. `pilotVerdict()` asks `decideEffective()` for the verdict; `buildReport()` binds the result to the approved test set hash and parameters hash.
+
+Rules: accuracy uses a lower confidence bound (30 of 30 is not enough at the default threshold); hallucination uses the observed rate; client-facing compliance is zero tolerance; a threshold with nothing measured fails; a set ceiling that could not be measured fails; an inconclusive pilot never passes a gate (its measured gates stay unknown, so the verdict is ESCALATE), though a failure is still a failure.
+
+Not done, and why it matters: nothing produces `PilotRun` records from the real agent yet. The 117 hand-written eval cases are not linked to the test blueprints, they have no measure of goal alignment (so `alignment_goals` would be "not measured", which fails), and they do not record whether each run was logged. All the tests of this module use synthetic runs and say nothing about any agent.
+
+# Edits to shared files (the tests and parameters screen)
+
+New: `src/app/admin/federal/use-cases/[id]/tests/page.tsx` and `TestSetEditor.tsx`, `src/lib/un/i18n/tests-ar.ts` (Arabic, draft for a native speaker). Edited: `src/lib/un/i18n/dict.ts` (spreads `TESTS_AR`) and `use-cases/[id]/sop/page.tsx` (one link to the new screen).
+
+The screen shows, per job profile ticked Automate: the test set (coverage, gaps that block approval, active and retired tests, add a scenario, edit a title, retire with an optional named waiver, restore, approve with an approver chosen from the use case's list, withdraw) and the verdict parameters (propose, governance floor beside each value, approve, withdraw). Controls appear by `scenario.edit` and `scenario.approve`, the same checks the routes make; whoever changed the set or the proposal must state why before approving it. Verified against a production build with a scratch offline database: create, approve and lock, propose and approve parameters, Arabic and right-to-left layout.
+
+Not on the screen yet: editing a test's expected result or scenario (the route allows it), the version and change history, and the pilot run itself.
+
+# Edits to shared files (the pilot runner)
+
+New only: `src/lib/un/pilot-run.ts`, `tests/un-pilot-run.test.ts`. No existing file is edited.
+
+`planPilot()` binds each active test to the real agent's hand-written cases (task-evals.ts) by task and kind: normal cases for happy_path, holdout cases for exception and boundary, authority probes for authority. A test with no executable case (all client-facing tests, and tasks with no case) is listed in `unexecuted` and never given a result. `executePilot()` runs every bound case `reps` times and `toPilotRun()` records one `PilotRun` each (latency from the clock, answer digest for consistency, refusals, logging, Sijil rejections). Goal alignment and cost are left null, so `alignment_goals` still reads "not measured". The binding is a heuristic: it is recorded in each run's `test_id` (`blueprint#case`) so a reviewer can see it.
+
+Not done: a route or screen that runs it and stores the report, executable client-facing cases, a rubric for goal alignment.
