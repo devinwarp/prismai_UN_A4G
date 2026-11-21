@@ -5,6 +5,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { computeDashboard, deadlineText } from "@/lib/un/model";
 import { effectiveGates } from "@/lib/un/gates";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
+import { loadJourneys } from "@/lib/un/journey-store";
 import { loadHitlConfig, loadPolicy, loadUnUseCases } from "@/lib/un/store";
 import AdminHeader from "../AdminHeader";
 import LangShell, { T } from "./_components/Lang";
@@ -30,6 +31,7 @@ export default async function FederalPage() {
   ]);
   const gatesAdded = Object.fromEntries(useCases.map((u) => [u.ext_id, effectiveGates({ ext: u.ext_id, facts: factsOf(u), gov }).added.length]));
   const dashboard = computeDashboard(policy, useCases);
+  const journeys = Object.fromEntries(await loadJourneys(profile.org_id, useCases));
 
   return (
     <div className="conduit-bg min-h-dvh">
@@ -52,6 +54,7 @@ export default async function FederalPage() {
           canEdit={profile.role === "admin"}
           hitl={hitl}
           gatesAdded={gatesAdded}
+          journeys={journeys}
           asOf={new Date().toISOString()}
         />
         <CitizenMessageCheck />

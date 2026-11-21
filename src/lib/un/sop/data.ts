@@ -1,7 +1,9 @@
 import { readFileSync } from "node:fs";
+import { retrievablePart } from "../sop-kb.ts";
 import path from "node:path";
 import { parseBaseline } from "./baseline.ts";
 import { slug } from "./promote.ts";
+import { deriveProfiles, type JobProfile } from "./profiles.ts";
 import { analyzeSop } from "./reference.ts";
 import type { SopAnalysis, SopInput, SyntheticBaseline } from "./types.ts";
 
@@ -14,9 +16,11 @@ export function loadBaseline(): SyntheticBaseline {
 
 const ENTITY = "Marsa Public Services Authority";
 export const SAMPLES = [
-  { sop_id: "licence-renewal", file: "sop-uc02-licence-renewal.md", title: "Trade licence renewal and permit pre-check (SOP)", departments: ["Licensing"] },
-  { sop_id: "records-archive", file: "sop-records-archive.md", title: "Monthly archive of internal inspection records (SOP)", departments: ["Records"] },
-  { sop_id: "fee-waiver", file: "sop-fee-waiver-decision.md", title: "Late-fee waiver and penalty decision (SOP)", departments: ["Licensing", "Finance"] },
+  { sop_id: "licence-renewal", file: "sop/sop-uc02-licence-renewal.md", title: "Trade licence renewal and permit pre-check (SOP)", departments: ["Licensing"] },
+  { sop_id: "records-archive", file: "sop/sop-records-archive.md", title: "Monthly archive of internal inspection records (SOP)", departments: ["Records"] },
+  { sop_id: "fee-waiver", file: "sop/sop-fee-waiver-decision.md", title: "Late-fee waiver and penalty decision (SOP)", departments: ["Licensing", "Finance"] },
+  // Shaibi's SOP for UC02 (also the agent runtime's SOP). One SOP per use case: this is the one UC02 attaches to.
+  { sop_id: "SOP-LIC-014", file: "sops/uc02-trade-licence-renewal-sop.md", title: "Trade licence renewal (SOP-LIC-014)", departments: ["Licensing"] },
 ] as const;
 
 export function sampleInput(sop_id: string, baseline = loadBaseline()): SopInput | null {
@@ -24,7 +28,8 @@ export function sampleInput(sop_id: string, baseline = loadBaseline()): SopInput
   if (!s) return null;
   return {
     sop_id: s.sop_id, title: s.title, baseline,
-    text: readFileSync(path.join(root(), "data", "sop", s.file), "utf8"),
+    // The Annex of SOP-LIC-014 is an answer key for testing an analyzer, so the analyzer never reads it.
+    text: retrievablePart(readFileSync(path.join(root(), "data", s.file), "utf8")),
     metadata: { entity: ENTITY, entity_sector: "Public services", departments: [...s.departments] },
   };
 }
@@ -51,4 +56,10 @@ export function loadSamples(): { input: SopInput; analysis: SopAnalysis }[] {
     const input = sampleInput(s.sop_id, baseline)!;
     return { input, analysis: analyzeSop(input) };
   });
+}
+
+/** Job profiles of a sample SOP (null when the id is not a sample). */
+export function profilesOf(sop_id: string): JobProfile[] | null {
+  const input = sampleInput(sop_id);
+  return input ? deriveProfiles(analyzeSop(input), input.text) : null;
 }

@@ -2,14 +2,12 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { evalSetFor } from "@/lib/un/evalset";
 import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import type { SubjectConfig } from "@/lib/un/subject";
 import { approvalState, configOf, verifyChain, type Advisory, type LogEntry, type Proposal } from "@/lib/un/tuning";
 import { loadLog } from "@/lib/un/tuning-store";
-import AdminHeader from "../../../../AdminHeader";
 import { RuleSentence, RuleText } from "../../../_components/EvalText";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card } from "../../../_components/ui";
@@ -126,8 +124,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
   if (!isUuid(id)) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
-  const [{ data: org }, log] = await Promise.all([
-    createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle(),
+  const [log] = await Promise.all([
     loadLog(profile.org_id, id),
   ]);
   const hasSet = evalSetFor(uc.ext_id).length > 0;
@@ -139,8 +136,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
   const approver = last?.kind === "approval" ? String(last.payload.signer) : "";
 
   return (
-    <div className="conduit-bg min-h-dvh">
-      <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
+    <div>
       <LangShell>
         <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
           <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase">

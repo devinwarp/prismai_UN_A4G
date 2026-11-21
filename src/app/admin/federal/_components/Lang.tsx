@@ -33,6 +33,7 @@ export default function LangShell({ children }: { children: ReactNode }) {
   const pick = (l: Lang) => {
     setLang(l);
     try { localStorage.setItem("prism-un-lang", l); } catch {}
+    window.dispatchEvent(new Event("prism-un-lang")); // the journey bar sits outside this shell and follows it
   };
   return (
     <Ctx.Provider value={lang}>

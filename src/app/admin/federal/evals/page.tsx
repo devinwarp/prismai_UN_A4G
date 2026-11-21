@@ -6,9 +6,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { evalSetFor } from "@/lib/un/evalset";
 import { alignment } from "@/lib/un/eval-run";
 import { loadEvalRuns } from "@/lib/un/eval-store";
+import { loadJourneys } from "@/lib/un/journey-store";
 import { loadUnUseCases } from "@/lib/un/store";
 import AdminHeader from "../../AdminHeader";
 import LangShell, { T, TV } from "../_components/Lang";
+import { JourneyLine } from "../_components/JourneyBar";
 import { card } from "../_components/ui";
 
 export const metadata: Metadata = { title: "Agent evaluations side by side", robots: { index: false, follow: false } };
@@ -22,6 +24,7 @@ export default async function EvalsOverview() {
     loadUnUseCases(profile.org_id),
   ]);
   const withSets = ucs.filter((u) => evalSetFor(u.ext_id).length > 0);
+  const journeys = await loadJourneys(profile.org_id, withSets);
   const rows = await Promise.all(withSets.map(async (u) => ({ u, latest: (await loadEvalRuns(profile.org_id!, u.id, 1))[0] })));
 
   return (
@@ -44,6 +47,7 @@ export default async function EvalsOverview() {
                 <article key={u.id} className={card} aria-label={u.title}>
                   <p className="font-mono text-[11px] tracking-wide text-ink-soft uppercase">{u.ext_id} · {u.entity}</p>
                   <h2 className="mt-1 text-lg font-semibold">{u.title}</h2>
+                  <p className="mt-2"><JourneyLine journey={journeys.get(u.id)!} /></p>
                   {!latest || !al ? (
                     <p className="mt-3 text-sm text-ink-soft"><T k="evo.norun" en="No run yet." /></p>
                   ) : (

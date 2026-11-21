@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
-import { createAdminClient } from "@/lib/supabase/admin";
 import { evalSetFor } from "@/lib/un/evalset";
 import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
@@ -10,7 +9,6 @@ import { approvalState, configOf, verifyChain } from "@/lib/un/tuning";
 import { loadLog } from "@/lib/un/tuning-store";
 import { POLICY, replay, type ProdStatus, type WatchEntry } from "@/lib/un/watchdog";
 import { loadWatch } from "@/lib/un/watchdog-store";
-import AdminHeader from "../../../../AdminHeader";
 import { RuleSentence } from "../../../_components/EvalText";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card } from "../../../_components/ui";
@@ -84,8 +82,7 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
   if (!isUuid(id)) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
-  const [{ data: org }, tuning, watch] = await Promise.all([
-    createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle(),
+  const [tuning, watch] = await Promise.all([
     loadLog(profile.org_id, id),
     loadWatch(profile.org_id, id),
   ]);
@@ -98,8 +95,7 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
   const st = STATUS[s.status];
 
   return (
-    <div className="conduit-bg min-h-dvh">
-      <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
+    <div>
       <LangShell>
         <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
           <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase">
