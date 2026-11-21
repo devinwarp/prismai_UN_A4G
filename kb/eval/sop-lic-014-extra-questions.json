@@ -1,0 +1,19 @@
+{
+  "note": "Fourteen applicant questions for SOP-LIC-014, written to measure the ReAct loop. Re-created from the description in docs/agent-lifecycle-journey.md (8 in the SOP, 6 not), because the original list was not committed; they are not the original 14. 'expect' is the set of chunk ids any one of which is an acceptable citation; 'outside' means the SOP cannot answer and the agent must make the outside-information call. Written by the person who built the agent, so read results as a smoke test, not a benchmark.",
+  "questions": [
+    { "id": "x01", "q": "How long does the whole renewal take once my file is complete?", "expect": ["S5", "Q8"] },
+    { "id": "x02", "q": "Can I submit my documents by phone?", "expect": ["SUB", "Q2"] },
+    { "id": "x03", "q": "What happens if my insurance policy runs out before my renewal starts?", "expect": ["D4", "T05"] },
+    { "id": "x04", "q": "Who is allowed to reject my renewal?", "expect": ["R1", "S7", "S3.4", "T15", "Q9", "Q10"] },
+    { "id": "x05", "q": "Do I need a letter if my accountant applies for me?", "expect": ["D5", "Q1", "T02"] },
+    { "id": "x06", "q": "Can I change my registered email address by sending a request?", "expect": ["SUB", "S7", "Q7"] },
+    { "id": "x07", "q": "How many days after my licence expires can I still renew it?", "expect": ["R6", "R5", "S2", "T04", "Q5"] },
+    { "id": "x08", "q": "What file types can I upload and how large can they be?", "expect": ["SUB", "Q2"] },
+    { "id": "x09", "q": "How much VAT is charged on the renewal fee?", "expect": "outside" },
+    { "id": "x10", "q": "Can I renew my trade licence in Sharjah instead?", "expect": "outside" },
+    { "id": "x11", "q": "Who is the head of licensing by name?", "expect": "outside" },
+    { "id": "x12", "q": "What is the phone number of the Authority's helpline?", "expect": "outside" },
+    { "id": "x13", "q": "Are the counters open on Saturdays?", "expect": "outside" },
+    { "id": "x14", "q": "How does a court hear an appeal against a rejection under SOP-LIC-021?", "expect": "outside" }
+  ]
+}

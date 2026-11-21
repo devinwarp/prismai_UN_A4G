@@ -1,6 +1,7 @@
 import { bestSentence, type Chunk, type Hit } from "./kb.ts";
 import { loadSop, searchSopForAgent, type SopChunk } from "./sop-kb.ts";
 import { DEFAULT_REACT_CONFIG, termRegex, type GlossaryEntry, type ReactConfig, type RouteRule } from "./react-config.ts";
+import { simulatedGate, type CallDecision } from "./sijil-calls.ts";
 
 // ReAct (Thought, Action, Observation) over one SOP's knowledge base.
 //
@@ -45,14 +46,45 @@ export type Reasoner = (s: ReactState) => { thought: string; action: Action } | 
 export type Retrieve = (query: string, kind?: string) => Promise<Hit[]> | Hit[];
 
 export interface ReactResult {
-  status: "answered" | "outside_kb";
+  status: "answered" | "outside_kb" | "answered_by_person";
   steps: Step[];
   citations: string[];
   /** Extractive: verbatim sentences from the cited chunks, never generated text. */
   answer: { chunk_id: string; quote: string }[];
   outside?: OutsideRequest;
+  /** set when a person answered this earlier and the agent resumed from case memory */
+  person_answer?: { answer: string; role: string; at: string; request_id: string | null };
   /** The cited chunks in full, so a caller can read a figure from the passage it cites. */
   evidence: Chunk[];
+  /** Every tool call the reasoner attempted, each decided by the (simulated) Sijil gate. */
+  calls: CallDecision[];
+}
+
+/** The only tools the loop will run. Anything else a reasoner names is rejected, not executed. */
+export const REACT_TOOLS = ["search_sop", "request_outside_information", "finish"];
+
+/** A question that asks for a named individual. The SOP names roles, never people, so no passage
+ * can answer it; shared words with the role description must not count as support. */
+export function asksForPerson(question: string): boolean {
+  const q = question.toLowerCase();
+  return /\bby name\b|\b(his|her|their) (full )?name\b|\bwhich (person|individual)\b/.test(q)
+    || /\b(name|names) of (the |our |my )?(head|supervisor|officer|analyst|manager|director|owner|licensing|compliance|finance)\b/.test(q)
+    || /\bwho (is|are|was) (the |our |my )?(current )?(head|supervisor|officer|analyst|manager|director|licensing|compliance|finance)\b/.test(q);
+}
+
+/** Validate what a reasoner returned. A malformed or unknown action is rejected with a reason. */
+export function checkAction(a: unknown, kinds: Set<string>): { ok: true; action: Action } | { ok: false; tool: string; why: string } {
+  const o = (a && typeof a === "object" ? a : {}) as Record<string, unknown>;
+  const tool = typeof o.tool === "string" ? o.tool.slice(0, 60) : "(none)";
+  if (!REACT_TOOLS.includes(tool)) return { ok: false, tool, why: `${tool} is not one of the tools this agent has (${REACT_TOOLS.join(", ")})` };
+  if (tool === "search_sop") {
+    if (typeof o.query !== "string" || !o.query.trim()) return { ok: false, tool, why: "search_sop needs a non-empty query" };
+    if (o.kind !== undefined && (typeof o.kind !== "string" || !kinds.has(o.kind))) return { ok: false, tool, why: `unknown passage kind ${JSON.stringify(o.kind)}` };
+    return { ok: true, action: { tool, query: o.query.slice(0, 300), ...(o.kind ? { kind: o.kind as string } : {}) } };
+  }
+  if (tool === "request_outside_information") return { ok: true, action: { tool, question: String(o.question ?? ""), reason: String(o.reason ?? "").slice(0, 300) } };
+  const cites = Array.isArray(o.citations) ? o.citations.filter((c): c is string => typeof c === "string") : [];
+  return { ok: true, action: { tool: "finish", citations: cites } };
 }
 
 export function rewrite(question: string, glossary: GlossaryEntry[] = DEFAULT_REACT_CONFIG.glossary): string {
@@ -156,17 +188,30 @@ export async function reactAnswer(sopId: string, question: string, opts: ReactOp
   const max = opts.maxSteps ?? cfg.maxSteps;
   const sop = loadSop(sopId).chunks;
   const common = commonTerms(sop, cfg.commonShare);
+  const kinds = new Set(sop.flatMap((c) => c.topics));
   const names = unknownNames(question, sop);
+  const person = asksForPerson(question);
+  const calls: CallDecision[] = [];
   const s: ReactState = { question, steps: [], retrieved: new Map(), supported: new Map() };
   const outside = async (thought: string, why: string): Promise<ReactResult> => {
     const req: OutsideRequest = { question, reason: why, tried: searchedQueries(s) };
     const obs = opts.requestOutside ? await opts.requestOutside(req) : "recorded; no outside source is connected, so a person must answer";
     s.steps.push({ thought, action: { tool: "request_outside_information", question, reason: why }, observation: obs });
-    return { status: "outside_kb", steps: s.steps, citations: [], answer: [], outside: req, evidence: [] };
+    return { status: "outside_kb", steps: s.steps, citations: [], answer: [], outside: req, evidence: [], calls };
   };
 
   for (let i = 0; i < max; i++) {
-    const { thought, action } = await reason(s);
+    let proposed: { thought: string; action: Action };
+    try { proposed = await reason(s); } catch (e) { return outside("The reasoner failed, so the answer cannot come from the knowledge base.", `Reasoner error: ${(e as Error).message.slice(0, 120)}`); }
+    const { thought } = proposed;
+    const checked = checkAction(proposed.action, kinds);
+    const rawTool = checked.ok ? checked.action.tool : checked.tool;
+    calls.push(simulatedGate({ tool: rawTool, args: {} }, REACT_TOOLS));
+    if (!checked.ok) {
+      s.steps.push({ thought: `[rejected action: ${checked.tool}] ${String(thought).slice(0, 400)}`, action: { tool: "finish", citations: [] }, observation: `rejected: ${checked.why}` });
+      continue;
+    }
+    const action = checked.action;
     if (action.tool === "search_sop") {
       const hits = await retrieve(action.query, action.kind);
       for (const h of hits) s.retrieved.set(h.chunk.chunk_id, h.chunk);
@@ -179,14 +224,14 @@ export async function reactAnswer(sopId: string, question: string, opts: ReactOp
     } else if (action.tool === "request_outside_information") {
       return outside(thought, action.reason);
     } else {
-      const valid = names.length ? [] : action.citations.filter((c) => s.supported.has(c));
+      const valid = names.length || person ? [] : action.citations.filter((c) => s.supported.has(c));
       if (!valid.length) {
-        s.steps.push({ thought, action, observation: names.length ? `rejected: the question names ${names.join(", ")}, which the SOP never mentions` : "rejected: no cited chunk was retrieved and shown to support the question" });
+        s.steps.push({ thought, action, observation: person ? "rejected: the question asks for a named person; the SOP names roles, not people" : names.length ? `rejected: the question names ${names.join(", ")}, which the SOP never mentions` : "rejected: no cited chunk was retrieved and shown to support the question" });
         return outside("A finish without a supported citation is not allowed, so the answer cannot come from the knowledge base.", "The answer had no supporting passage in the SOP knowledge base.");
       }
       s.steps.push({ thought, action, observation: `accepted: ${valid.join(", ")}` });
       return {
-        status: "answered", steps: s.steps, citations: valid, evidence: valid.map((id) => s.retrieved.get(id)!),
+        status: "answered", steps: s.steps, calls, citations: valid, evidence: valid.map((id) => s.retrieved.get(id)!),
         answer: valid.map((id) => ({ chunk_id: id, quote: bestSentence(s.retrieved.get(id)!.text.split("\n").slice(1).join("\n"), words(s.supported.get(id)!).filter((w) => !FILLER.has(w)).join(" "), 300).sentence })),
       };
     }

@@ -1,0 +1,277 @@
+{
+ "summary": {
+  "reasoner": "rule",
+  "model": "rule-based",
+  "reps": 1,
+  "questions": 20,
+  "n": 20,
+  "in_sop": {
+   "n": 10,
+   "correct": 7,
+   "safe_miss": 2,
+   "wrong_citation": 1
+  },
+  "outside_sop": {
+   "n": 10,
+   "correct": 8,
+   "leak": 2
+  },
+  "rejected_actions": 5,
+  "mean_steps": 2.8,
+  "llm": null
+ },
+ "rows": [
+  {
+   "id": "x01",
+   "expect": "S5|Q8",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q8",
+    "S5"
+   ],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 15
+  },
+  {
+   "id": "x02",
+   "expect": "SUB|Q2",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "SUB",
+    "Q2",
+    "T03"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3
+  },
+  {
+   "id": "x03",
+   "expect": "D4|T05",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "safe_miss",
+   "cited": [],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 3
+  },
+  {
+   "id": "x04",
+   "expect": "R1|S7|S3.4|T15|Q9|Q10",
+   "run": 0,
+   "status": "answered",
+   "verdict": "wrong_citation",
+   "cited": [
+    "S3.2"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2
+  },
+  {
+   "id": "x05",
+   "expect": "D5|Q1|T02",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q1"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 1
+  },
+  {
+   "id": "x06",
+   "expect": "SUB|S7|Q7",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "S7",
+    "Q7",
+    "T10"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2
+  },
+  {
+   "id": "x07",
+   "expect": "R6|R5|S2|T04|Q5",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "safe_miss",
+   "cited": [],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 2
+  },
+  {
+   "id": "x08",
+   "expect": "SUB|Q2",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "SUB"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 1
+  },
+  {
+   "id": "x09",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 2
+  },
+  {
+   "id": "x10",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 1,
+   "ms": 2
+  },
+  {
+   "id": "x11",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 1,
+   "ms": 1
+  },
+  {
+   "id": "x12",
+   "expect": "outside",
+   "run": 0,
+   "status": "answered",
+   "verdict": "leak",
+   "cited": [
+    "Q2",
+    "SUB",
+    "T01"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 1
+  },
+  {
+   "id": "x13",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 2
+  },
+  {
+   "id": "x14",
+   "expect": "outside",
+   "run": 0,
+   "status": "answered",
+   "verdict": "leak",
+   "cited": [
+    "T15",
+    "Q10"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 1
+  },
+  {
+   "id": "a1",
+   "expect": "D4",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D4",
+    "Q1",
+    "STEP-2"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 1
+  },
+  {
+   "id": "a2",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 2
+  },
+  {
+   "id": "a3",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 1,
+   "ms": 1
+  },
+  {
+   "id": "a4",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 1,
+   "ms": 1
+  },
+  {
+   "id": "a5",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 1,
+   "ms": 1
+  },
+  {
+   "id": "a6",
+   "expect": "R1|S7|S3.4|T15|R4",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "S3.4",
+    "S3.2",
+    "T15"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2
+  }
+ ]
+}

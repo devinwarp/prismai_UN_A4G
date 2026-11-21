@@ -1,6 +1,7 @@
 import { VERDICTS } from "../model.ts";
 import { GATES } from "../policy.ts";
 import { JOURNEY_AR } from "./journey-ar.ts";
+import { AGENT_RUNTIME_AR } from "./agent-runtime-ar.ts";
 import { LIFECYCLE_AR } from "./lifecycle-ar.ts";
 import { GATES_AR } from "./gates-ar.ts";
 import { TUNING_AR } from "./tuning-ar.ts";
@@ -308,6 +309,7 @@ export const AR: Record<string, string> = {
   ...GATES_AR,
   ...JOURNEY_AR,
   ...TUNING_AR,
+  ...AGENT_RUNTIME_AR,
 };
 
 /** Look up a key; fall back to the English text supplied at the call site. */

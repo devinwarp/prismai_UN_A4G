@@ -4,12 +4,14 @@ import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
 import { evalSetFor } from "@/lib/un/evalset";
 import { isUuid } from "@/lib/un/model";
+import { agentRuntimeSummary, SOP_BY_USE_CASE } from "@/lib/un/agent-eval-summary";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { approvalState, configOf, verifyChain } from "@/lib/un/tuning";
 import { loadLog } from "@/lib/un/tuning-store";
 import { POLICY, replay, type ProdStatus, type WatchEntry } from "@/lib/un/watchdog";
 import { loadWatch } from "@/lib/un/watchdog-store";
 import { RuleSentence } from "../../../_components/EvalText";
+import AgentRuntimePanel from "../../../_components/AgentRuntimePanel";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card } from "../../../_components/ui";
 import { ProductionControls, ReinstateForm } from "./ProductionControls";
@@ -92,6 +94,7 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
   const approved = approvalState(tuning) === "approved";
   const chain = verifyChain(watch);
   const canEdit = profile.role === "admin";
+  const runtime = SOP_BY_USE_CASE[uc.ext_id] ? await agentRuntimeSummary() : null;
   const st = STATUS[s.status];
 
   return (
@@ -109,6 +112,8 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
           <p className="mt-3 text-sm">
             <Link href={`/admin/federal/use-cases/${id}/tuning`} className="underline underline-offset-4"><T k="ev.link.tuning" en="Tuning and approval" /></Link>
           </p>
+
+          {runtime && <AgentRuntimePanel s={runtime} compact />}
 
           {!hasSet ? (
             <p className="mt-8 text-sm text-ink-soft"><TV k="ev.nocases" en="No eval set exists for {uc} yet. Eval sets are defined for UC01 and UC02." v={{ uc: uc.ext_id }} /></p>

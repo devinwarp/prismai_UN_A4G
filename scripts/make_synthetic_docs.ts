@@ -1,8 +1,9 @@
 // Render the synthetic UC02 documents (fictitious) to PNG and record real Tesseract OCR output for
-// each, keyed by image hash, so tests run offline.
+// each, keyed by image hash, so tests run offline. D5 (authorisation letter), D6 (certified translation), a French
+// lease and three altered-looking documents are rendered like the rest.
 //   node scripts/make_synthetic_docs.ts            render images only
 //   node scripts/make_synthetic_docs.ts --ocr      also run live OCR and write ocr-cache.json
-import { mkdirSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import sharp from "sharp";
 import { closeOcr, imageSha, tesseractOcr, type OcrResult } from "../src/lib/un/doc-ocr.ts";
@@ -10,8 +11,15 @@ import { DOC_DIR, DOCS } from "../src/lib/un/fixtures-uc02.ts";
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;");
 mkdirSync(DOC_DIR, { recursive: true });
-const cache: Record<string, OcrResult & { file: string }> = {};
+const CACHE = path.join(DOC_DIR, "ocr-cache.json");
+// Images that already exist are kept (rendering is not byte-identical across sharp builds, and the OCR cache is
+// keyed by image hash); pass --force to re-render. OCR output of new images is merged into the cache.
+const cache: Record<string, OcrResult & { file: string }> = existsSync(CACHE) ? JSON.parse(readFileSync(CACHE, "utf8")) : {};
 for (const d of Object.values(DOCS)) {
+  if (existsSync(path.join(DOC_DIR, d.file)) && !process.argv.includes("--force")) {
+    if (process.argv.includes("--ocr")) { const b = readFileSync(path.join(DOC_DIR, d.file)); if (!cache[imageSha(b)]) { const r = await tesseractOcr(b); cache[imageSha(b)] = { text: r.text, confidence: r.confidence, file: d.file }; } }
+    continue;
+  }
   const h = 70 + d.lines.length * 52 + 30;
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="${h}"><rect width="100%" height="100%" fill="white"/>` +
     d.lines.map((l, i) => `<text x="40" y="${64 + i * 52}" font-family="Arial, Helvetica, sans-serif" font-size="${i === 0 ? 36 : 28}" font-weight="${i === 0 ? "bold" : "normal"}" fill="black">${esc(l)}</text>`).join("") + `</svg>`;
@@ -26,7 +34,7 @@ for (const d of Object.values(DOCS)) {
   }
 }
 if (process.argv.includes("--ocr")) {
-  writeFileSync(path.join(DOC_DIR, "ocr-cache.json"), JSON.stringify(cache, null, 1));
+  writeFileSync(CACHE, JSON.stringify(cache, null, 1));
   await closeOcr();
 }
 console.log(`${Object.keys(DOCS).length} documents in ${DOC_DIR}`);

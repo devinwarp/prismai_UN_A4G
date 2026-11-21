@@ -39,6 +39,15 @@ const ident = (name: string, no: string, exp: string): string[] => ["NATIONAL ID
 const insure = (who: string, prem: string, act: string, cover: string, from: string, to: string): string[] => [
   "CERTIFICATE OF INSURANCE", "Public liability", `Insured: ${who}`, `Premises: ${prem}`, `Activity: ${act}`, `Cover: ${cover}`, `Valid from: ${from}`, `Valid to: ${to}`];
 
+const auth = (signer: string, rep: string, no: string, dated: string, repId = "attached"): string[] => [
+  "AUTHORISATION LETTER", `Signed by: ${signer}`, `Representative: ${rep}`, `Licence number: ${no}`, `Dated: ${dated}`, `Copy of representative identity: ${repId}`];
+const transl = (reg: string, into: string, doc: string, stamp = "applied", attached = "yes"): string[] => [
+  "CERTIFIED TRANSLATION", "Translator: Sami Farouk Haddad", `Registration: ${reg}`, "Translated from: French", `Translated into: ${into}`, `Document: ${doc}`, `Stamp: ${stamp}`, `Attached to original: ${attached}`];
+
+/** A representative (not the owner) who applies for Al Noor, and a translator on the Marsa register. All invented. */
+export const REPRESENTATIVE = "Hana Saeed Karim";
+export const TRANSLATORS = new Set(["MRT-1042", "MRT-2210"]);
+
 const N = RECORDS.noor, B = RECORDS.bakery;
 
 /** key -> what is printed on the image. Keys ending in a defect name are deliberately wrong. */
@@ -58,6 +67,27 @@ export const DOCS: Record<string, DocSpec> = {
   "noor-d4-lowcover": { file: "noor-d4-lowcover.png", lines: insure(N.holder, N.address, N.activity_group, "100,000", "2026-07-01", "2027-06-30") },
   "noor-d4-lapsed": { file: "noor-d4-lapsed.png", lines: insure(N.holder, N.address, N.activity_group, "500,000", "2025-12-01", "2026-12-01") },
   "noor-d4-blur": { file: "noor-d4-blur.png", lines: insure(N.holder, N.address, N.activity_group, "500,000", "2026-07-01", "2027-06-30"), blur: 9 },
+  // D5 authorisation letter (someone other than the owner applies)
+  "noor-d5": { file: "noor-d5.png", lines: auth(N.holder, REPRESENTATIVE, N.licence_number, "2026-10-25") },
+  "noor-d5-old": { file: "noor-d5-old.png", lines: auth(N.holder, REPRESENTATIVE, N.licence_number, "2026-07-01") },
+  "noor-d5-edge90": { file: "noor-d5-edge90.png", lines: auth(N.holder, REPRESENTATIVE, N.licence_number, "2026-08-22") },
+  "noor-d5-signer": { file: "noor-d5-signer.png", lines: auth(REPRESENTATIVE, REPRESENTATIVE, N.licence_number, "2026-10-25") },
+  "noor-d5-wrongno": { file: "noor-d5-wrongno.png", lines: auth(N.holder, REPRESENTATIVE, "TL-482931", "2026-10-25") },
+  "noor-d5-norepid": { file: "noor-d5-norepid.png", lines: auth(N.holder, REPRESENTATIVE, N.licence_number, "2026-10-25", "not attached") },
+  "noor-d5-future": { file: "noor-d5-future.png", lines: auth(N.holder, REPRESENTATIVE, N.licence_number, "2026-12-30") },
+  // D6 certified translation, and a French lease that needs one
+  "noor-d2-fr": { file: "noor-d2-fr.png", lines: ["CONTRAT DE BAIL", "Enregistre au Registre foncier de Marsa", "Locataire: Omar Hassan Al Noor", "Local: Unit 14, Dock Road, Marsa", "Debut: 2026-01-01", "Fin: 2028-12-31"] },
+  "noor-d6": { file: "noor-d6.png", lines: transl("MRT-1042", "Arabic", "D2") },
+  "noor-d6-english": { file: "noor-d6-english.png", lines: transl("MRT-2210", "English", "D2") },
+  "noor-d6-german": { file: "noor-d6-german.png", lines: transl("MRT-1042", "German", "D2") },
+  "noor-d6-unstamped": { file: "noor-d6-unstamped.png", lines: transl("MRT-1042", "Arabic", "D2", "missing") },
+  "noor-d6-unreg": { file: "noor-d6-unreg.png", lines: transl("MRT-9999", "Arabic", "D2") },
+  "noor-d6-detached": { file: "noor-d6-detached.png", lines: transl("MRT-1042", "Arabic", "D2", "applied", "no") },
+  "noor-d6-wrongdoc": { file: "noor-d6-wrongdoc.png", lines: transl("MRT-1042", "Arabic", "D4") },
+  // altered or invented documents (suspected forgery goes to Compliance)
+  "noor-d1-forged": { file: "noor-d1-forged.png", lines: ["TRADE NAME CERTIFICATE", "Issued by: Marsa Trade Office", `Trade name: ${N.trade_name}`, `Licence number: ${N.licence_number}`, "Valid until: 2027-06-30"] },
+  "noor-d2-forged": { file: "noor-d2-forged.png", lines: lease("PR-77", N.holder, N.address, "2026-01-01", "2028-12-31") },
+  "noor-d4-forged": { file: "noor-d4-forged.png", lines: insure(N.holder, N.address, N.activity_group, "500,000", "2027-06-30", "2026-07-01") },
   // Marsa Bakery (licence expired 12 days ago): a good set
   "bakery-d1": { file: "bakery-d1.png", lines: trade(B.licence_number, B.trade_name, "2027-08-31") },
   "bakery-d2": { file: "bakery-d2.png", lines: lease("PR-80455", B.holder, B.address, "2025-12-01", "2028-11-30") },

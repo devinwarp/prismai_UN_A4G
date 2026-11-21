@@ -1,0 +1,1254 @@
+{
+ "summary": {
+  "reasoner": "llm",
+  "model": "anthropic/claude-sonnet-5.5",
+  "reps": 5,
+  "questions": 20,
+  "n": 100,
+  "in_sop": {
+   "n": 50,
+   "correct": 49,
+   "safe_miss": 0,
+   "wrong_citation": 1
+  },
+  "outside_sop": {
+   "n": 50,
+   "correct": 50,
+   "leak": 0
+  },
+  "rejected_actions": 0,
+  "mean_steps": 2.4,
+  "llm": {
+   "calls": 242,
+   "fallbacks": 0,
+   "prompt_tokens": 257416,
+   "completion_tokens": 28216,
+   "cost": 0.7969919999999996
+  }
+ },
+ "rows": [
+  {
+   "id": "x01",
+   "expect": "S5|Q8",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q8",
+    "S5"
+   ],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 6631
+  },
+  {
+   "id": "x01",
+   "expect": "S5|Q8",
+   "run": 1,
+   "status": "answered",
+   "verdict": "wrong_citation",
+   "cited": [
+    "T18"
+   ],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 6815
+  },
+  {
+   "id": "x01",
+   "expect": "S5|Q8",
+   "run": 2,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "S5",
+    "Q8"
+   ],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 6544
+  },
+  {
+   "id": "x01",
+   "expect": "S5|Q8",
+   "run": 3,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q8",
+    "S5"
+   ],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 4232
+  },
+  {
+   "id": "x01",
+   "expect": "S5|Q8",
+   "run": 4,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q8"
+   ],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 5908
+  },
+  {
+   "id": "x02",
+   "expect": "SUB|Q2",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "SUB"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2720
+  },
+  {
+   "id": "x02",
+   "expect": "SUB|Q2",
+   "run": 1,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q2",
+    "SUB"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2648
+  },
+  {
+   "id": "x02",
+   "expect": "SUB|Q2",
+   "run": 2,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "SUB"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3222
+  },
+  {
+   "id": "x02",
+   "expect": "SUB|Q2",
+   "run": 3,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q2"
+   ],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 7137
+  },
+  {
+   "id": "x02",
+   "expect": "SUB|Q2",
+   "run": 4,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q2",
+    "SUB"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2597
+  },
+  {
+   "id": "x03",
+   "expect": "D4|T05",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D4"
+   ],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 6861
+  },
+  {
+   "id": "x03",
+   "expect": "D4|T05",
+   "run": 1,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D4"
+   ],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 6026
+  },
+  {
+   "id": "x03",
+   "expect": "D4|T05",
+   "run": 2,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D4"
+   ],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 6084
+  },
+  {
+   "id": "x03",
+   "expect": "D4|T05",
+   "run": 3,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D4"
+   ],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 6526
+  },
+  {
+   "id": "x03",
+   "expect": "D4|T05",
+   "run": 4,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D4"
+   ],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 6247
+  },
+  {
+   "id": "x04",
+   "expect": "R1|S7|S3.4|T15|Q9|Q10",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "R1",
+    "S7",
+    "T15"
+   ],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 4360
+  },
+  {
+   "id": "x04",
+   "expect": "R1|S7|S3.4|T15|Q9|Q10",
+   "run": 1,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "R1",
+    "S7",
+    "T15"
+   ],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 4828
+  },
+  {
+   "id": "x04",
+   "expect": "R1|S7|S3.4|T15|Q9|Q10",
+   "run": 2,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "S3.4",
+    "S3.2"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3240
+  },
+  {
+   "id": "x04",
+   "expect": "R1|S7|S3.4|T15|Q9|Q10",
+   "run": 3,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "S7",
+    "T15",
+    "R1"
+   ],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 4609
+  },
+  {
+   "id": "x04",
+   "expect": "R1|S7|S3.4|T15|Q9|Q10",
+   "run": 4,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "S3.4"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2906
+  },
+  {
+   "id": "x05",
+   "expect": "D5|Q1|T02",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D5",
+    "T02"
+   ],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 4436
+  },
+  {
+   "id": "x05",
+   "expect": "D5|Q1|T02",
+   "run": 1,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D5",
+    "T02"
+   ],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 4406
+  },
+  {
+   "id": "x05",
+   "expect": "D5|Q1|T02",
+   "run": 2,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D5",
+    "T02"
+   ],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 4444
+  },
+  {
+   "id": "x05",
+   "expect": "D5|Q1|T02",
+   "run": 3,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D5"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3191
+  },
+  {
+   "id": "x05",
+   "expect": "D5|Q1|T02",
+   "run": 4,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D5"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3174
+  },
+  {
+   "id": "x06",
+   "expect": "SUB|S7|Q7",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q7"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2495
+  },
+  {
+   "id": "x06",
+   "expect": "SUB|S7|Q7",
+   "run": 1,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q7"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2689
+  },
+  {
+   "id": "x06",
+   "expect": "SUB|S7|Q7",
+   "run": 2,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q7"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2509
+  },
+  {
+   "id": "x06",
+   "expect": "SUB|S7|Q7",
+   "run": 3,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q7"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2596
+  },
+  {
+   "id": "x06",
+   "expect": "SUB|S7|Q7",
+   "run": 4,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q7"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2603
+  },
+  {
+   "id": "x07",
+   "expect": "R6|R5|S2|T04|Q5",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q5"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2523
+  },
+  {
+   "id": "x07",
+   "expect": "R6|R5|S2|T04|Q5",
+   "run": 1,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q5",
+    "T04"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2930
+  },
+  {
+   "id": "x07",
+   "expect": "R6|R5|S2|T04|Q5",
+   "run": 2,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q5",
+    "T04"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3328
+  },
+  {
+   "id": "x07",
+   "expect": "R6|R5|S2|T04|Q5",
+   "run": 3,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "T04"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3710
+  },
+  {
+   "id": "x07",
+   "expect": "R6|R5|S2|T04|Q5",
+   "run": 4,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q5",
+    "T04"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3007
+  },
+  {
+   "id": "x08",
+   "expect": "SUB|Q2",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "Q2"
+   ],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 4626
+  },
+  {
+   "id": "x08",
+   "expect": "SUB|Q2",
+   "run": 1,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "SUB"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2924
+  },
+  {
+   "id": "x08",
+   "expect": "SUB|Q2",
+   "run": 2,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "SUB"
+   ],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 5745
+  },
+  {
+   "id": "x08",
+   "expect": "SUB|Q2",
+   "run": 3,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "SUB"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2667
+  },
+  {
+   "id": "x08",
+   "expect": "SUB|Q2",
+   "run": 4,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "SUB"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2626
+  },
+  {
+   "id": "x09",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 4928
+  },
+  {
+   "id": "x09",
+   "expect": "outside",
+   "run": 1,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 5237
+  },
+  {
+   "id": "x09",
+   "expect": "outside",
+   "run": 2,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 5301
+  },
+  {
+   "id": "x09",
+   "expect": "outside",
+   "run": 3,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 5335
+  },
+  {
+   "id": "x09",
+   "expect": "outside",
+   "run": 4,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 5294
+  },
+  {
+   "id": "x10",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 7136
+  },
+  {
+   "id": "x10",
+   "expect": "outside",
+   "run": 1,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 6288
+  },
+  {
+   "id": "x10",
+   "expect": "outside",
+   "run": 2,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 5781
+  },
+  {
+   "id": "x10",
+   "expect": "outside",
+   "run": 3,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 4590
+  },
+  {
+   "id": "x10",
+   "expect": "outside",
+   "run": 4,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 5418
+  },
+  {
+   "id": "x11",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2845
+  },
+  {
+   "id": "x11",
+   "expect": "outside",
+   "run": 1,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2937
+  },
+  {
+   "id": "x11",
+   "expect": "outside",
+   "run": 2,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3367
+  },
+  {
+   "id": "x11",
+   "expect": "outside",
+   "run": 3,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 4475
+  },
+  {
+   "id": "x11",
+   "expect": "outside",
+   "run": 4,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 7768
+  },
+  {
+   "id": "x12",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3290
+  },
+  {
+   "id": "x12",
+   "expect": "outside",
+   "run": 1,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 8628
+  },
+  {
+   "id": "x12",
+   "expect": "outside",
+   "run": 2,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3762
+  },
+  {
+   "id": "x12",
+   "expect": "outside",
+   "run": 3,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2978
+  },
+  {
+   "id": "x12",
+   "expect": "outside",
+   "run": 4,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 4045
+  },
+  {
+   "id": "x13",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3655
+  },
+  {
+   "id": "x13",
+   "expect": "outside",
+   "run": 1,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 6275
+  },
+  {
+   "id": "x13",
+   "expect": "outside",
+   "run": 2,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 4,
+   "rejected_actions": 0,
+   "ms": 7853
+  },
+  {
+   "id": "x13",
+   "expect": "outside",
+   "run": 3,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 6681
+  },
+  {
+   "id": "x13",
+   "expect": "outside",
+   "run": 4,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 5314
+  },
+  {
+   "id": "x14",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3407
+  },
+  {
+   "id": "x14",
+   "expect": "outside",
+   "run": 1,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3739
+  },
+  {
+   "id": "x14",
+   "expect": "outside",
+   "run": 2,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3631
+  },
+  {
+   "id": "x14",
+   "expect": "outside",
+   "run": 3,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3892
+  },
+  {
+   "id": "x14",
+   "expect": "outside",
+   "run": 4,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3448
+  },
+  {
+   "id": "a1",
+   "expect": "D4",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D4"
+   ],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 5022
+  },
+  {
+   "id": "a1",
+   "expect": "D4",
+   "run": 1,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D4"
+   ],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 4924
+  },
+  {
+   "id": "a1",
+   "expect": "D4",
+   "run": 2,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D4"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3016
+  },
+  {
+   "id": "a1",
+   "expect": "D4",
+   "run": 3,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D4"
+   ],
+   "steps": 3,
+   "rejected_actions": 0,
+   "ms": 4728
+  },
+  {
+   "id": "a1",
+   "expect": "D4",
+   "run": 4,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "D4"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2915
+  },
+  {
+   "id": "a2",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 1,
+   "rejected_actions": 0,
+   "ms": 1865
+  },
+  {
+   "id": "a2",
+   "expect": "outside",
+   "run": 1,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 1,
+   "rejected_actions": 0,
+   "ms": 2102
+  },
+  {
+   "id": "a2",
+   "expect": "outside",
+   "run": 2,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 1,
+   "rejected_actions": 0,
+   "ms": 2038
+  },
+  {
+   "id": "a2",
+   "expect": "outside",
+   "run": 3,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 1,
+   "rejected_actions": 0,
+   "ms": 2077
+  },
+  {
+   "id": "a2",
+   "expect": "outside",
+   "run": 4,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 1,
+   "rejected_actions": 0,
+   "ms": 2131
+  },
+  {
+   "id": "a3",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3897
+  },
+  {
+   "id": "a3",
+   "expect": "outside",
+   "run": 1,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3564
+  },
+  {
+   "id": "a3",
+   "expect": "outside",
+   "run": 2,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3738
+  },
+  {
+   "id": "a3",
+   "expect": "outside",
+   "run": 3,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3880
+  },
+  {
+   "id": "a3",
+   "expect": "outside",
+   "run": 4,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3760
+  },
+  {
+   "id": "a4",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3006
+  },
+  {
+   "id": "a4",
+   "expect": "outside",
+   "run": 1,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 1,
+   "rejected_actions": 0,
+   "ms": 2322
+  },
+  {
+   "id": "a4",
+   "expect": "outside",
+   "run": 2,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3501
+  },
+  {
+   "id": "a4",
+   "expect": "outside",
+   "run": 3,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2991
+  },
+  {
+   "id": "a4",
+   "expect": "outside",
+   "run": 4,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2931
+  },
+  {
+   "id": "a5",
+   "expect": "outside",
+   "run": 0,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 4917
+  },
+  {
+   "id": "a5",
+   "expect": "outside",
+   "run": 1,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 5032
+  },
+  {
+   "id": "a5",
+   "expect": "outside",
+   "run": 2,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3470
+  },
+  {
+   "id": "a5",
+   "expect": "outside",
+   "run": 3,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3364
+  },
+  {
+   "id": "a5",
+   "expect": "outside",
+   "run": 4,
+   "status": "outside_kb",
+   "verdict": "correct",
+   "cited": [],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 3594
+  },
+  {
+   "id": "a6",
+   "expect": "R1|S7|S3.4|T15|R4",
+   "run": 0,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "S3.4",
+    "S3.2"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2894
+  },
+  {
+   "id": "a6",
+   "expect": "R1|S7|S3.4|T15|R4",
+   "run": 1,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "S3.4",
+    "S3.2"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2805
+  },
+  {
+   "id": "a6",
+   "expect": "R1|S7|S3.4|T15|R4",
+   "run": 2,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "S3.4",
+    "S3.2"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2840
+  },
+  {
+   "id": "a6",
+   "expect": "R1|S7|S3.4|T15|R4",
+   "run": 3,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "S3.4",
+    "S3.2"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2797
+  },
+  {
+   "id": "a6",
+   "expect": "R1|S7|S3.4|T15|R4",
+   "run": 4,
+   "status": "answered",
+   "verdict": "correct",
+   "cited": [
+    "S3.4",
+    "S3.2"
+   ],
+   "steps": 2,
+   "rejected_actions": 0,
+   "ms": 2986
+  }
+ ]
+}
