@@ -200,7 +200,7 @@ test("per-task evals run as a library call and are stored; tuner proposals becom
   assert.ok(v.value && (v.value as { lines: string[] }).lines.length >= 1);
   assert.equal(v.after.tasks.tune.correct, v.before.tasks.tune.correct, "rule-based agent: free-text lines do not change task results");
   const s = await loadState(c);
-  assert.ok(s.lastTasks && s.lastTasks.rows.length === CASES.length);
+  assert.ok(s.lastTasks && s.lastTasks.rows.length === ALL_CASES.length);
   assert.equal(s.skills[PROFILES[0]].lines.length, 0, "not in use until approved");
   await decide(c, { id: v.id, decision: "approve", actor: "bo" });
   assert.ok((await loadState(c)).skills[PROFILES[0]].lines.length >= 1);
