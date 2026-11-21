@@ -29,7 +29,7 @@ test("sandbox figures are labelled everywhere they appear, with an Arabic key", 
   assert.ok(AR[SANDBOX_KEY]);
   assert.ok(isSandboxOutcome(S3.steps[1].expected));
   assert.ok(!isSandboxOutcome("NO_GO"));
-  for (const f of ["src/app/admin/federal/runs/[id]/RunView.tsx", "src/app/replay/page.tsx"]) {
+  for (const f of ["src/app/admin/federal/runs/[id]/RunView.tsx", "src/app/replay/ReplayView.tsx"]) {
     assert.match(readFileSync(f, "utf8"), /SANDBOX_(KEY|EN)/, f);
   }
   assert.match(readFileSync("src/app/admin/federal/scenarios/page.tsx", "utf8"), /not the live register/);

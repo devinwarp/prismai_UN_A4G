@@ -138,7 +138,7 @@ export default function LoginClient({ judge, judgeFailed }: { judge: boolean; ju
         </Link>
         <div className="flex items-center gap-2">
           <ThemeSwitcher variant="inline" />
-          <button type="button" onClick={toggleLang} aria-label={c.langAria} className="min-h-10 rounded-lg border border-line px-3 text-sm font-medium text-ink hover:border-ink-soft">{c.lang}</button>
+          <button type="button" onClick={toggleLang} aria-label={c.langAria} className="min-h-10 rounded-lg border border-line px-3 text-sm font-medium text-ink hover:border-ink-soft"><span lang={lang === "en" ? "ar" : "en"}>{c.lang}</span></button>
         </div>
       </header>
 

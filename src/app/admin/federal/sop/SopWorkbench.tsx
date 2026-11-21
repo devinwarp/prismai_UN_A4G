@@ -102,7 +102,7 @@ export default function SopWorkbench({ samples, canEdit, uc02Id }: { samples: Do
             <summary className="w-fit cursor-pointer text-sm underline underline-offset-2">{t("sop.own", "Add your own (text or markdown)")}</summary>
             <label className="mt-3 block text-sm">
               <span className="font-medium">{t("sop.paste", "Paste the procedure")}</span>
-              <textarea value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className={`${field} font-mono`} placeholder={"1. The clerk checks the form.\n2. The clerk emails the applicant."} />
+              <textarea dir="auto" value={paste} onChange={(e) => setPaste(e.target.value)} rows={6} className={`${field} font-mono`} placeholder={t("uc.sop.ph", "1. The clerk checks the form.\n2. The clerk emails the applicant.")} />
             </label>
             <div className="mt-3 flex flex-wrap items-center gap-3">
               <label className={`${btnGhost} cursor-pointer`}>
@@ -123,7 +123,7 @@ export default function SopWorkbench({ samples, canEdit, uc02Id }: { samples: Do
 
         <dl className="mt-5 grid gap-6 border-y border-line py-5 sm:grid-cols-3">
           {[
-            { v: num(a.totals.hours_saved_per_year), l: t("sop.hours", "hours a year could be saved"), s: `${t("sop.of", "of")} ${num(a.totals.baseline_hours_per_year)} h (${a.totals.vs_baseline_pct}%)` },
+            { v: num(a.totals.hours_saved_per_year), l: t("sop.hours", "hours a year could be saved"), s: `${t("sop.of", "of")} ${num(a.totals.baseline_hours_per_year)} ${t("uc.sop.h", "h")} (${a.totals.vs_baseline_pct}%)` },
             { v: `${num(a.totals.cost_saved_per_year)} XXD`, l: t("sop.cost", "a year in staff time"), s: t("sop.cost.h", "Hours saved times the made-up hourly rate") },
             { v: `${Math.round(a.confidence * 100)}%`, l: t("sop.conf", "confidence in the reading"), s: `${a.steps.length} ${t("sop.stepsn", "steps found")}` },
           ].map((x) => (
@@ -136,7 +136,7 @@ export default function SopWorkbench({ samples, canEdit, uc02Id }: { samples: Do
         </dl>
         <details className="mt-2 text-xs text-ink-soft">
           <summary className="w-fit cursor-pointer underline underline-offset-2">{t("sop.how", "How the numbers are worked out")}</summary>
-          <p className="mt-2 max-w-[68ch]" title="Technical term: synthetic baseline">
+          <p className="mt-2 max-w-[68ch]" title={t("uc.sop.t_baseline", "Technical term: synthetic baseline")}>
             {num(a.totals.cases_per_year)} {t("sop.how.1", "cases a year, times minutes per step (from the text, else a made-up default), times the share a step type could save")}
             {" "}({(["automate", "assist"] as const).map((c) => `${t(CLASS_META[c].k, CLASS_META[c].en)}: ${share(c)}`).join("; ")}), {t("sop.how.2", "times the made-up hourly rate.")}
           </p>
@@ -169,12 +169,12 @@ export default function SopWorkbench({ samples, canEdit, uc02Id }: { samples: Do
                 return (
                   <li key={s.id}>
                     <button type="button" aria-pressed={on} onClick={() => toggle([s.id])} className={`w-full px-2 py-2.5 text-start text-sm hover:bg-paper-deep ${on ? "bg-lit-soft" : ""}`}>
-                      <span className="font-mono text-[11px] text-ink-soft">{s.id} · {t("sop.line", "line")} {s.cite.start}{s.cite.end > s.cite.start ? `-${s.cite.end}` : ""}{c ? ` · ${CLASS_META[c].glyph} ${t(CLASS_META[c].k, CLASS_META[c].en)}` : ""}</span>
-                      <span className="mt-0.5 block">{s.text}</span>
+                      <span className="font-mono text-[11px] text-ink-soft"><bdi dir="ltr">{s.id}</bdi> · {t("sop.line", "line")} {s.cite.start}{s.cite.end > s.cite.start ? `-${s.cite.end}` : ""}{c ? ` · ${CLASS_META[c].glyph} ${t(CLASS_META[c].k, CLASS_META[c].en)}` : ""}</span>
+                      <span dir="auto" className="mt-0.5 block">{s.text}</span>
                       {(s.actor || s.systems.length > 0) && (
                         <span className="mt-1 flex flex-wrap gap-1">
-                          {s.actor && <span className={chip} title="Technical term: actor">{s.actor}</span>}
-                          {s.systems.map((x) => <span key={x} className={chip} title="Technical term: system">{x}</span>)}
+                          {s.actor && <span className={chip} title={t("uc.sop.t_actor", "Technical term: actor")}>{s.actor}</span>}
+                          {s.systems.map((x) => <span key={x} className={chip} title={t("uc.sop.t_system", "Technical term: system")}>{x}</span>)}
                         </span>
                       )}
                     </button>
@@ -189,7 +189,7 @@ export default function SopWorkbench({ samples, canEdit, uc02Id }: { samples: Do
               {lines.map((l, i) => (
                 <span key={i} className={`flex gap-3 px-3 ${lit.has(i + 1) ? "bg-lit-soft text-ink" : "text-ink-soft"}`}>
                   <span aria-hidden className="w-8 shrink-0 text-end tabular-nums select-none">{lit.has(i + 1) ? "▸" : ""}{i + 1}</span>
-                  <span className="min-w-0 break-words">{l || " "}</span>
+                  <span dir="auto" className="min-w-0 break-words">{l || " "}</span>
                 </span>
               ))}
             </div>
@@ -201,12 +201,12 @@ export default function SopWorkbench({ samples, canEdit, uc02Id }: { samples: Do
           {a.candidates.map((c) => (
             <li key={c.class} className="grid gap-x-6 gap-y-1 py-3 sm:grid-cols-[minmax(0,1fr)_auto]">
               <div>
-                <p className="text-base font-medium"><span aria-hidden>{CLASS_META[c.class].glyph} </span>{t(CLASS_META[c.class].k, CLASS_META[c.class].en)} <span className="font-mono text-xs text-ink-soft">({c.step_ids.join(", ")})</span></p>
+                <p className="text-base font-medium"><span aria-hidden>{CLASS_META[c.class].glyph} </span>{t(CLASS_META[c.class].k, CLASS_META[c.class].en)} <bdi dir="ltr" className="font-mono text-xs text-ink-soft">({c.step_ids.join(", ")})</bdi></p>
                 <p className="mt-1 max-w-[68ch] text-sm text-ink-soft">{c.reason}</p>
                 <button type="button" className="mt-1 text-xs underline underline-offset-2" onClick={() => toggle(c.step_ids)}>{t("sop.where", "Show the lines")}</button>
               </div>
               <p className="text-sm tabular-nums sm:text-end">
-                <span className="font-display text-2xl">{num(c.hours_saved_per_year)}</span> h<br />
+                <span className="font-display text-2xl">{num(c.hours_saved_per_year)}</span> {t("uc.sop.h", "h")}<br />
                 <span className="text-ink-soft">{num(c.cost_saved_per_year)} XXD</span>
               </p>
             </li>

@@ -12,6 +12,7 @@ import AdminHeader from "../../AdminHeader";
 import LangShell, { T, TV } from "../_components/Lang";
 import { JourneyLine } from "../_components/JourneyBar";
 import { card } from "../_components/ui";
+import { En, Ltr } from "../_components/b-bits";
 
 export const metadata: Metadata = { title: "Agent evaluations side by side", robots: { index: false, follow: false } };
 
@@ -45,16 +46,16 @@ export default async function EvalsOverview() {
               const al = latest ? alignment(latest.summary) : null;
               return (
                 <article key={u.id} className={card} aria-label={u.title}>
-                  <p className="font-mono text-[11px] tracking-wide text-ink-soft uppercase">{u.ext_id} · {u.entity}</p>
+                  <p className="font-mono text-[11px] tracking-wide text-ink-soft uppercase"><Ltr>{u.ext_id}</Ltr> · <En>{u.entity}</En></p>
                   <h2 className="mt-1 text-lg font-semibold">{u.title}</h2>
                   <div className="mt-2"><JourneyLine journey={journeys.get(u.id)!} /></div>
                   {!latest || !al ? (
                     <p className="mt-3 text-sm text-ink-soft"><T k="evo.norun" en="No run yet." /></p>
                   ) : (
                     <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-2 text-sm">
-                      <dt className="text-ink-soft"><T k="ev.stat.correct" en="Correct" /></dt><dd>{latest.summary.all.correct}/{latest.summary.all.n}</dd>
-                      <dt className="text-ink-soft"><T k="ev.stat.halluc" en="Hallucinated" /></dt><dd>{latest.summary.all.hallucinated}</dd>
-                      <dt className="text-ink-soft"><T k="ev.stat.mis" en="Misaligned" /></dt><dd>{latest.summary.all.misaligned}</dd>
+                      <dt className="text-ink-soft"><T k="ev.stat.correct" en="Correct" /></dt><dd><Ltr>{latest.summary.all.correct}/{latest.summary.all.n}</Ltr></dd>
+                      <dt className="text-ink-soft"><T k="ev.stat.halluc" en="Hallucinated" /></dt><dd><Ltr>{latest.summary.all.hallucinated}</Ltr></dd>
+                      <dt className="text-ink-soft"><T k="ev.stat.mis" en="Misaligned" /></dt><dd><Ltr>{latest.summary.all.misaligned}</Ltr></dd>
                       <dt className="text-ink-soft"><T k="ev.stat.sijil" en="Sijil rejected calls" /></dt><dd><TV k="evo.sijil" en="{r} of {c} calls" v={{ r: latest.summary.sijil.rejected, c: latest.summary.sijil.calls }} /></dd>
                       <dt className="text-ink-soft"><T k="evo.bar" en="Approval bar" /></dt><dd className="font-medium">{al.met ? <T k="evo.met" en="✓ met" /> : <T k="evo.notmet" en="✕ not met" />}</dd>
                     </dl>

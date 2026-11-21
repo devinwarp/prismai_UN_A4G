@@ -46,12 +46,12 @@ export default function Chain({ log, verification }: { log: Rec[]; verification:
                   <span>#{i + 1}</span>
                   <span className={state === "broken" ? "font-medium text-ember" : state === "dim" ? "text-ink-soft" : "text-lit-deep"}>
                     <span aria-hidden>{state === "broken" ? "✕" : state === "dim" ? "?" : "✓"}</span>
-                    <span className="sr-only">{state === "broken" ? "link broken" : state === "dim" ? "untrusted" : "link intact"}</span>
+                    <span className="sr-only">{state === "broken" ? tr(lang, "uc.chain.sr_broken", "link broken") : state === "dim" ? tr(lang, "uc.chain.sr_untrusted", "untrusted") : tr(lang, "uc.chain.sr_ok", "link intact")}</span>
                   </span>
                 </span>
-                <span className="mt-1 block truncate text-xs">{r.agent}</span>
-                <span className="block font-mono text-[10px] text-ink-soft">{r.step}{r.signature ? ` · ${tr(lang, "chain.signed", "signed")}` : ""}</span>
-                <span className="mt-1 block font-mono text-[11px]" title={r.hash}>{r.hash.slice(0, 8)}…</span>
+                <bdi dir="ltr" className="mt-1 block truncate text-xs">{r.agent}</bdi>
+                <span className="block font-mono text-[10px] text-ink-soft"><bdi dir="ltr">{r.step}</bdi>{r.signature ? ` · ${tr(lang, "chain.signed", "signed")}` : ""}</span>
+                <bdi dir="ltr" className="mt-1 block font-mono text-[11px]" title={r.hash}>{r.hash.slice(0, 8)}…</bdi>
                 {state === "broken" && <span className="mt-1 block text-[11px] font-medium text-ember">{tr(lang, "chain.broken", "Fingerprint no longer matches")}</span>}
                 {state === "dim" && <span className="mt-1 block text-[11px]">{tr(lang, "chain.untrusted", "Cannot be trusted")}</span>}
               </span>

@@ -3,6 +3,7 @@ import type { Approver } from "@/lib/un/approvers";
 import { evidenceFor, metricEvidence, type Effective } from "@/lib/un/gates";
 import type { GateStatus } from "@/lib/un/policy";
 import { T, TV } from "../../_components/Lang";
+import { En } from "../../_components/b-bits";
 import { GateChip, scrollRegion, Section } from "../../_components/ui";
 import { GateActions } from "./GateActions";
 
@@ -44,7 +45,7 @@ export default function UseCaseGates({ useCaseId, ext, eff, runGates, canEdit, a
                     </span>
                   </th>
                   <td className="pe-3 py-2.5 text-xs text-ink-soft">
-                    {g.reason}
+                    <En>{g.reason}</En>
                     {g.source === "use_case" && <span className="mt-1 block text-ink">{g.addedApprover ? <TV k="gt.uc.approvedby" en="Added with approval from {who}" v={{ who: g.addedApprover }} /> : <T k="gt.uc.approvedby.none" en="Added with no approver recorded (before approvers were required)" />}</span>}
                     {g.waiver && <span className="mt-1 block text-ink"><TV k="gt.uc.waived" en="Waived. Approved by {who}: {why}" v={{ who: g.waiver.approver, why: g.waiver.reason }} /></span>}
                   </td>

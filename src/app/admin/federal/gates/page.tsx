@@ -12,6 +12,7 @@ import AdminHeader from "../../AdminHeader";
 import LangShell, { T, TV } from "../_components/Lang";
 import { card, scrollRegion, Section } from "../_components/ui";
 import { GateForm } from "./GateForm";
+import { Flag, Ltr, Role, Rs } from "../_components/b-bits";
 
 export const metadata: Metadata = { title: "Gates and rule sets", robots: { index: false, follow: false } };
 
@@ -64,23 +65,23 @@ export default async function GatesPage() {
                       <tr key={id} className="border-t border-line align-top">
                         <th scope="row" className="px-4 py-2.5 text-start font-normal">
                           <span className="block font-medium"><T k={`gate.${id}`} en={g.label} /></span>
-                          <span className="block font-mono text-[11px] text-ink-soft">{id}{g.custom ? ` · v${gov.custom[id].version}` : ""}</span>
+                          <span dir="ltr" className="block text-start font-mono text-[11px] text-ink-soft">{id}{g.custom ? ` · v${gov.custom[id].version}` : ""}</span>
                           {g.custom && <span className="block text-xs text-ink-soft"><TV k="gt.signed" en="Signed off by {who}" v={{ who: gov.custom[id].signed_off_by }} /></span>}
                         </th>
                         <td className="pe-3 py-2.5"><T k={`gt.cat.${g.category}`} en={g.category} /></td>
-                        <td className="pe-3 py-2.5 font-mono text-xs">{g.owner}</td>
+                        <td className="pe-3 py-2.5 text-xs"><Role id={g.owner} /></td>
                         <td className="pe-3 py-2.5 text-xs">
                           <T k={`gt.ev.${g.evidence}`} en={g.evidence} />
-                          {g.metric && <span className="block text-ink-soft">{g.metric.name} {g.metric.op} {g.metric.threshold} {g.metric.unit} · <T k="gt.simulated" en="simulated value" /></span>}
+                          {g.metric && <span className="block text-ink-soft"><bdi dir="ltr" lang="en">{g.metric.name} {g.metric.op} {g.metric.threshold} {g.metric.unit}</bdi> · <T k="gt.simulated" en="simulated value" /></span>}
                         </td>
                         <td className="pe-3 py-2.5 text-xs text-ink-soft">
                           {(g.requires?.length ?? 0) + (g.clientFacingOnly && !g.requires?.includes("client_facing") ? 1 : 0) === 0 && !g.optional ? <T k="gt.always" en="always" /> : null}
-                          {g.clientFacingOnly && <span className={`${chip} me-1`}>client_facing</span>}
-                          {g.requires?.filter((f) => f !== "client_facing").map((f) => <span key={f} className={`${chip} me-1`}>{f}</span>)}
+                          {g.clientFacingOnly && <span className={`${chip} me-1`}><Flag id="client_facing" /></span>}
+                          {g.requires?.filter((f) => f !== "client_facing").map((f) => <span key={f} className={`${chip} me-1`}><Flag id={f} /></span>)}
                           {g.optional && !g.custom && <T k="gt.optional" en="when a case takes it on" />}
                           {g.custom && !g.requires?.length && <T k="gt.useonly" en="when a use case adds it" />}
                         </td>
-                        <td className="pe-4 py-2.5">{requiredBy(id).map((r) => <span key={r} className={`${chip} me-1`}>{r}</span>)}{requiredBy(id).length === 0 && <span className="text-xs text-ink-soft"><T k="gt.none" en="no rule set" /></span>}</td>
+                        <td className="pe-4 py-2.5">{requiredBy(id).map((r) => <span key={r} className={`${chip} me-1`}><Rs id={r} /></span>)}{requiredBy(id).length === 0 && <span className="text-xs text-ink-soft"><T k="gt.none" en="no rule set" /></span>}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -111,7 +112,7 @@ export default async function GatesPage() {
                     const runs = (e.payload.runs as { ext_id: string; run_id: string }[] | undefined) ?? [];
                     return (
                       <li key={e.seq} className="rounded-2xl border border-line bg-card p-4 text-sm">
-                        <p className="font-mono text-[11px] tracking-wide text-ink-soft uppercase">#{e.seq} · <T k={`gt.k.${e.kind}`} en={KIND_EN[e.kind]} /> · {new Date(e.at).toLocaleString("en-GB", DUBAI)} · {e.actor}</p>
+                        <p className="font-mono text-[11px] tracking-wide text-ink-soft uppercase">#{e.seq} · <T k={`gt.k.${e.kind}`} en={KIND_EN[e.kind]} /> · <Ltr>{new Date(e.at).toLocaleString("en-GB", DUBAI)}</Ltr> · <Ltr>{e.actor}</Ltr></p>
                         {(e.kind === "gate_added" || e.kind === "gate_changed") && <p className="mt-1"><span className="font-mono">{String(e.payload.gate)}</span> {e.payload.reason ? `· ${String(e.payload.reason)}` : ""}{e.payload.signed_off_by ? <> · <TV k="gt.waiver.by" en="approved by {who}" v={{ who: String(e.payload.signed_off_by) }} /></> : null}</p>}
                         {e.kind === "use_case_gate" && <p className="mt-1"><span className="font-mono">{String(e.payload.ext_id)}</span> + <span className="font-mono">{String(e.payload.gate)}</span> · {String(e.payload.reason)}{e.payload.approver ? <> · <TV k="gt.waiver.by" en="approved by {who}" v={{ who: String(e.payload.approver) }} /></> : null}</p>}
                         {e.kind === "waiver" && <p className="mt-1"><span className="font-mono">{String(e.payload.ext_id)}</span> − <span className="font-mono">{String(e.payload.gate)}</span> · <TV k="gt.waiver.by" en="approved by {who}" v={{ who: String(e.payload.approver) }} /> · {String(e.payload.reason)}</p>}

@@ -25,7 +25,7 @@ export default async function SopPage() {
       <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
       <LangShell>
         <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-          <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase">{canEdit ? "Procedure intake" : "Read-only"}</p>
+          <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase">{canEdit ? <T k="uc.sop.intake" en="Procedure intake" /> : <T k="uc.sop.readonly" en="Read-only" />}</p>
           <h1 className="font-display mt-2 text-3xl font-medium tracking-tight sm:text-4xl"><T k="sop.title" en="From a procedure to a governed use case" /></h1>
           <p className="mt-3 max-w-[68ch] text-base text-ink-soft">
             <T k="sop.lede" en="Pick a sample procedure or add your own. Prism reads the steps, estimates what could be automated against a made-up baseline, flags the risks, and sends the result to the compare page for a decision." />{" "}

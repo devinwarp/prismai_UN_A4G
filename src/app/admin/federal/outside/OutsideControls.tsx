@@ -24,7 +24,7 @@ export function AnswerForm({ id }: { id: string }) {
     setError(null);
     const r = await post(`/api/admin/un/outside/${id}/answer`, { answer: text });
     setBusy(false);
-    if (!r.ok) setError(String(r.data.error ?? "The answer was not saved."));
+    if (!r.ok) setError(String(r.data.error ?? tr(lang, "ub.oq.nosave", "The answer was not saved.")));
     else router.refresh();
   }
   return (
@@ -50,7 +50,7 @@ export function AskForm() {
     setResult(null);
     const r = await post("/api/admin/un/outside/ask", { question: q });
     setBusy(false);
-    if (!r.ok) setResult(String(r.data.error ?? "The question failed."));
+    if (!r.ok) setResult(String(r.data.error ?? tr(lang, "ub.oq.qfail", "The question failed.")));
     else {
       const d = r.data as { status: string; citations: string[]; person_answer: { answer: string; role: string } | null };
       setResult(d.status === "answered" ? `${tr(lang, "oq.res.answered", "Answered from the SOP, citing")} ${d.citations.join(", ")}`

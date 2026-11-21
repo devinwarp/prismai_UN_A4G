@@ -1,5 +1,4 @@
 import type { ReactNode } from "react";
-import type { Verdict } from "@/lib/un/model";
 import type { GateStatus } from "@/lib/un/policy";
 import { T } from "./Lang";
 
@@ -13,34 +12,8 @@ export const btnPrimary =
 export const btnGhost =
   "inline-flex items-center justify-center gap-2 rounded-xl border border-line bg-paper px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-ink-soft disabled:cursor-not-allowed disabled:opacity-50";
 
-export const VERDICT_META: Record<Verdict, { glyph: string; color: string; hint: string }> = {
-  GO_AUTONOMOUS: { glyph: "●", color: "var(--color-v-auto)", hint: "Cleared to run without per-action sign-off" },
-  GO_SUPERVISED: { glyph: "◐", color: "var(--color-v-sup)", hint: "Cleared with a person approving outputs" },
-  ASSISTANT_ONLY: { glyph: "○", color: "var(--color-v-asst)", hint: "Drafts only; a person acts" },
-  NO_GO: { glyph: "✕", color: "var(--color-v-nogo)", hint: "A hard gate failed" },
-  ESCALATE: { glyph: "▲", color: "var(--color-v-esc)", hint: "Evidence missing; needs a decision" },
-};
-
-export const verdictLabel = (v: Verdict | null) => (v ? v.replace("_", " ") : "No verdict");
-
-/** Glyph + text, tinted: colour is never the only signal. */
-export function VerdictBadge({ verdict, size = "sm" }: { verdict: Verdict | null; size?: "sm" | "lg" }) {
-  const m = verdict ? VERDICT_META[verdict] : null;
-  const pad = size === "lg" ? "px-3 py-1 text-sm" : "px-2 py-0.5 text-[11px]";
-  return (
-    <span
-      title={m?.hint ?? "Not assessed yet"}
-      className={`inline-flex items-center gap-1.5 rounded-full border font-mono tracking-wide whitespace-nowrap ${pad}`}
-      style={{
-        borderColor: m ? `color-mix(in srgb, ${m.color} 55%, transparent)` : "var(--color-line)",
-        background: m ? `color-mix(in srgb, ${m.color} 13%, transparent)` : "transparent",
-      }}
-    >
-      <span aria-hidden style={{ color: m?.color ?? "var(--color-ink-soft)" }}>{m?.glyph ?? "–"}</span>
-      <span className={m ? "text-ink" : "text-ink-soft"}><T k={`verdict.${verdict ?? "NONE"}`} en={verdictLabel(verdict)} /></span>
-    </span>
-  );
-}
+export { VERDICT_META, verdictLabel } from "./labels";
+export { VerdictBadge } from "./VerdictBadge";
 
 export const STATUS_META: Record<GateStatus, { glyph: string; color: string; label: string }> = {
   pass: { glyph: "✓", color: "var(--color-s-pass)", label: "pass" },
@@ -105,7 +78,7 @@ export function Field({
 export function DataTableAlt({ caption, head, rows }: { caption: string; head: string[]; rows: (string | number)[][] }) {
   return (
     <details className="mt-3 text-xs text-ink-soft">
-      <summary className="w-fit cursor-pointer rounded underline underline-offset-2">View as table</summary>
+      <summary className="w-fit cursor-pointer rounded underline underline-offset-2"><T k="ua.viewtable" en="View as table" /></summary>
       <div className="relative mt-2 overflow-x-auto">
         <table className="w-full text-start tabular-nums">
           <caption className="sr-only">{caption}</caption>

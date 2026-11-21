@@ -5,6 +5,7 @@ import { useEffect, useRef, useState } from "react";
 import { tr } from "@/lib/un/i18n/dict";
 import { useLang } from "../_components/Lang";
 import { btnGhost, btnPrimary, field } from "../_components/ui";
+import { Ct, En, Ltr } from "../_components/b-bits";
 
 interface Stage { stage: string; ms: number; detail: string }
 interface Props {
@@ -58,7 +59,7 @@ export function CountryPanel({ canEdit, active, countries, staged, euBuilt, comp
       if (!res.ok || !out || out.ok === false) setError(String(out?.error ?? tr(lang, "gt.failed", "The request failed.")));
       else {
         const ms = Math.round(performance.now() - t0.current);
-        setNote(`${tr(lang, "cn.elapsed", "Elapsed")}: ${(ms / 1000).toFixed(2)} s` + (out.matchesStored === true ? ` · ${tr(lang, "cn.sameHash", "Identical to the stored result (same head hash)")}` : ""));
+        setNote(`${tr(lang, "cn.elapsed", "Elapsed")}: ${(ms / 1000).toFixed(2)} ${tr(lang, "ub.cn.sec", "s")}` + (out.matchesStored === true ? ` · ${tr(lang, "cn.sameHash", "Identical to the stored result (same head hash)")}` : ""));
         router.refresh();
       }
     } catch { setError(tr(lang, "gt.failed", "The request failed.")); }
@@ -74,7 +75,7 @@ export function CountryPanel({ canEdit, active, countries, staged, euBuilt, comp
         <div className="mt-2 flex flex-wrap gap-2">
           {countries.filter((c) => c.ready).map((c) => (
             <button key={c.id} type="button" disabled={!!busy || c.id === active} className={c.id === active ? btnPrimary : btnGhost} aria-pressed={c.id === active} onClick={() => void call("switch", { country: c.id })}>
-              {c.name}{c.id === active ? " ✓" : ""}
+              <Ct id={c.id} en={c.name} />{c.id === active ? " ✓" : ""}
             </button>
           ))}
         </div>
@@ -83,7 +84,7 @@ export function CountryPanel({ canEdit, active, countries, staged, euBuilt, comp
       <div className="rounded-xl border border-line p-4">
         <h3 className="font-medium">{tr(lang, "cn.stepA", "Step A (live): add a policy")}</h3>
         <p className="mt-1 text-sm text-ink-soft">{tr(lang, "cn.stepA.h", "An administrator adds the EU policy as a new knowledge source and the app builds the index on the spot: parse, chunk, index (BM25 and vectors), then registers the scope and its rule set.")}</p>
-        <ul className="mt-2 text-xs text-ink-soft">{staged.map((s) => <li key={s.id}><span className="font-mono">{s.id}</span> · {s.words} words</li>)}</ul>
+        <ul className="mt-2 text-xs text-ink-soft">{staged.map((s) => <li key={s.id}><bdi dir="ltr" className="font-mono">{s.id}</bdi> · <Ltr>{s.words}</Ltr> {tr(lang, "ub.cn.words", "words")}</li>)}</ul>
         <button type="button" className={`${btnPrimary} mt-3`} disabled={!!busy || euBuilt} onClick={() => void call("add_policy", { country: "EU" }, true)}>
           {euBuilt ? tr(lang, "cn.built", "EU policy added") : tr(lang, "cn.addpolicy", "Add the EU policy")}
         </button>
@@ -108,14 +109,14 @@ export function CountryPanel({ canEdit, active, countries, staged, euBuilt, comp
         <button type="button" className={`${btnPrimary} mt-3`} disabled={!!busy} onClick={() => void call("onboard", { name, country: "SG", ...(sample ? { sample: "sg-mbla" } : { sop_text: sop }) }, true)}>
           {tr(lang, "cn.onboard", "Add the company and run the use case")}
         </button>
-        <span className="ms-3 text-xs text-ink-soft">{companyCount}</span>
+        <span className="ms-3 text-xs text-ink-soft"><Ltr>{companyCount}</Ltr></span>
       </div>
 
       {(busy || stages.length > 0) && (
         <div role="status" aria-live="polite" className="rounded-xl border border-line bg-paper-deep p-4 text-sm">
-          <p className="font-medium">{tr(lang, "cn.elapsed", "Elapsed")}: <span className="font-mono">{(elapsed / 1000).toFixed(1)} s</span>{busy ? " …" : ""}</p>
+          <p className="font-medium">{tr(lang, "cn.elapsed", "Elapsed")}: <bdi dir="ltr" className="font-mono">{(elapsed / 1000).toFixed(1)} {tr(lang, "ub.cn.sec", "s")}</bdi>{busy ? " …" : ""}</p>
           <ol className="mt-2 space-y-1">
-            {stages.map((s, i) => <li key={i}><span className="font-mono text-xs">{s.ms} ms</span> · <b>{s.stage}</b>: {s.detail}</li>)}
+            {stages.map((s, i) => <li key={i}><bdi dir="ltr" className="font-mono text-xs">{s.ms} {tr(lang, "ub.cn.ms", "ms")}</bdi> · <En><b>{s.stage}</b>: {s.detail}</En></li>)}
           </ol>
         </div>
       )}
