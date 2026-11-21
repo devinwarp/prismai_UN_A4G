@@ -258,3 +258,9 @@ test("reset at the starting state is a no-op (no log entry); a repeated or concu
   assert.ok(again.ok && again.noop === true);
   assert.equal((await A.loadState(d)).entries.length, n + 1, "a later request is a no-op");
 });
+
+test("the country demo ignores use-case gates and waivers added on the lifecycle screens (hosted and offline give the same UAE result)", () => {
+  const app = readFileSync("src/lib/un/country-app.ts", "utf8");
+  assert.match(app, /gov: noGov/);
+  assert.doesNotMatch(app, /loadGov|gates-store/);
+});
