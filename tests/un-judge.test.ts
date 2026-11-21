@@ -12,7 +12,7 @@ function routes(dir: string): string[] {
   });
 }
 
-test("every mutating /api/admin/un route is behind requireAdmin (judges are viewers, so read-only)", () => {
+test("every mutating /api/admin/un route is behind a guard: requireAdmin, or requirePermission (judges are viewers, so read-only)", () => {
   const files = routes("src/app/api/admin/un");
   assert.ok(files.length >= 8);
   for (const f of files) {
@@ -23,7 +23,7 @@ test("every mutating /api/admin/un route is behind requireAdmin (judges are view
       const rest = src.slice(at);
       const next = rest.slice(10).search(/export async function /);
       const body = next < 0 ? rest : rest.slice(0, next + 10);
-      assert.match(body, /requireAdmin\(\)/, `${f} ${m} must call requireAdmin()`);
+      assert.match(body, /(requireAdmin\(\)|requirePermission\()/, `${f} ${m} must call requireAdmin() or requirePermission()`);
     }
   }
 });

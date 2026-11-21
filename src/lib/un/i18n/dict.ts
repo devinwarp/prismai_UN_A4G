@@ -9,6 +9,9 @@ import { COUNTRY_AR } from "./country-ar.ts";
 import { UI_A_AR } from "./ui-a-ar.ts";
 import { UI_B_AR } from "./ui-b-ar.ts";
 import { UI_C_AR } from "./ui-c-ar.ts";
+import { TESTS_AR } from "./tests-ar.ts";
+import { PILOT_AR } from "./pilot-ar.ts";
+import { PEOPLE_AR } from "./people-ar.ts";
 
 // Lightweight Arabic/English dictionary for the federal admin UI. Pure, no
 // library. Keys not found fall back to the English text passed by the caller,
@@ -317,6 +320,9 @@ export const AR: Record<string, string> = {
   ...AGENT_RUNTIME_AR,
   ...UI_A_AR,
   ...UI_B_AR,
+  ...TESTS_AR,
+  ...PILOT_AR,
+  ...PEOPLE_AR,
   ...UI_C_AR,
 };
 

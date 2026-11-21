@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
+import { permissionsFor } from "@/lib/un/permissions-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadEntityGoals } from "@/lib/un/store";
 import { attest, TARGET_RUNS, DEFAULT_THRESHOLDS } from "@/lib/un/sijil";
@@ -73,6 +74,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
   ]);
   const eff = effectiveGates({ ext: uc.ext_id, facts: factsOf(uc), gov: await loadGov(profile.org_id) });
   const verdictRun = uc.verdict_run_id ? await loadRun(profile.org_id, uc.verdict_run_id) : null;
+  const perms = await permissionsFor(profile, user.id);
   let liveMode = false;
   try { liveMode = liveConfigFromEnv() !== null; } catch { liveMode = true; /* misconfigured: the pull reports the error */ }
   return (
@@ -96,7 +98,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
       </main>
       <div>
         <div className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
-          <UseCaseGates useCaseId={id} ext={uc.ext_id} eff={eff} runGates={verdictRun?.state.state?.gates ?? {}} canEdit={profile.role === "admin"} approvers={await approversForUseCase(profile.org_id, id)} />
+          <UseCaseGates useCaseId={id} ext={uc.ext_id} eff={eff} runGates={verdictRun?.state.state?.gates ?? {}} canEdit={perms.can("gate.add", id) || perms.can("gate.waive", id)} approvers={await approversForUseCase(profile.org_id, id)} />
         </div>
       </div>
       <ChangeHistory ext_id={uc.ext_id} />

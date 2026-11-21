@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bad, notFound, requireAdmin } from "@/lib/api-auth";
+import { bad, forbidden, notFound, requireAdmin, requirePermission } from "@/lib/api-auth";
 import { activeCases, evalSetFor } from "@/lib/un/evalset";
 import { alignment, runEvalSet } from "@/lib/un/eval-run";
 import { isUuid } from "@/lib/un/model";
@@ -15,13 +15,18 @@ type Ctx = { params: Promise<{ id: string }> };
 /** POST { action } → the production watchdog, SIMULATED (the serving agent, its drift and Sijil are simulated).
  *   deploy                      put the approved agent version into production; links to the tuning log head
  *   window  { drift? }          run the same evals once; drift drops one rule to simulate a regression
- *   reinstate { comment }       roll back to the certified version, re-test it, and let a person bring it back on probation */
+ *   reinstate { comment }       roll back to the certified version, re-test it, and let a person bring it back on probation
+ * Each action has its own permission (deploy, watchdog.window, reinstate; see authz.ts); a legacy admin has all three. */
 export async function POST(request: Request, { params }: Ctx) {
-  const who = await requireAdmin();
-  if (who instanceof NextResponse) return who;
   const { id } = await params;
   if (!isUuid(id)) return notFound();
+  const who = await requirePermission(["deploy", "watchdog.window", "reinstate"], { useCaseId: id });
+  if (who instanceof NextResponse) return who;
   const b = (await request.json().catch(() => ({}))) as { action?: unknown; drift?: unknown; comment?: unknown };
+  // permission first, before any state is looked at: an unauthorised caller gets a refusal, not a state error
+  const act = b.action;
+  const may = act === "deploy" ? who.decide("deploy") : act === "window" ? who.decide("watchdog.window") : act === "reinstate" ? who.decide("reinstate") : null;
+  if (may && !may.ok) return forbidden(may.reason);
   const uc = await loadUseCase(who.org_id!, id);
   if (!uc) return notFound();
   const all = evalSetFor(uc.ext_id);

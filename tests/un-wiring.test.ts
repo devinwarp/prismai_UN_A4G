@@ -23,7 +23,7 @@ const accept = (gov: ReturnType<typeof replayGov>, gates: GateState, f = facts) 
 
 const sop = { attached: true, profiles: 4, ticked: 2, kbOk: true, skills: 2 };
 const stage2 = (accepted: boolean | null, s = sop) => {
-  const i: JourneyInput = { sop: s, gates: accepted === null ? null : { accepted }, verdict: null, evalSet: true, evalRuns: 0, evalMet: null, tuning: [], watch: [] };
+  const i: JourneyInput = { sop: s, gates: accepted === null ? null : { accepted }, verdict: null, tests: { ticked: 0, ready: 0 }, pilot: { ticked: 0, run: 0, met: 0 }, evalSet: true, evalRuns: 0, evalMet: null, tuning: [], watch: [] };
   const g = journeyStatus(i).stages[1];
   return [g.state, g.reason];
 };

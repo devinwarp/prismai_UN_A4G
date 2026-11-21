@@ -58,11 +58,11 @@ const has = (arr: unknown, s: string) => Array.isArray(arr) && arr.some((x) => S
 // check functions read loosely typed task output
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const out = (r: TaskResult) => r.output as Record<string, any>;
-const GOOD = ["noor-d1", "noor-d2", "noor-d3", "noor-d4"];
+export const GOOD = ["noor-d1", "noor-d2", "noor-d3", "noor-d4"];
 const BAKERY = ["bakery-d1", "bakery-d2", "bakery-d3", "bakery-d4"];
-const without = (k: string) => GOOD.filter((x) => x !== k);
-const swap = (k: string, to: string) => GOOD.map((x) => (x === k ? to : x));
-const ALL_DV = ["T04", "T05", "T06", "T07", "T08", "T09"];
+export const without = (k: string) => GOOD.filter((x) => x !== k);
+export const swap = (k: string, to: string) => GOOD.map((x) => (x === k ? to : x));
+export const ALL_DV = ["T04", "T05", "T06", "T07", "T08", "T09"];
 
 export const CASES: TaskCase[] = [
   // ---- T04: licence record and the date rule
