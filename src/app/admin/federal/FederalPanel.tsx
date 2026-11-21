@@ -32,6 +32,7 @@ const GO = [
   { href: "/admin/federal/compare", k: "go.cmp", en: "Compare jurisdictions", hint: "Same processes, three rule sets. What changes?" },
   { href: "/admin/federal/kb", k: "go.kb", en: "Search the sources", hint: "Every claim cites a passage. Find it here." },
   { href: "/admin/federal/gates", k: "go.gates", en: "Gates and rule sets", hint: "The checks every verdict rests on, per rule set and per use case." },
+  { href: "/admin/federal/country", k: "go.country", en: "Country and knowledge base", hint: "Switch country, add a policy, add a company and its SOP." },
   { href: "/admin/federal/outside", k: "go.outside", en: "Answer outside requests", hint: "Questions the SOP cannot answer wait here for a person." },
   { href: "/admin/federal/gaps", k: "go.gaps", en: "Read the gaps", hint: "Where today's rules fall short of agentic AI." },
 ];

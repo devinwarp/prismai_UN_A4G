@@ -7,7 +7,7 @@
       "title": "UC02 Trade licence renewal and permit pre-check",
       "chain_ok": true,
       "records": 24,
-      "head_hash": "372e24de55f13a39668f5d0c0b640cb7916684631efd77f8117d6ad14d5d8986",
+      "head_hash": "9e8a72d5acb0610d51bd8de264f951871e2371b6fa25a836d32d269d11015f8b",
       "steps": [
         {
           "step": "T0",
@@ -87,7 +87,7 @@
       "title": "UC01 Voice contact centre: hallucination alert on a live pilot",
       "chain_ok": true,
       "records": 27,
-      "head_hash": "a2c48ae097a9450fa6f57c7122c05d6e29d6e92e238e784e50af9fb587b07dfc",
+      "head_hash": "fcc8ce6c5d803fe056af92dde13f847def6c7eedbe87a46aa839d4c7569274cb",
       "steps": [
         {
           "step": "T0",
@@ -242,7 +242,7 @@
       "title": "UC13 Citizen mobility and fines assistant: promotions escalate into a privacy breach",
       "chain_ok": true,
       "records": 29,
-      "head_hash": "58e3811cff42d8c3745d3f4d975448e441006b50eadfb20f2f2edd9a2268ac58",
+      "head_hash": "a0b95ffaeae967c760014058da073021fa3fe90c9bb8eaf87f4e90cba302fafe",
       "steps": [
         {
           "step": "T0",

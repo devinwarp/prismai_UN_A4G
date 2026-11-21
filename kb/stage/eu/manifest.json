@@ -1,0 +1,149 @@
+{
+ "note": "Pre-fetched on 21 Nov 2026 so the live demo needs no network. Text extracted from the pages listed (glossary tooltips removed). source_sha256 is the SHA-256 of the fetched HTML page.",
+ "sources": [
+  {
+   "id": "eu-ai-act-art10",
+   "file": "art10.txt",
+   "title": "Regulation (EU) 2024/1689 (AI Act), Article 10: Data and data governance",
+   "url": "https://artificialintelligenceact.eu/article/10/",
+   "issuer": "European Union (Regulation (EU) 2024/1689; text as published on artificialintelligenceact.eu)",
+   "jurisdiction": "EU",
+   "instrument_type": "law",
+   "binding": true,
+   "date": "2024-06-13",
+   "topics": [
+    "eu-ai-act",
+    "high-risk"
+   ],
+   "fetched_on": "2026-11-21",
+   "source_sha256": "ba522dd9147349d97d0b41c06f9483bd0f8de30d600ea739861f701c989d6d4a",
+   "words": 2063
+  },
+  {
+   "id": "eu-ai-act-art12",
+   "file": "art12.txt",
+   "title": "Regulation (EU) 2024/1689 (AI Act), Article 12: Record-keeping",
+   "url": "https://artificialintelligenceact.eu/article/12/",
+   "issuer": "European Union (Regulation (EU) 2024/1689; text as published on artificialintelligenceact.eu)",
+   "jurisdiction": "EU",
+   "instrument_type": "law",
+   "binding": true,
+   "date": "2024-06-13",
+   "topics": [
+    "eu-ai-act",
+    "high-risk"
+   ],
+   "fetched_on": "2026-11-21",
+   "source_sha256": "4548cc40725cf3681041716cc79f5a8ce901a9a123f6bf6f59d057f7a596c9b9",
+   "words": 463
+  },
+  {
+   "id": "eu-ai-act-art13",
+   "file": "art13.txt",
+   "title": "Regulation (EU) 2024/1689 (AI Act), Article 13: Transparency and provision of information to deployers",
+   "url": "https://artificialintelligenceact.eu/article/13/",
+   "issuer": "European Union (Regulation (EU) 2024/1689; text as published on artificialintelligenceact.eu)",
+   "jurisdiction": "EU",
+   "instrument_type": "law",
+   "binding": true,
+   "date": "2024-06-13",
+   "topics": [
+    "eu-ai-act",
+    "high-risk"
+   ],
+   "fetched_on": "2026-11-21",
+   "source_sha256": "9daa80b56ab321a4c04e86f69921555f71e0e6c6bcb162f73b49bfa5111e8f98",
+   "words": 942
+  },
+  {
+   "id": "eu-ai-act-art14",
+   "file": "art14.txt",
+   "title": "Regulation (EU) 2024/1689 (AI Act), Article 14: Human oversight",
+   "url": "https://artificialintelligenceact.eu/article/14/",
+   "issuer": "European Union (Regulation (EU) 2024/1689; text as published on artificialintelligenceact.eu)",
+   "jurisdiction": "EU",
+   "instrument_type": "law",
+   "binding": true,
+   "date": "2024-06-13",
+   "topics": [
+    "eu-ai-act",
+    "high-risk"
+   ],
+   "fetched_on": "2026-11-21",
+   "source_sha256": "5088d8967b62bd64a653a9df69365a855cfcee22639cb6604026cedfc5489160",
+   "words": 699
+  },
+  {
+   "id": "eu-ai-act-art15",
+   "file": "art15.txt",
+   "title": "Regulation (EU) 2024/1689 (AI Act), Article 15: Accuracy, robustness and cybersecurity",
+   "url": "https://artificialintelligenceact.eu/article/15/",
+   "issuer": "European Union (Regulation (EU) 2024/1689; text as published on artificialintelligenceact.eu)",
+   "jurisdiction": "EU",
+   "instrument_type": "law",
+   "binding": true,
+   "date": "2024-06-13",
+   "topics": [
+    "eu-ai-act",
+    "high-risk"
+   ],
+   "fetched_on": "2026-11-21",
+   "source_sha256": "93a2a6ae92160f5ae9c9ab87ef366dffb0474072b42dd7f1b91c368c651aaa3d",
+   "words": 366
+  },
+  {
+   "id": "eu-ai-act-art26",
+   "file": "art26.txt",
+   "title": "Regulation (EU) 2024/1689 (AI Act), Article 26: Obligations of deployers of high-risk AI systems",
+   "url": "https://artificialintelligenceact.eu/article/26/",
+   "issuer": "European Union (Regulation (EU) 2024/1689; text as published on artificialintelligenceact.eu)",
+   "jurisdiction": "EU",
+   "instrument_type": "law",
+   "binding": true,
+   "date": "2024-06-13",
+   "topics": [
+    "eu-ai-act",
+    "high-risk"
+   ],
+   "fetched_on": "2026-11-21",
+   "source_sha256": "4d99f115fa7de3bef25801493903daead344c5077fc6a940bbad526c4ba8f03e",
+   "words": 1947
+  },
+  {
+   "id": "eu-ai-act-art50",
+   "file": "art50.txt",
+   "title": "Regulation (EU) 2024/1689 (AI Act), Article 50: Transparency obligations for providers and deployers of certain AI systems",
+   "url": "https://artificialintelligenceact.eu/article/50/",
+   "issuer": "European Union (Regulation (EU) 2024/1689; text as published on artificialintelligenceact.eu)",
+   "jurisdiction": "EU",
+   "instrument_type": "law",
+   "binding": true,
+   "date": "2024-06-13",
+   "topics": [
+    "eu-ai-act",
+    "high-risk"
+   ],
+   "fetched_on": "2026-11-21",
+   "source_sha256": "1ff0c4b29e2a538f45fb7987b68b36c1362d5ab09a72c7d617f14884fcb20ec2",
+   "words": 952
+  },
+  {
+   "id": "eu-ai-act-annex3",
+   "file": "annex3.txt",
+   "title": "Regulation (EU) 2024/1689 (AI Act), Annex III: High-risk AI systems referred to in Article 6(2)",
+   "url": "https://artificialintelligenceact.eu/annex/3/",
+   "issuer": "European Union (Regulation (EU) 2024/1689; text as published on artificialintelligenceact.eu)",
+   "jurisdiction": "EU",
+   "instrument_type": "law",
+   "binding": true,
+   "date": "2024-06-13",
+   "topics": [
+    "eu-ai-act",
+    "high-risk"
+   ],
+   "fetched_on": "2026-11-21",
+   "source_sha256": "6f536f3b096d6d7f59be8c13e70bb92e79eba259be55d290ca21a3993042067e",
+   "words": 1200
+  }
+ ]
+}

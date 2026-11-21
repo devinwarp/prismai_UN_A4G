@@ -81,7 +81,14 @@ function indexOf(chunks: Chunk[], stem = false): Index {
   return ix;
 }
 
-const isUae = (c: Chunk) => c.jurisdiction === "UAE-federal" || c.jurisdiction === "Dubai";
+const UAE_HOME = ["UAE-federal", "Dubai"];
+
+/** Builds (or returns the already built) BM25 index of this exact array and says how big it is. The country
+ * switch (country.ts) calls it to rebuild retrieval for a scope and report what was built. */
+export function warmIndex(chunks: Chunk[]): { docs: number; terms: number; avgLen: number } {
+  const ix = indexOf(chunks, false);
+  return { docs: ix.len.length, terms: ix.df.size, avgLen: Math.round(ix.avg * 10) / 10 };
+}
 
 export interface SearchOpts {
   k?: number;
@@ -96,6 +103,8 @@ export interface SearchOpts {
   /** Stem query and chunk terms (see stemWord). Off by default, so agent
    * retrieval inside runs is unchanged and reproducible. */
   stem?: boolean;
+  /** Jurisdictions that count as "home" for `mix` (default: UAE-federal and Dubai). The country scope sets it. */
+  home?: string[];
   /** Hybrid only: weight of the BM25 ranking in the fusion (vector weight is 1). */
   lexicalWeight?: number;
 }
@@ -133,8 +142,9 @@ export function searchChunks(chunks: Chunk[], query: string, opts: SearchOpts = 
   });
   hits.sort((a, b) => b.score - a.score);
   if (!opts.mix) return opts.perSource ? capPerSource(hits, k, opts.perSource) : hits.slice(0, k);
-  const uae = hits.filter((h) => isUae(h.chunk));
-  const world = hits.filter((h) => !isUae(h.chunk));
+  const home = opts.home ?? UAE_HOME;
+  const uae = hits.filter((h) => home.includes(h.chunk.jurisdiction));
+  const world = hits.filter((h) => !home.includes(h.chunk.jurisdiction));
   const out: Hit[] = [];
   for (let i = 0; out.length < k && (i < uae.length || i < world.length); i++) {
     if (uae[i]) out.push(uae[i]);

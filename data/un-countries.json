@@ -1,0 +1,11 @@
+{
+  "note": "Country scopes: which knowledge-base jurisdictions a country's retrieval covers (its own sources plus international standards) and which rule set (data/un-governance.json) judges its verdicts. Adding a country is a data change: a scope here, a rule set there, and sources with that jurisdiction tag in kb/sources.json. The rule sets are simplified demo encodings, not legal advice.",
+  "countries": [
+    { "id": "UAE", "name": "United Arab Emirates", "ruleset": "uae-federal", "home": ["UAE-federal", "Dubai"], "international": ["international"], "built": "precomputed" },
+    { "id": "SG", "name": "Singapore", "ruleset": "sg-imda", "home": ["Singapore"], "international": ["international"], "built": "precomputed" },
+    { "id": "EU", "name": "European Union", "ruleset": "eu-ai-act", "home": ["EU"], "international": ["international"], "built": "on_demand", "stage": "kb/stage/eu" }
+  ],
+  "companies": [
+    { "id": "marsa", "name": "Marsa Public Services Authority (fictitious)", "country": "UAE", "sop_id": "SOP-LIC-014", "sop_file": "data/sops/uc02-trade-licence-renewal-sop.md" }
+  ]
+}
