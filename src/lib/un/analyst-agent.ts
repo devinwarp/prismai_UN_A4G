@@ -295,6 +295,7 @@ export class Agent {
             `Your trade licence renewal (case ${this.caseId}) is on hold because of missing information until it is received.`,
             "Please send:", ...items.map((i) => `- ${i}`), "",
             "You can submit documents on the case page of the portal, at the counter, or by replying to this email with the case number in the subject.",
+            "", "This message was drafted by an AI assistant and a member of staff reviews it before it is sent.",
           ].join("\n"),
           items,
         };
