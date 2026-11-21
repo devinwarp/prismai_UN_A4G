@@ -4,6 +4,7 @@ import { openAgent, type Agent, type TaskResult, type Tools } from "./analyst-ag
 import { inMemoryStore, type CaseMemory, type CaseState } from "./case-memory.ts";
 import { cachedOcr, type OcrEngine, type OcrResult } from "./doc-ocr.ts";
 import { DOC_DIR, DOCS, NO_REGISTRY, RECORDS, REGISTRY, TODAY, type Payment } from "./fixtures-uc02.ts";
+import type { ReactConfig } from "./react-config.ts";
 import type { Retrieve } from "./react-sop.ts";
 import { loadSop } from "./sop-kb.ts";
 
@@ -144,6 +145,10 @@ export interface EvalEnv {
   ocr: OcrEngine;
   /** reads a synthetic document image by DOCS key */
   image?: (key: string) => Buffer;
+  /** approved ReAct glossary, routing and thresholds (defaults when absent) */
+  react?: ReactConfig;
+  /** approved tuned rule lines per job profile name, appended to that profile's skill */
+  skillRules?: Record<string, string[]>;
 }
 
 export const readImage = (key: string) => readFileSync(path.join(process.cwd(), DOC_DIR, DOCS[key].file));
@@ -162,6 +167,7 @@ function toolsFor(c: TaskCase, env: EvalEnv, caseId: string): Tools {
     ocr: env.ocr,
     retrieve: env.retrieve,
     requestOutside: () => `queued for a person (${caseId})`,
+    react: env.react,
   };
 }
 
@@ -170,7 +176,7 @@ export async function runCase(c: TaskCase, env: EvalEnv): Promise<CaseOutcome> {
   const caseId = `CASE-${c.id}`;
   const store = inMemoryStore();
   const tools = toolsFor(c, env, caseId);
-  const open = (profile: string) => openAgent({ sopId: SOP_ID, profile, caseId, today: TODAY, tools, store, actorClock: () => `${TODAY}T09:00:00.000Z` });
+  const open = (profile: string) => openAgent({ sopId: SOP_ID, profile, caseId, today: TODAY, tools, store, actorClock: () => `${TODAY}T09:00:00.000Z`, skillRules: env.skillRules?.[profile] });
   let dv: Agent = await open(DV);
   await dv.openCase({ licence_number: RECORDS[c.licence].licence_number, declared_activity_code: c.request?.declared ?? "", reply_to: c.request?.reply_to });
   if (c.priorDocs) {
