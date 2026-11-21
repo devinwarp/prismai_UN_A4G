@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
 import { buildReplays, loadReplays } from "../src/lib/un/replay.ts";
@@ -57,7 +58,9 @@ test("/replay is excluded from the session proxy", () => {
 
 test("offline store round-trips inserts, filters and upserts", async () => {
   process.env.OFFLINE = "1";
-  process.env.OFFLINE_DB = ".data/test-offline-db.json";
+  // scratch file in the OS temp dir (removed after), never in the repo
+  const dir = mkdtempSync(path.join(tmpdir(), "judge-"));
+  process.env.OFFLINE_DB = path.join(dir, "db.json");
   const { offlineClient, OFFLINE_ORG } = await import("../src/lib/supabase/offline.ts");
   const c = offlineClient();
   const { data: ucs } = (await c.from("un_use_cases").select("*").eq("org_id", OFFLINE_ORG).order("ext_id")) as { data: { ext_id: string }[] };
@@ -67,4 +70,8 @@ test("offline store round-trips inserts, filters and upserts", async () => {
   assert.equal(got.data.scenario_id, "S1");
   const { data: none } = await c.from("un_runs").select("id").eq("id", "nope").maybeSingle();
   assert.equal(none, null);
+  assert.ok(existsSync(process.env.OFFLINE_DB), "the store file is where OFFLINE_DB says");
+  assert.ok(!existsSync(path.join(process.cwd(), process.env.OFFLINE_DB)), "an absolute OFFLINE_DB is not glued onto the repo (no var/ folder)");
+  delete process.env.OFFLINE_DB;
+  rmSync(dir, { recursive: true, force: true });
 });

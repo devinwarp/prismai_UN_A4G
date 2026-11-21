@@ -92,7 +92,8 @@ test("generic SOPs: profiles come from actors, grouped by their steps, applicant
 });
 
 test("ticks persist in the offline store and a re-tick updates the same row", async () => {
-  process.env.OFFLINE_DB = path.join(mkdtempSync(path.join(tmpdir(), "prof-")), "db.json");
+  const dir = mkdtempSync(path.join(tmpdir(), "prof-"));
+  process.env.OFFLINE_DB = path.join(dir, "db.json");
   const db = offlineClient();
   const row = { org_id: "o", use_case_id: "u", sop_id: "SOP-LIC-014", profile: "Fee and Payment Officer" };
   await db.from("un_job_profiles").upsert({ ...row, automate: true, skill_sha256: "ab" }, { onConflict: "org_id,use_case_id,sop_id,profile" });
@@ -101,6 +102,7 @@ test("ticks persist in the offline store and a re-tick updates the same row", as
   assert.equal((data as unknown[]).length, 1);
   assert.equal((data as { automate: boolean }[])[0].automate, false);
   delete process.env.OFFLINE_DB;
+  rmSync(dir, { recursive: true, force: true });
 });
 
 test("ticking checks the SOP knowledge base and extracts the skill as a library call", () => {

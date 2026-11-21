@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { existsSync, mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import test from "node:test";
@@ -139,9 +139,10 @@ test("whole flow on the in-memory store", async () => { await fullFlow(memorySto
 
 test("whole flow on the offline database stand-in (the OFFLINE=1 path of the app)", async () => {
   process.env.OFFLINE = "1";
-  process.env.OFFLINE_DB = path.join(mkdtempSync(path.join(tmpdir(), "country-")), "db.json");
+  const dir = mkdtempSync(path.join(tmpdir(), "country-"));
+  process.env.OFFLINE_DB = path.join(dir, "db.json");
   const { offlineClient, OFFLINE_ORG } = await import("../src/lib/supabase/offline.ts");
-  await fullFlow(countryStore(offlineClient() as unknown as SupabaseLike, OFFLINE_ORG));
+  try { await fullFlow(countryStore(offlineClient() as unknown as SupabaseLike, OFFLINE_ORG)); } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
 type Row = Record<string, unknown>;
