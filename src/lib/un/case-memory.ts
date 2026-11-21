@@ -10,7 +10,7 @@ import type { DocType, Fields, Finding } from "./doc-ocr.ts";
 // shapes what is stored: the extracted fields, the image's SHA-256 and the OCR confidence, never
 // the image itself, and everything is scoped to one case id.
 
-export type MemoryKind = "case_opened" | "document_received" | "check" | "status" | "draft" | "outside_request" | "note";
+export type MemoryKind = "case_opened" | "document_received" | "check" | "status" | "draft" | "outside_request" | "note" | "outside_answer" | "forgery_suspected";
 export type MemoryEntry = ChainEntry<MemoryKind>;
 
 export interface MemoryStore {
@@ -34,7 +34,12 @@ export interface StoredDocument {
   confidence: number;
   findings: Finding[];
   received_at: string;
+  /** set when the original is in a language other than Arabic or English */
+  language?: string | null;
 }
+
+/** A person's answer to an outside-information request, as remembered. */
+export interface OutsideAnswer { answer: string; role: string; at: string; request_id: string | null }
 
 export interface CaseState {
   caseId: string;
@@ -46,12 +51,14 @@ export interface CaseState {
   checks: Record<string, { output: Record<string, unknown>; citations: string[]; at: string }>;
   status: "complete" | "on_hold" | "blocked" | null;
   drafts: { task: string; at: string; payload: Record<string, unknown> }[];
-  outside: { question: string; at: string }[];
+  outside: { question: string; at: string; reason?: string; answered?: OutsideAnswer }[];
+  /** set when an uploaded document looked altered or invented: the case stops and goes to Compliance */
+  forgery: { doc: DocType; indicators: string[]; sha256: string; at: string } | null;
   chain: ReturnType<typeof verifyChain>;
 }
 
 export function replayCase(caseId: string, entries: MemoryEntry[]): CaseState {
-  const s: CaseState = { caseId, licence_number: null, request: null, documents: {}, checks: {}, status: null, drafts: [], outside: [], chain: verifyChain(entries) };
+  const s: CaseState = { caseId, licence_number: null, request: null, documents: {}, checks: {}, status: null, drafts: [], outside: [], forgery: null, chain: verifyChain(entries) };
   for (const e of entries) {
     const p = e.payload;
     if (e.kind === "case_opened") { s.licence_number = String(p.licence_number); s.request = p; }
@@ -59,7 +66,13 @@ export function replayCase(caseId: string, entries: MemoryEntry[]): CaseState {
     else if (e.kind === "check") s.checks[String(p.task)] = { output: p.output as Record<string, unknown>, citations: p.citations as string[], at: e.at };
     else if (e.kind === "status") s.status = p.status as CaseState["status"];
     else if (e.kind === "draft") s.drafts.push({ task: String(p.task), at: e.at, payload: p });
-    else if (e.kind === "outside_request") s.outside.push({ question: String(p.question), at: e.at });
+    else if (e.kind === "outside_request") s.outside.push({ question: String(p.question), at: e.at, reason: p.reason ? String(p.reason) : undefined });
+    else if (e.kind === "outside_answer") {
+      const open = s.outside.find((o) => !o.answered && o.question === String(p.question));
+      const answered = { answer: String(p.answer), role: String(p.role), at: e.at, request_id: p.request_id ? String(p.request_id) : null };
+      if (open) open.answered = answered;
+      else s.outside.push({ question: String(p.question), at: e.at, answered });
+    } else if (e.kind === "forgery_suspected") s.forgery = { doc: p.type as DocType, indicators: p.indicators as string[], sha256: String(p.sha256), at: e.at };
   }
   return s;
 }
@@ -82,6 +95,9 @@ export class CaseMemory {
   }
 
   state(): CaseState { return replayCase(this.caseId, this.entries); }
+
+  /** Hash of the newest entry, or null for an empty log. */
+  lastHash(): string | null { return this.entries[this.entries.length - 1]?.hash ?? null; }
 
   entriesOf(kind: MemoryKind): MemoryEntry[] { return this.entries.filter((e) => e.kind === kind); }
 

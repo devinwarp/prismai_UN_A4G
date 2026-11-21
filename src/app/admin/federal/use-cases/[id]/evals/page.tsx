@@ -7,12 +7,14 @@ import { activeCases, evalSetFor } from "@/lib/un/evalset";
 import { alignment, type CaseResult, type Tally } from "@/lib/un/eval-run";
 import { loadEvalRuns } from "@/lib/un/eval-store";
 import { isUuid } from "@/lib/un/model";
+import { agentRuntimeSummary, SOP_BY_USE_CASE } from "@/lib/un/agent-eval-summary";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { designationOf } from "@/lib/un/tuning";
 import { loadLog } from "@/lib/un/tuning-store";
 import AdminHeader from "../../../../AdminHeader";
 import { CaseText, FindingText, ReasonText } from "../../../_components/EvalText";
 import LangShell, { T, TV } from "../../../_components/Lang";
+import AgentRuntimePanel from "../../../_components/AgentRuntimePanel";
 import { card } from "../../../_components/ui";
 import EvalRunButton from "./EvalRunButton";
 
@@ -66,6 +68,7 @@ export default async function EvalsPage({ params }: { params: Promise<{ id: stri
   const latest = runs[0];
   const al = latest ? alignment(latest.summary) : null;
   const canEdit = profile.role === "admin";
+  const runtime = SOP_BY_USE_CASE[uc.ext_id] ? await agentRuntimeSummary() : null;
   const k = (x: Tally) => x.correct;
 
   return (
@@ -86,6 +89,8 @@ export default async function EvalsPage({ params }: { params: Promise<{ id: stri
           <p className="mt-3 text-sm">
             <Link href={`/admin/federal/use-cases/${id}/tuning`} className="underline underline-offset-4"><T k="ev.link.tuning" en="Tuning and approval" /></Link>
           </p>
+
+          {runtime && <AgentRuntimePanel s={runtime} />}
 
           {cases.length === 0 ? (
             <p className="mt-8 text-sm text-ink-soft"><TV k="ev.nocases" en="No eval set exists for {uc} yet. Eval sets are defined for UC01 and UC02." v={{ uc: uc.ext_id }} /></p>

@@ -93,5 +93,95 @@
   "text": "BAKERY PRICE LIST\nCroissant: 4\nLoaf: 7\n",
   "confidence": 95,
   "file": "menu.png"
+ },
+ "d25f302ec993b2d3cc430a0ae60f34ee5c064714caad0f34a317e2c17883c813": {
+  "text": "AUTHORISATION LETTER\nSigned by: Omar Hassan Al Noor\nRepresentative: Hana Saeed Karim\nLicence number: TL-482913\n\nDated: 2026-10-25\n\nCopy of representative identity: attached\n",
+  "confidence": 95,
+  "file": "noor-d5.png"
+ },
+ "e02d8970ab1f6ed5755c68bffb2df0d09150643bfd3cd8fab69e05ba49273ec9": {
+  "text": "AUTHORISATION LETTER\nSigned by: Omar Hassan Al Noor\nRepresentative: Hana Saeed Karim\nLicence number: TL-482913\n\nDated: 2026-07-01\n\nCopy of representative identity: attached\n",
+  "confidence": 95,
+  "file": "noor-d5-old.png"
+ },
+ "ccbb7eff1309ea4e5812baaf412090cdedebd489506034e2bf4d7e4d44e6aaca": {
+  "text": "AUTHORISATION LETTER\nSigned by: Omar Hassan Al Noor\nRepresentative: Hana Saeed Karim\nLicence number: TL-482913\n\nDated: 2026-08-22\n\nCopy of representative identity: attached\n",
+  "confidence": 95,
+  "file": "noor-d5-edge90.png"
+ },
+ "408d69e6f633f1e7430999258984e5de05ae91b0a92d6b3cbac65384530201f8": {
+  "text": "AUTHORISATION LETTER\nSigned by: Hana Saeed Karim\nRepresentative: Hana Saeed Karim\nLicence number: TL-482913\n\nDated: 2026-10-25\n\nCopy of representative identity: attached\n",
+  "confidence": 95,
+  "file": "noor-d5-signer.png"
+ },
+ "3bb636434bf2ae1bd1382108d50546a720d09922db61848b82bead0a0bd23cdb": {
+  "text": "AUTHORISATION LETTER\nSigned by: Omar Hassan Al Noor\nRepresentative: Hana Saeed Karim\nLicence number: TL-482931\n\nDated: 2026-10-25\n\nCopy of representative identity: attached\n",
+  "confidence": 95,
+  "file": "noor-d5-wrongno.png"
+ },
+ "d4be6169942bdb2ddd6ccbce4b33d9b791e7f49b4d1f993b33b4fc5a4c478338": {
+  "text": "AUTHORISATION LETTER\nSigned by: Omar Hassan Al Noor\nRepresentative: Hana Saeed Karim\n\nLicence number: TL-482913\n\nDated: 2026-10-25\n\nCopy of representative identity: not attached\n",
+  "confidence": 95,
+  "file": "noor-d5-norepid.png"
+ },
+ "8cd1d9bbea1c1efc163ab6612b46168ec839de89cb986a95af285bf484f903e9": {
+  "text": "AUTHORISATION LETTER\nSigned by: Omar Hassan Al Noor\nRepresentative: Hana Saeed Karim\nLicence number: TL-482913\n\nDated: 2026-12-30\n\nCopy of representative identity: attached\n",
+  "confidence": 95,
+  "file": "noor-d5-future.png"
+ },
+ "b0402df05ab901f3265af5c1857bd1a2b4146abeacb4ffdac3a2866efd336bf7": {
+  "text": "CONTRAT DE BAIL\n\nEnregistre au Registre foncier de Marsa\nLocataire: Omar Hassan Al Noor\n\nLocal: Unit 14, Dock Road, Marsa\nDebut: 2026-01-01\n\nFin: 2028-12-31\n",
+  "confidence": 94,
+  "file": "noor-d2-fr.png"
+ },
+ "a9de06449111d7b19bdaf2bfb84164b7d5719ae98fd80e29f9aaee86da31d898": {
+  "text": "CERTIFIED TRANSLATION\nTranslator: Sami Farouk Haddad\nRegistration: MRT-1042\n\nTranslated from: French\n\nTranslated into: Arabic\n\nDocument: D2\n\nStamp: applied\n\nAttached to original: yes\n",
+  "confidence": 95,
+  "file": "noor-d6.png"
+ },
+ "1838f6c36284e3725d8cc37c25f8e926b107ee9dd0fcc741039fca90be585c7b": {
+  "text": "CERTIFIED TRANSLATION\nTranslator: Sami Farouk Haddad\nRegistration: MRT-2210\n\nTranslated from: French\n\nTranslated into: English\n\nDocument: D2\n\nStamp: applied\n\nAttached to original: yes\n",
+  "confidence": 95,
+  "file": "noor-d6-english.png"
+ },
+ "6ff42c1360455d3a53589a1ea3a7efbe2ed3cde2a27ef6ab6ab9ca7bb1fb7bb7": {
+  "text": "CERTIFIED TRANSLATION\nTranslator: Sami Farouk Haddad\nRegistration: MRT-1042\n\nTranslated from: French\n\nTranslated into: German\n\nDocument: D2\n\nStamp: applied\n\nAttached to original: yes\n",
+  "confidence": 95,
+  "file": "noor-d6-german.png"
+ },
+ "95a2d45ae40097ad71ea34fa5b0ee5eedd672ad4a46894495815292a1d54abfb": {
+  "text": "CERTIFIED TRANSLATION\nTranslator: Sami Farouk Haddad\nRegistration: MRT-1042\n\nTranslated from: French\n\nTranslated into: Arabic\n\nDocument: D2\n\nStamp: missing\n\nAttached to original: yes\n",
+  "confidence": 95,
+  "file": "noor-d6-unstamped.png"
+ },
+ "8c2438e628d405cb051b9ffda82f834e2d153174db08bbe74de2fdcac29e7410": {
+  "text": "CERTIFIED TRANSLATION\nTranslator: Sami Farouk Haddad\nRegistration: MRT-9999\n\nTranslated from: French\n\nTranslated into: Arabic\n\nDocument: D2\n\nStamp: applied\n\nAttached to original: yes\n",
+  "confidence": 95,
+  "file": "noor-d6-unreg.png"
+ },
+ "5489cd4a2bd1a39cbc9ad971871cfcc770b919872ea8271c4731eea0ae6251c5": {
+  "text": "CERTIFIED TRANSLATION\nTranslator: Sami Farouk Haddad\nRegistration: MRT-1042\n\nTranslated from: French\n\nTranslated into: Arabic\n\nDocument: D2\n\nStamp: applied\n\nAttached to original: no\n",
+  "confidence": 95,
+  "file": "noor-d6-detached.png"
+ },
+ "ec0a3f02b99a320ef67594abe666edd868622843a93473a77fe8b2a8e9af8f50": {
+  "text": "CERTIFIED TRANSLATION\nTranslator: Sami Farouk Haddad\nRegistration: MRT-1042\n\nTranslated from: French\n\nTranslated into: Arabic\n\nDocument: D4\n\nStamp: applied\n\nAttached to original: yes\n",
+  "confidence": 95,
+  "file": "noor-d6-wrongdoc.png"
+ },
+ "01b315ce9dafd87041b38342c3b1ac66241497753f13a637cf23824abaae40ca": {
+  "text": "TRADE NAME CERTIFICATE\nIssued by: Marsa Trade Office\n\nTrade name: Al Noor Trading\n\nLicence number: TL-482913\n\nValid until: 2027-06-30\n",
+  "confidence": 95,
+  "file": "noor-d1-forged.png"
+ },
+ "1a0184bbc486ed826ccd5abd5faba30f9633d7372ec607133481c04207273ddc": {
+  "text": "TENANCY CONTRACT\nRegistered with Marsa Property Registry\nRegistry reference: PR-77\n\nTenant: Omar Hassan Al Noor\nPremises: Unit 14, Dock Road, Marsa\nStart date: 2026-01-01\n\nEnd date: 2028-12-31\n",
+  "confidence": 95,
+  "file": "noor-d2-forged.png"
+ },
+ "69ad062cee875e405fe96df1d2555de55548cf5f941a3d22f98ada998a0e7916": {
+  "text": "CERTIFICATE OF INSURANCE\nPublic liability\n\nInsured: Omar Hassan Al Noor\n\nPremises: Unit 14, Dock Road, Marsa\nActivity: Retail and trading\n\nCover: 500,000\n\nValid from: 2027-06-30\n\nValid to: 2026-07-01\n",
+  "confidence": 95,
+  "file": "noor-d4-forged.png"
  }
 }

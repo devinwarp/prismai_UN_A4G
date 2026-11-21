@@ -35,6 +35,7 @@ const PROBES = {
   graceDays: { query: "licence expired more than days ago blocked outside the grace period", read: first(/expired (?:for )?more than (\d+) days/i) },
   leaseMonths: { query: "how long must the lease run months from the renewal start date", read: first(/at least (\d+) months/i) },
   idValidDays: { query: "owner identity document must be valid how many days after it is submitted", read: first(/for at least (\d+) days after/i) },
+  authLetterDays: { query: "authorisation letter dated within the last how many days", read: first(/dated within the last (\d+) days/i) },
   minCover: { query: "insurance certificate minimum cover amount", read: first(/cover of at least ([\d,]+)/i) },
   lateFeePct: { query: "late fee percent of the base renewal fee", read: first(/(\d+)% of base/i) },
   noticeDays: { query: "fee notice how to pay and how many calendar days it is valid", read: first(/valid for (\d+) calendar days/i) },
