@@ -159,9 +159,9 @@ test("C5-1 / C2-3: the report docx quotes the Y.3172 P node and describes the re
   const xml = execFileSync("python", ["-c", "import zipfile,sys;sys.stdout.buffer.write(zipfile.ZipFile('docs/report/prism-technical-report.docx').read('word/document.xml'))"], { encoding: "utf8" });
   assert.ok(xml.includes("enables the application of policies to the output of the model node"));
   assert.ok(xml.includes("GO_SUPERVISED, ASSISTANT_ONLY, NO_GO, NO_GO, ASSISTANT_ONLY, GO_SUPERVISED"));
-  assert.ok(xml.includes("fee_accuracy") && xml.includes("32 sources (398 chunks) pinned"));
+  assert.ok(xml.includes("fee_accuracy") && xml.includes("40 sources (457 chunks) pinned"));
   // claims added 21 Nov 2026 (evaluation hardening, SOP intake) and the corrections that go with them
-  for (const s of ["178 tests, 177 pass", "0 permissive flips", "50/50", "by construction", "The second reading was added after the first", "not by a person", "hosted demo database", "tested as SQL text only", "XXD", "26 went through ITU's pipeline functions and 6 later primary-source excerpts were added with a sync script", "never to a GO verdict", "Fairness is out of scope"]) assert.ok(xml.includes(s), s);
+  for (const s of ["332 tests, 330 pass", "0 permissive flips", "50/50", "by construction", "The second reading was added after the first", "not by a person", "hosted demo database", "tested as SQL text only", "XXD", "26 went through ITU's pipeline functions and 6 later primary-source excerpts were added with a sync script", "never to a GO verdict", "Fairness is out of scope"]) assert.ok(xml.includes(s), s);
   assert.ok(!xml.includes("151 tests") && !xml.includes("passes with 1 warning") && !xml.includes("live seeded dashboard"));
 });
 
@@ -217,7 +217,7 @@ test("C5-1 / section 8: the shipped report PDF is the export of the final docx: 
   assert.ok(!/Meng|Jiaying/i.test(parts[1]), `PDF author metadata is the template's: ${parts[1]}`);
   assert.ok(text.includes("HTML cleaning is ours") && text.includes("enables the application of policies") && text.includes("recall@5"));
   assert.ok(!/reused unmodified|policer|Not verified here/.test(text));
-  assert.ok(/178 tests/.test(text) && /0 permissive flips/.test(text) && /hosted demo database/.test(text), "the PDF is not the export of the current docx");
+  assert.ok(/332 tests/.test(text) && /0 permissive flips/.test(text) && /hosted demo database/.test(text), "the PDF is not the export of the current docx");
 });
 
 test("I-6: the two restricted sources are held as short excerpts only; the notice records the decision and the full text is gone", async () => {
