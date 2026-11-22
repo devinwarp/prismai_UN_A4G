@@ -45,3 +45,18 @@ test("goal-review log: every column the store writes exists; the goal set lives 
   const cols = columns("un_lifecycle_pilot_reports");
   for (const c of reportInsert) assert.ok(cols.has(c), `un_lifecycle_pilot_reports.${c} does not exist`);
 });
+
+test("testgen log: every column the store reads and writes exists, kinds match the SQL check, and the table is append-only", () => {
+  const have = columns("un_testgen_log");
+  const src = readFileSync("src/lib/un/testgen.ts", "utf8");
+  const insert = src.match(/from\("un_testgen_log"\)\.insert\(\{([^}]+)\}/)![1].split(",").map((c) => c.trim().split(":")[0].trim());
+  for (const c of insert) assert.ok(have.has(c), `un_testgen_log.${c} does not exist`);
+  for (const c of ["org_id", "use_case_id", "profile"]) assert.ok(have.has(c), c);
+  assert.match(src, /from\("un_testgen_log"\)\.select\("\*"\)/);
+  const kinds = sql.match(/un_testgen_log[\s\S]*?kind text not null check \(kind in \(([^)]+)\)\)/)![1].replace(/'/g, "").split(",").map((k) => k.trim());
+  assert.deepEqual(kinds, ["generated", "rejected", "ruled"]);
+  assert.match(src, /type GenKind = "generated" \| "rejected" \| "ruled"/);
+  assert.match(sql, /un_testgen_log_no_update before update/);
+  assert.match(sql, /un_testgen_log_no_delete before delete/);
+  assert.ok(!/un_testgen_log/.test(readFileSync("supabase/schema.sql", "utf8")) && !/un_testgen_log/.test(readFileSync("supabase/un-federal.sql", "utf8")), "schema.sql and un-federal.sql are untouched");
+});
