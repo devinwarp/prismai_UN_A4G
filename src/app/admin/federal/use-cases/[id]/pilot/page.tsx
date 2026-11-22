@@ -11,7 +11,7 @@ import { loadAttachedSop, loadProfileRows } from "@/lib/un/profiles-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { profilesOf } from "@/lib/un/sop/data";
 import LangShell, { T, TV } from "../../../_components/Lang";
-import { card, VerdictBadge } from "../../../_components/ui";
+import { card, scrollFocus, VerdictBadge } from "../../../_components/ui";
 import { GoalReview } from "./GoalReview";
 import { RunPilot } from "./PilotControls";
 
@@ -78,7 +78,7 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
                 <p className="mt-2 text-xs text-ink-soft"><TV k="pi.meta" en="{runs} runs ({reps} repetitions of each test) · {at} · {by}" v={{ runs: last.runs, reps: last.reps, at: new Date(last.at).toLocaleString("en-GB", { timeZone: "Asia/Dubai" }), by: last.actor }} /></p>
                 <p className="mt-1 font-mono text-[11px] text-ink-soft">tests {last.report.test_set_hash.slice(0, 12)} · params {last.report.params_hash.slice(0, 12)} · report {last.report.report_hash.slice(0, 12)}</p>
 
-                <div className="mt-4 overflow-x-auto" role="region" tabIndex={0} aria-label="Findings">
+                <div className="mt-4 overflow-x-auto" role="region" {...scrollFocus} aria-label="Findings">
                   <table className="w-full text-sm">
                     <thead>
                       <tr className="text-ink-soft">

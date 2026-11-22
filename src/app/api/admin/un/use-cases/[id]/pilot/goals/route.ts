@@ -15,6 +15,9 @@ import { loadParamLog } from "@/lib/un/verdict-param-store";
 import { paramsHash, replayParams } from "@/lib/un/verdict-params";
 import { chatCompletion, CHAT_MODEL } from "@/lib/llm";
 
+/** A pilot and a goal judgment make many calls; allow a long hosted request (seconds). */
+export const maxDuration = 300;
+
 type Ctx = { params: Promise<{ id: string }> };
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 const modelConfigured = () => !!(process.env.LLM_API_KEY ?? process.env.OPENROUTER_API_KEY);
@@ -55,7 +58,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const uc = await loadUseCase(who.org_id!, id);
   if (!uc) return notFound();
 
-  const pilot = (await loadPilots(who.org_id!, id, profile)).find((p) => p.id === pilotId);
+  const pilot = (await loadPilots(who.org_id!, id, profile, true)).find((p) => p.id === pilotId);
   if (!pilot) return notFound();
   if (pilot.basis) return bad("Judge the original pilot, not a report recomputed from a review");
 

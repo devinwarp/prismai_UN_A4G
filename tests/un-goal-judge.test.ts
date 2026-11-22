@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyGoals, appendReview, effective, judgeTests, parseJudgment, planReview, replayReviews, reviewHash, testsToJudge, verifyReviews, type ChatFn, type GoalJudgment, type ReviewEntry } from "../src/lib/un/goal-judge.ts";
+import { applyGoals, appendReview, effective, JUDGE_CONCURRENCY, judgeTests, parseJudgment, planReview, replayReviews, reviewHash, testsToJudge, verifyReviews, type ChatFn, type GoalJudgment, type ReviewEntry } from "../src/lib/un/goal-judge.ts";
 import type { EntityGoal } from "../src/lib/un/goals.ts";
 import type { PilotRun } from "../src/lib/un/pilot.ts";
 
@@ -26,6 +26,16 @@ test("judge: one call per test; a failed call is unjudged and does not stop the 
   const out = await judgeTests(chat, GOALS, [{ test_id: "a", title: "A", expect: ["x"], summary: "s" }, { test_id: "b", title: "B", expect: [], summary: "s" }, { test_id: "c", title: "C", expect: [], summary: "s" }]);
   assert.deepEqual(out.map((j) => j.met), [true, null, true]);
   assert.match(out[1].reason, /timeout/);
+});
+
+test("judge: calls run a few at a time (a pilot has hundreds of tests) and results keep the tests' order", async () => {
+  let live = 0, peak = 0;
+  const chat: ChatFn = async ({ user }) => { live++; peak = Math.max(peak, live); await new Promise((r) => setTimeout(r, 5)); live--; return user.includes("Test: T3") ? "nope" : reply(true, true); };
+  const tests = Array.from({ length: 40 }, (_, i) => ({ test_id: `t${i}`, title: `T${i}`, expect: [], summary: "s" }));
+  const out = await judgeTests(chat, GOALS, tests);
+  assert.deepEqual(out.map((j) => j.test_id), tests.map((t) => t.test_id));
+  assert.equal(out[3].met, null);
+  assert.ok(peak > 1 && peak <= JUDGE_CONCURRENCY, `peak ${peak}`);
 });
 
 test("tests to judge: one per distinct test, with the first run's output and the blueprint's wording", () => {

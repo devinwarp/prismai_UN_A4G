@@ -35,7 +35,7 @@ export async function loadJourneys(orgId: string, ucs: Pick<UnUseCaseState, "id"
     db.from("un_watchdog_log").select("*").eq("org_id", orgId),
     db.from("un_test_set_log").select("*").eq("org_id", orgId),
     db.from("un_verdict_param_log").select("*").eq("org_id", orgId),
-    db.from("un_pilot_reports").select("use_case_id, profile, at, report, basis").eq("org_id", orgId),
+    db.from("un_lifecycle_pilot_reports").select("use_case_id, profile, at, report, basis").eq("org_id", orgId),
   ]);
   const sopOf = new Map((sops.data ?? []).map((r: Row) => [String(r.use_case_id), String(r.sop_id)]));
   const ticks = group(profiles.data as Row[] | null), runs = group(evals.data as Row[] | null), tl = group(tuning.data as Row[] | null), wl = group(watch.data as Row[] | null);

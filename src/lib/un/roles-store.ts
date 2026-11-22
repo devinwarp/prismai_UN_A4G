@@ -45,6 +45,6 @@ export async function revokeAssignment(orgId: string, id: string, by: string): P
 
 /** The organisation's use cases, for choosing a scope. */
 export async function loadUseCaseChoices(orgId: string): Promise<{ id: string; ext_id: string; title: string }[]> {
-  const { data } = await createAdminClient().from("un_use_cases").select("id, ext_id, use_case").eq("org_id", orgId);
-  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({ id: String(r.id), ext_id: String(r.ext_id), title: String(r.use_case ?? "") })).sort((a, b) => a.ext_id.localeCompare(b.ext_id));
+  const { data } = await createAdminClient().from("un_use_cases").select("id, ext_id, title").eq("org_id", orgId);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({ id: String(r.id), ext_id: String(r.ext_id), title: String(r.title ?? "") })).sort((a, b) => a.ext_id.localeCompare(b.ext_id));
 }
