@@ -113,6 +113,16 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
                     <ul className="mt-1 list-disc ps-5 text-xs text-ink-soft">{last.plan.unexecuted.slice(0, 30).map((u) => <li key={u.id}>{u.id}: {u.why}</li>)}</ul>
                   </div>
                 )}
+                {original && (
+                  <details className="mt-4">
+                    <summary className="cursor-pointer text-sm font-medium"><TV k="pi.testlist" en="Every test that ran ({n}): open one to see the whole chain" v={{ n: Object.values(original.plan.bound).reduce((n, c) => n + c.length, 0) }} /></summary>
+                    <ul className="mt-2 columns-1 gap-6 font-mono text-xs sm:columns-2">
+                      {Object.entries(original.plan.bound).flatMap(([bp, cases]) => cases.map((c) => `${bp}#${c}`)).map((t) => (
+                        <li key={t}><Link className="underline" href={`/admin/federal/use-cases/${id}/pilot/test?profile=${encodeURIComponent(current.name)}&pilot=${original.id}&test=${encodeURIComponent(t)}`}>{t}</Link></li>
+                      ))}
+                    </ul>
+                  </details>
+                )}
                 {last.report.reasons.length > 0 && (
                   <div className="mt-4"><p className="text-sm font-medium"><T k="pi.reasons" en="Reasons for the verdict" /></p><ul className="mt-1 list-disc ps-5 text-sm">{last.report.reasons.map((r) => <li key={r}>{r}</li>)}</ul></div>
                 )}

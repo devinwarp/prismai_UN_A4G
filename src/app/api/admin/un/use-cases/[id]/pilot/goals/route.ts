@@ -77,7 +77,7 @@ export async function POST(request: Request, { params }: Ctx) {
     const titles = Object.fromEntries(tset.blueprints.map((x) => [x.id, { title: x.title, expect: x.expect.map((c) => c.text) }]));
     const model = JUDGE_MODEL();
     const judgments = await judgeTests(({ system, user }) => chatCompletion({ system, messages: [{ role: "user", content: user }], maxTokens: 600, timeoutMs: 60_000, seed: 7, model }), goals, testsToJudge(pilot.run_records, titles));
-    action = { type: "judge", pilot_id: pilotId, model, judgments };
+    action = { type: "judge", pilot_id: pilotId, model, judgments, goals };
   } else if (act === "approve") {
     const a = resolveApprover(b.approver, await approversForUseCase(who.org_id!, id));
     if (!a.ok) return bad(a.error);
