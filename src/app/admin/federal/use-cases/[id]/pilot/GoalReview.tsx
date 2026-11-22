@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { tr } from "@/lib/un/i18n/dict";
@@ -71,7 +72,7 @@ export function GoalReview({ useCaseId, profile, pilotId, review, approvers, may
                   const ov = review.approved?.overrides.find((o) => o.test_id === j.test_id);
                   return (
                     <tr key={j.test_id} className="border-t border-line align-top">
-                      <td className="py-1 pe-3 font-mono text-xs">{j.test_id}</td>
+                      <td className="py-1 pe-3 font-mono text-xs"><Link className="underline" href={`/admin/federal/use-cases/${useCaseId}/pilot/test?profile=${encodeURIComponent(profile)}&pilot=${pilotId}&test=${encodeURIComponent(j.test_id)}`}>{j.test_id}</Link></td>
                       <td className="py-1 pe-3">{label(j.met)}</td>
                       <td className="py-1 pe-3 text-xs text-ink-soft">{j.reason}{j.goals.filter((g) => !g.met).map((g) => <span key={g.id} className="block">{g.id}: {g.reason}</span>)}</td>
                       <td className="py-1">

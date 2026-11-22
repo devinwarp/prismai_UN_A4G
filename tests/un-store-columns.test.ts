@@ -34,3 +34,14 @@ test("pilot reports: the light column list names real columns and leaves out the
   for (const c of light) assert.ok(have.has(c), `un_lifecycle_pilot_reports.${c} does not exist`);
   assert.ok(!light.includes("run_records"));
 });
+
+test("goal-review log: every column the store writes exists; the goal set lives in the payload, so no column was added", () => {
+  const have = columns("un_goal_review_log");
+  const src = readFileSync("src/lib/un/pilot-store.ts", "utf8");
+  const insert = src.match(/from\("un_goal_review_log"\)\.insert\(\{([^}]+)\}/)![1].split(",").map((c) => c.trim().split(":")[0].trim());
+  for (const c of insert) assert.ok(have.has(c), `un_goal_review_log.${c} does not exist`);
+  assert.ok(!have.has("goal_set"));
+  const reportInsert = src.match(/from\("un_lifecycle_pilot_reports"\)\.insert\(\{([^}]+)\}/)![1].split(",").map((c) => c.trim().split(":")[0].trim());
+  const cols = columns("un_lifecycle_pilot_reports");
+  for (const c of reportInsert) assert.ok(cols.has(c), `un_lifecycle_pilot_reports.${c} does not exist`);
+});

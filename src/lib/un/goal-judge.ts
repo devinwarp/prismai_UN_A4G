@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { parseLlmJson } from "../llm.ts";
 import type { PilotRun } from "./pilot.ts";
 import { appendEntry, canon, verifyChain, type ChainEntry } from "./tuning.ts";
-import type { EntityGoal } from "./goals.ts";
+import { parseGoals, type EntityGoal } from "./goals.ts";
 
 // Goal alignment of a pilot, judged first by a model and approved by a person.
 //
@@ -84,11 +84,24 @@ export function testsToJudge(runs: PilotRun[], titles: Record<string, { title: s
 export type ReviewKind = "judged" | "approved" | "withdrawn";
 export type ReviewEntry = ChainEntry<ReviewKind>;
 
+/** The goals a review was judged against, kept in the entry itself so a review can always show what each goal said even
+ * if ENTITY_GOALS changes later. `hash` is sha256 of the canonical goals. Entries written before this field existed
+ * have none (`Review.goal_set` is null); they stay valid because the chain hashes whatever payload an entry has. */
+export interface GoalSet { goals: EntityGoal[]; hash: string }
+export const goalSetHash = (goals: EntityGoal[]): string => createHash("sha256").update(canon(goals)).digest("hex");
+export const goalSetOf = (goals: EntityGoal[]): GoalSet => ({ goals, hash: goalSetHash(goals) });
+const readGoalSet = (v: unknown): GoalSet | null => {
+  const o = v as { goals?: unknown; hash?: unknown } | null;
+  return o && typeof o === "object" && typeof o.hash === "string" && Array.isArray(o.goals) ? { goals: parseGoals(o.goals), hash: o.hash } : null;
+};
+
 export interface Override { test_id: string; met: boolean; reason: string }
 export interface Review {
   pilot_id: string;
   model: string;
   judgments: GoalJudgment[];
+  /** null for a review recorded before goal sets were kept. */
+  goal_set: GoalSet | null;
   approved: { approver: string; approver_source: string; overrides: Override[]; hash: string; by: string; at: string } | null;
 }
 export interface ReviewState { reviews: Record<string, Review> }
@@ -100,7 +113,7 @@ export function replayReviews(entries: ReviewEntry[]): ReviewState {
   for (const e of entries) {
     const p = e.payload;
     const id = str(p.pilot_id);
-    if (e.kind === "judged") reviews[id] = { pilot_id: id, model: str(p.model), judgments: p.judgments as GoalJudgment[], approved: null };
+    if (e.kind === "judged") reviews[id] = { pilot_id: id, model: str(p.model), judgments: p.judgments as GoalJudgment[], goal_set: readGoalSet(p.goal_set), approved: null };
     else if (e.kind === "approved" && reviews[id]) reviews[id].approved = { approver: str(p.approver), approver_source: str(p.approver_source), overrides: (p.overrides as Override[]) ?? [], hash: str(p.hash), by: str(p.by), at: e.at };
     else if (e.kind === "withdrawn" && reviews[id]) reviews[id].approved = null;
   }
@@ -116,7 +129,7 @@ export function effective(r: Review): Record<string, boolean | null> {
 export const reviewHash = (r: { judgments: GoalJudgment[]; overrides: Override[] }): string => createHash("sha256").update(canon({ j: r.judgments, o: [...r.overrides].sort((a, b) => a.test_id.localeCompare(b.test_id)) })).digest("hex");
 
 export type ReviewAction =
-  | { type: "judge"; pilot_id: string; model: string; judgments: GoalJudgment[] }
+  | { type: "judge"; pilot_id: string; model: string; judgments: GoalJudgment[]; goals: EntityGoal[] }
   | { type: "approve"; pilot_id: string; approver: { title: string; source: string }; overrides: Override[] }
   | { type: "withdraw"; pilot_id: string; reason: string };
 export type ReviewPlan = { ok: true; kind: ReviewKind; payload: Record<string, unknown> } | { ok: false; error: string };
@@ -127,7 +140,7 @@ export function planReview(state: ReviewState, a: ReviewAction, by: string): Rev
   if (a.type === "judge") {
     if (!a.judgments.length) return bad("Nothing to judge");
     if (r?.approved) return bad("These judgments are already approved; withdraw the approval before judging again");
-    return { ok: true, kind: "judged", payload: { pilot_id: a.pilot_id, model: a.model, judgments: a.judgments, by } };
+    return { ok: true, kind: "judged", payload: { pilot_id: a.pilot_id, model: a.model, judgments: a.judgments, goal_set: goalSetOf(a.goals), by } };
   }
   if (!r) return bad("This pilot has no goal judgments yet");
   if (a.type === "withdraw") {

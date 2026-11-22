@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { applyGoals, appendReview, effective, JUDGE_CONCURRENCY, judgeTests, parseJudgment, planReview, replayReviews, reviewHash, testsToJudge, verifyReviews, type ChatFn, type GoalJudgment, type ReviewEntry } from "../src/lib/un/goal-judge.ts";
+import { applyGoals, appendReview, effective, goalSetHash, goalSetOf, JUDGE_CONCURRENCY, judgeTests, parseJudgment, planReview, replayReviews, reviewHash, testsToJudge, verifyReviews, type ChatFn, type GoalJudgment, type ReviewEntry } from "../src/lib/un/goal-judge.ts";
 import type { EntityGoal } from "../src/lib/un/goals.ts";
 import type { PilotRun } from "../src/lib/un/pilot.ts";
 
@@ -100,7 +100,7 @@ test("rules: an override needs a reason and a known test; no double approval; wi
   const log = [...judged(), appendReview(judged().at(-1)!, ap.kind, "u", ap.payload, "2026-11-21T10:05:00.000Z")];
   const st2 = replayReviews(log);
   assert.match((planReview(st2, { type: "approve", pilot_id: "P1", approver: OWNER, overrides: [] }, "u") as { error: string }).error, /already approved/);
-  assert.match((planReview(st2, { type: "judge", pilot_id: "P1", model: "m", judgments: J }, "u") as { error: string }).error, /withdraw/);
+  assert.match((planReview(st2, { type: "judge", pilot_id: "P1", model: "m", judgments: J, goals: GOALS }, "u") as { error: string }).error, /withdraw/);
   assert.match((planReview(st2, { type: "withdraw", pilot_id: "P1", reason: " " }, "u") as { error: string }).error, /reason/);
   const wd = planReview(st2, { type: "withdraw", pilot_id: "P1", reason: "model was wrong about T2" }, "u");
   assert.equal(wd.ok, true);
@@ -114,4 +114,46 @@ test("the log detects a changed judgment", () => {
   const log = judged();
   const forged = [{ ...log[0], payload: { ...log[0].payload, judgments: [{ test_id: "t1", met: true, goals: [], reason: "edited" }] } }];
   assert.equal(verifyReviews(forged).ok, false);
+});
+
+// ---- the goal set recorded with each judgment --------------------------------------------------
+
+test("a new judged entry records the goal set (id, text, criterion) and its hash; replay returns it", () => {
+  const p = planReview(replayReviews([]), { type: "judge", pilot_id: "P1", model: "m", judgments: J, goals: GOALS }, "u");
+  if (!p.ok) throw new Error("judge");
+  const log = [appendReview(null, p.kind, "u", p.payload, "2026-11-22T10:00:00.000Z")];
+  const gs = replayReviews(log).reviews.P1.goal_set!;
+  assert.deepEqual(gs.goals, GOALS);
+  assert.equal(gs.hash, goalSetHash(GOALS));
+  assert.match(gs.hash, /^[0-9a-f]{64}$/);
+  assert.notEqual(goalSetHash([{ ...GOALS[0], text: "changed" }, GOALS[1]]), gs.hash, "any wording change changes the hash");
+  assert.equal(verifyReviews(log).ok, true);
+  const forged = [{ ...log[0], payload: { ...log[0].payload, goal_set: goalSetOf([{ ...GOALS[0], text: "other" }]) } }];
+  assert.equal(verifyReviews(forged).ok, false, "the goal set is inside the chain");
+});
+
+test("old entries without a goal set still replay and verify, alone and mixed with new ones", () => {
+  const old = judged(); // written before goal sets existed
+  assert.equal(replayReviews(old).reviews.P1.goal_set, null);
+  assert.equal(verifyReviews(old).ok, true);
+  const ap = planReview(replayReviews(old), { type: "approve", pilot_id: "P1", approver: OWNER, overrides: [] }, "u");
+  if (!ap.ok) throw new Error("approve");
+  const mid = [...old, appendReview(old[0], ap.kind, "u", ap.payload, "2026-11-22T10:05:00.000Z")];
+  const nj = planReview(replayReviews(mid), { type: "judge", pilot_id: "P2", model: "m", judgments: J, goals: GOALS }, "u");
+  if (!nj.ok) throw new Error("judge2");
+  const mixed = [...mid, appendReview(mid[1], nj.kind, "u", nj.payload, "2026-11-22T10:10:00.000Z")];
+  assert.equal(verifyReviews(mixed).ok, true);
+  const st = replayReviews(mixed);
+  assert.equal(st.reviews.P1.goal_set, null);
+  assert.equal(st.reviews.P1.approved?.hash, reviewHash({ judgments: J, overrides: [] }), "the approval hash is unchanged by goal sets");
+  assert.equal(st.reviews.P2.goal_set?.hash, goalSetHash(GOALS));
+});
+
+test("the same chain passes through a database round trip (jsonb reorders keys) with and without a goal set", () => {
+  const p = planReview(replayReviews([]), { type: "judge", pilot_id: "P1", model: "m", judgments: J, goals: GOALS }, "u");
+  if (!p.ok) throw new Error("judge");
+  const old = judged()[0];
+  const chained = [old, appendReview(old, "judged", "u", p.payload, "2026-11-22T10:00:00.000Z")];
+  const reordered = JSON.parse(JSON.stringify(chained, (_, v) => (v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).reverse()) : v))) as ReviewEntry[];
+  assert.equal(verifyReviews(reordered).ok, true);
 });
