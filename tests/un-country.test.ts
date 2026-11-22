@@ -264,3 +264,8 @@ test("the country demo ignores use-case gates and waivers added on the lifecycle
   assert.match(app, /gov: noGov/);
   assert.doesNotMatch(app, /loadGov|gates-store/);
 });
+
+test("the compare dropdowns are re-created when the default pair changes (a stale pair made Compare swap the diff after onboarding)", () => {
+  const page = readFileSync("src/app/admin/federal/country/page.tsx", "utf8");
+  assert.match(page, /<select key=\{`\$\{k\}:\$\{A\?\.key\}:\$\{B\?\.key\}`\} name=\{k\}/);
+});
