@@ -13,6 +13,9 @@ import { inForce, replayTestSet, verifyTest } from "@/lib/un/test-sets";
 import { loadParamLog } from "@/lib/un/verdict-param-store";
 import { replayParams, verifyParams } from "@/lib/un/verdict-params";
 
+/** A pilot and a goal judgment make many calls; allow a long hosted request (seconds). */
+export const maxDuration = 300;
+
 type Ctx = { params: Promise<{ id: string }> };
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 

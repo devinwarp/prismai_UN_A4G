@@ -51,13 +51,21 @@ export function parseJudgment(test_id: string, goals: EntityGoal[], reply: strin
   return { test_id, met: list.every((g) => g.met), goals: list, reason: typeof o.reason === "string" ? o.reason.slice(0, 300) : "" };
 }
 
-/** One model call per test. A thrown call is "unjudged", counted by the caller from `met === null`. */
+/** One model call per test, a few at a time: a pilot has hundreds of tests, and one after the other would outlast a
+ * hosted function (233 calls at ~2.6 s is ten minutes; eight at a time is about 75 s). Results keep the tests' order.
+ * A thrown call is "unjudged", counted by the caller from `met === null`. */
+export const JUDGE_CONCURRENCY = 8;
 export async function judgeTests(chat: ChatFn, goals: EntityGoal[], tests: JudgeInput[]): Promise<GoalJudgment[]> {
-  const out: GoalJudgment[] = [];
-  for (const t of tests) {
-    try { out.push(parseJudgment(t.test_id, goals, await chat({ system: GOAL_SYSTEM, user: userPrompt(goals, t) }))); }
-    catch (e) { out.push({ test_id: t.test_id, met: null, goals: [], reason: `the model call failed: ${e instanceof Error ? e.message.slice(0, 120) : "error"}` }); }
-  }
+  const out: GoalJudgment[] = new Array(tests.length);
+  let next = 0;
+  const worker = async () => {
+    for (let i = next++; i < tests.length; i = next++) {
+      const t = tests[i];
+      try { out[i] = parseJudgment(t.test_id, goals, await chat({ system: GOAL_SYSTEM, user: userPrompt(goals, t) })); }
+      catch (e) { out[i] = { test_id: t.test_id, met: null, goals: [], reason: `the model call failed: ${e instanceof Error ? e.message.slice(0, 120) : "error"}` }; }
+    }
+  };
+  await Promise.all(Array.from({ length: Math.min(JUDGE_CONCURRENCY, tests.length) }, worker));
   return out;
 }
 
