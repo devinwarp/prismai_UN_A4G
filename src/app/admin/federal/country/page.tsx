@@ -147,7 +147,7 @@ export default async function CountryPage({ searchParams }: { searchParams: Prom
               <form method="get" className="flex flex-wrap items-end gap-3 text-sm">
                 {(["a", "b"] as const).map((k) => (
                   <label key={k}>{k === "a" ? <T k="ub.cn.A" en="A" /> : <T k="ub.cn.B" en="B" />}
-                    <select name={k} defaultValue={k === "a" ? A?.key : B?.key} className="ms-2 rounded-lg border border-line bg-paper px-2 py-1">
+                    <select key={`${k}:${A?.key}:${B?.key}`} name={k} defaultValue={k === "a" ? A?.key : B?.key} className="ms-2 rounded-lg border border-line bg-paper px-2 py-1">
                       {runs.map(({ run: r }) => <option key={r.key} value={r.key}>{r.company_name.replace(/ \((fictitious|synthetic)\)/, "")} · {r.country}</option>)}
                     </select>
                   </label>
