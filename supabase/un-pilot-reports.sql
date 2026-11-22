@@ -1,12 +1,12 @@
 -- Pilot reports and the goal-review log. Run after supabase/un-federal.sql.
--- WRITTEN, NOT APPLIED to any database, and not tested against Supabase: the code is tested with pure functions
--- (src/lib/un/pilot.ts, pilot-run.ts, goal-judge.ts) and with the offline store.
+-- Named un_lifecycle_pilot_reports because un_pilot_reports already exists (the Sijil pilot reports of un-federal.sql, different columns).
+-- The code is tested with pure functions (src/lib/un/pilot.ts, pilot-run.ts, goal-judge.ts) and the offline store.
 
 -- One row per pilot run of a job profile, never updated or deleted. A report records the hash of the approved test
 -- set and of the approved verdict parameters it ran under (report.test_set_hash, report.params_hash). run_records
 -- keeps every run so the report can be recomputed after goal judgments are approved; the recomputed report is a new
 -- row whose basis names the pilot and the hash of the approved review.
-create table if not exists public.un_pilot_reports (
+create table if not exists public.un_lifecycle_pilot_reports (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references public.organizations(id) on delete cascade,
   use_case_id uuid not null references public.un_use_cases(id) on delete cascade,
@@ -22,19 +22,19 @@ create table if not exists public.un_pilot_reports (
   basis jsonb,
   created_at timestamptz not null default now()
 );
-create index if not exists un_pilot_reports_uc_idx on public.un_pilot_reports (use_case_id, profile, at desc);
-alter table public.un_pilot_reports enable row level security;  -- service role only, like the other un_ tables
+create index if not exists un_lifecycle_pilot_reports_uc_idx on public.un_lifecycle_pilot_reports (use_case_id, profile, at desc);
+alter table public.un_lifecycle_pilot_reports enable row level security;  -- service role only, like the other un_ tables
 
-create or replace function public.un_pilot_reports_append_only() returns trigger language plpgsql as $$
+create or replace function public.un_lifecycle_pilot_reports_append_only() returns trigger language plpgsql as $$
 begin
-  raise exception 'un_pilot_reports is append-only';
+  raise exception 'un_lifecycle_pilot_reports is append-only';
 end $$;
-drop trigger if exists un_pilot_reports_no_update on public.un_pilot_reports;
-create trigger un_pilot_reports_no_update before update on public.un_pilot_reports
-  for each row execute function public.un_pilot_reports_append_only();
-drop trigger if exists un_pilot_reports_no_delete on public.un_pilot_reports;
-create trigger un_pilot_reports_no_delete before delete on public.un_pilot_reports
-  for each row execute function public.un_pilot_reports_append_only();
+drop trigger if exists un_lifecycle_pilot_reports_no_update on public.un_lifecycle_pilot_reports;
+create trigger un_lifecycle_pilot_reports_no_update before update on public.un_lifecycle_pilot_reports
+  for each row execute function public.un_lifecycle_pilot_reports_append_only();
+drop trigger if exists un_lifecycle_pilot_reports_no_delete on public.un_lifecycle_pilot_reports;
+create trigger un_lifecycle_pilot_reports_no_delete before delete on public.un_lifecycle_pilot_reports
+  for each row execute function public.un_lifecycle_pilot_reports_append_only();
 
 -- Goal alignment: what the model judged, what a person changed, and who approved, as an append-only hash-chained log
 -- (same chain as un_tuning_log, see appendEntry in src/lib/un/tuning.ts). One chain per use case and job profile;
