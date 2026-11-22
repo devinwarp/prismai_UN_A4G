@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bad, notFound, requireAdmin } from "@/lib/api-auth";
+import { bad, notFound, requirePermission } from "@/lib/api-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isUuid } from "@/lib/un/model";
 import { approvalBlockers, effectiveGates, evidenceFor } from "@/lib/un/gates";
@@ -13,10 +13,10 @@ import { appendLog, loadLog } from "@/lib/un/tuning-store";
  * appended to the tuning log. SIGN moves the use case to the "approved" stage. It does not write a
  * verdict: verdicts come only from a signed scenario run (guard.ts). */
 export async function POST(request: Request, { params }: { params: Promise<{ id: string }> }) {
-  const who = await requireAdmin();
-  if (who instanceof NextResponse) return who;
   const { id } = await params;
   if (!isUuid(id)) return notFound();
+  const who = await requirePermission("tuning.approve", { useCaseId: id });
+  if (who instanceof NextResponse) return who;
   const b = (await request.json().catch(() => ({}))) as { decision?: unknown; comment?: unknown };
   if (b.decision !== "SIGN" && b.decision !== "WITHHOLD") return bad('decision must be "SIGN" or "WITHHOLD"');
   const comment = typeof b.comment === "string" ? b.comment.trim().slice(0, 1000) : "";

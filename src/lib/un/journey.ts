@@ -4,16 +4,16 @@ import { replay, type WatchEntry } from "./watchdog.ts";
 
 // The user journey: where a use case is on the road from SOP to production. Pure and derived:
 // every call recomputes from the records, nothing is stored, so the bar cannot drift from the data.
-// Seven stages in five groups. A state is always shown as text and an icon, never colour alone.
+// Nine stages in five groups. A state is always shown as text and an icon, never colour alone.
 //   done       the stage's records are complete
 //   needs_you  a person has something to do here
 //   not_yet    earlier work, or something not built yet, comes first
 //   stopped    the stage ran and its result blocks the road (NO_GO, withheld approval, suspended agent)
 
-export const STAGE_IDS = ["sop", "gates", "verdict", "evals", "tuning", "approval", "production"] as const;
+export const STAGE_IDS = ["sop", "gates", "verdict", "tests", "pilot", "evals", "tuning", "approval", "production"] as const;
 export type StageId = (typeof STAGE_IDS)[number];
 export const GROUP_OF: Record<StageId, "define" | "assess" | "pilot" | "approve" | "run"> = {
-  sop: "define", gates: "define", verdict: "assess", evals: "pilot", tuning: "pilot", approval: "approve", production: "run",
+  sop: "define", gates: "define", verdict: "assess", tests: "assess", pilot: "pilot", evals: "pilot", tuning: "pilot", approval: "approve", production: "run",
 };
 export const GROUPS = ["define", "assess", "pilot", "approve", "run"] as const;
 export type StageState = "done" | "needs_you" | "not_yet" | "stopped";
@@ -42,6 +42,10 @@ export const REASON_EN = {
   suspended: "The agent was taken down.",
   warned: "The agent has a warning.",
   probation: "The agent is on probation.",
+  approve_tests: "Approve the test set and the verdict parameters of each ticked profile.",
+  tests_first: "Comes after the tests and parameters are approved.",
+  run_pilot: "Run the pilot on the real agent.",
+  pilot_not_met: "The latest pilot is inconclusive or fails a threshold.",
 } as const;
 export type ReasonCode = keyof typeof REASON_EN;
 
@@ -50,6 +54,10 @@ export interface JourneyInput {
   /** null: per-use-case gates are not available (stage 2 reads "not yet"). */
   gates: { accepted: boolean } | null;
   verdict: Verdict | null;
+  /** Ticked profiles whose test set is approved and unchanged AND whose verdict parameters are approved. */
+  tests: { ticked: number; ready: number };
+  /** Ticked profiles: how many have a pilot, and how many have a latest pilot that is conclusive with nothing failing. */
+  pilot: { ticked: number; run: number; met: number };
   evalSet: boolean;
   evalRuns: number;
   /** Does the latest eval run meet the approval bar? null with no run. */
@@ -72,6 +80,9 @@ export function journeyStatus(i: JourneyInput): Journey {
     : ["done", null];
   const gates: R = !sopDone ? ["not_yet", "after_sop"] : !i.gates ? ["not_yet", "gates_unbuilt"] : i.gates.accepted ? ["done", null] : ["needs_you", "accept_gates"];
   const verdict: R = i.verdict === null ? ["needs_you", "run_scenario"] : i.verdict === "NO_GO" ? ["stopped", "no_go"] : ["done", null];
+  const testsDone = i.tests.ticked > 0 && i.tests.ready >= i.tests.ticked;
+  const tests: R = !sopDone ? ["not_yet", "after_sop"] : testsDone ? ["done", null] : ["needs_you", "approve_tests"];
+  const pilot: R = !testsDone ? ["not_yet", "tests_first"] : i.pilot.run === 0 ? ["needs_you", "run_pilot"] : i.pilot.met >= i.pilot.ticked ? ["done", null] : ["needs_you", "pilot_not_met"];
   const evals: R = !i.evalSet ? ["not_yet", "no_eval_set"] : i.evalRuns === 0 ? ["needs_you", "run_evals"] : i.evalMet ? ["done", null] : ["needs_you", "evals_not_met"];
   const certified = i.tuning.some((e) => e.kind === "certification" && e.payload.met === true);
   const tuning: R = i.evalRuns === 0 ? ["not_yet", "evals_first"] : certified ? ["done", null] : ["needs_you", "tune_certify"];
@@ -87,7 +98,7 @@ export function journeyStatus(i: JourneyInput): Journey {
     : w.status === "warned" ? ["needs_you", "warned"]
     : w.status === "probation" ? ["needs_you", "probation"]
     : ["done", null];
-  const rows: Record<StageId, R> = { sop, gates, verdict, evals, tuning, approval, production };
+  const rows: Record<StageId, R> = { sop, gates, verdict, tests, pilot, evals, tuning, approval, production };
   const stages = STAGE_IDS.map((id, k): JourneyStage => ({ id, n: k + 1, group: GROUP_OF[id], state: rows[id][0], reason: rows[id][1] }));
   const waiting = stages.filter((s) => s.state === "needs_you" || s.state === "stopped");
   return { stages, done: stages.filter((s) => s.state === "done").length, waiting: waiting.length, next: waiting[0]?.id ?? null };

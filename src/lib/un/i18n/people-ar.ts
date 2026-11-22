@@ -1,0 +1,26 @@
+// Arabic strings for the people and roles screen (/admin/federal/people). DRAFT translations for review by a
+// native speaker, like the rest of dict.ts. Spread into AR there. Role ids and action labels are not translated.
+export const PEOPLE_AR: Record<string, string> = {
+  "go.people": "الأشخاص والأدوار",
+  "go.people.h": "من يملك أي دور، للمؤسسة كلها أو لحالة استخدام واحدة.",
+  "pe.eyebrow": "الأشخاص والأدوار",
+  "pe.h1": "من يستطيع فعل ماذا",
+  "pe.lede": "يُمنح الدور للمؤسسة كلها أو لحالة استخدام واحدة. لا أحد يغيّر أدواره بنفسه. والدور المسحوب يبقى في السجل. ومن كان مسؤولاً في ملفه الشخصي يحتفظ بكل الأدوار إلى أن تُسنَد الأدوار.",
+  "pe.readonly": "للقراءة فقط. إسناد الأدوار يحتاج دور مسؤول المنصة.",
+  "pe.people": "الأشخاص",
+  "pe.you": "أنت",
+  "pe.notitle": "لا مسمى وظيفي",
+  "pe.legacyadmin": "مسؤول في الملف الشخصي: كل الأدوار",
+  "pe.legacyviewer": "مطّلع في الملف الشخصي: للقراءة فقط",
+  "pe.noroles": "لا أدوار مُسنَدة",
+  "pe.revoke": "اسحب",
+  "pe.history": "المسحوبة",
+  "pe.org": "المؤسسة كلها",
+  "pe.grant": "امنح دوراً",
+  "pe.person": "الشخص",
+  "pe.role": "الدور",
+  "pe.scope": "يُمنح لـ",
+  "pe.give": "امنح هذا الدور",
+  "pe.alone": "لا يوجد شخص آخر في هذه المؤسسة لمنحه دوراً.",
+  "pe.what": "ما الذي يستطيعه كل دور",
+};

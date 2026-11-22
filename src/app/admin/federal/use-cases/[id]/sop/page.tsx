@@ -49,6 +49,8 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
         <p className="mt-3 max-w-[68ch] text-base text-ink-soft"><T k="pf.lede" en="The SOP is split into job profiles. Only the ticked profiles are assessed: risk flags are worked out from their tasks (a flag is on if any task has it), passed to the rules, and the use case takes the most restrictive verdict across the ticked profiles." /></p>
         <p className="mt-2 max-w-3xl rounded-lg border border-line px-3 py-2 text-sm font-medium"><T k="pf.sim" en="Synthetic data. The flags come from the reference analyzer's rules and are suggestions a person confirms. The four evidence cases below are simulated to show what each does to the verdict." /></p>
 
+        <p className="mt-3"><Link className="text-sm underline" href={`/admin/federal/use-cases/${id}/tests`}><T k="pf.tests.link" en="Pilot tests and verdict parameters" /></Link></p>
+
         <section className={`${card} mt-6`} aria-label="SOP">
           {sopId ? (
             <p className="text-sm"><TV k="pf.attached" en="Attached SOP: {sop}" v={{ sop: sopId }} /></p>

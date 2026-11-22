@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bad, requireAdmin } from "@/lib/api-auth";
+import { bad, requirePermission } from "@/lib/api-auth";
 import { approvalFields, governanceApprovers, resolveApprover } from "@/lib/un/approvers";
 import { replayGov } from "@/lib/un/gates";
 import { loadGovLog } from "@/lib/un/gates-store";
@@ -13,7 +13,7 @@ import { ID_RE, parseGateDef } from "@/lib/un/governance";
  * admin is recorded as who made the change; the entry goes into the hash-chained gate log and the affected verdicts are re-run as
  * NEW runs (old runs are never rewritten). Admin only: viewers and judges are read-only. */
 export async function POST(request: Request) {
-  const who = await requireAdmin();
+  const who = await requirePermission("gate.catalogue.change");
   if (who instanceof NextResponse) return who;
   const b = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!b || typeof b !== "object") return bad("Invalid JSON");

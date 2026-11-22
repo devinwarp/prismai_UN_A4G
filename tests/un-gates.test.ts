@@ -161,7 +161,8 @@ test("a run records the effective gates and why on the verdict trace, and replay
 test("the gate routes are admin-only and check before reading the body; the migration is a new file", () => {
   for (const f of ["src/app/api/admin/un/gates/route.ts", "src/app/api/admin/un/use-cases/[id]/gates/route.ts"]) {
     const src = readFileSync(f, "utf8");
-    assert.ok(src.indexOf("requireAdmin()") > 0 && src.indexOf("requireAdmin()") < src.indexOf("request.json()"), f);
+    const guard = src.search(/require(Admin\(\)|Permission\()/);
+    assert.ok(guard > 0 && guard < src.indexOf("request.json()"), f);
   }
   assert.match(readFileSync("supabase/un-gates.sql", "utf8"), /create table if not exists public\.un_gate_log/);
   assert.doesNotMatch(readFileSync("supabase/schema.sql", "utf8"), /un_gate_log/);

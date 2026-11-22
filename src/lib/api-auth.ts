@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "./supabase/server";
+import { can, type ActionId, type Assignment, type Decision } from "./un/authz";
+import { loadAssignments } from "./un/roles-store";
 
 // Session + role helpers shared by the /api/admin/un routes.
 export interface Caller {
@@ -39,6 +41,29 @@ export async function requireAdmin(): Promise<Caller | NextResponse> {
     return NextResponse.json({ error: who.role === "viewer" ? "Read-only access (judge/viewer)" : "Forbidden" }, { status: 403 });
   }
   return who;
+}
+
+/** A caller who passed requirePermission, with a way to check the other actions the route can perform. */
+export interface Authorised extends Caller {
+  assignments: Assignment[];
+  /** May this caller do `action` here? A route that serves several actions guards for all of them, then checks each. */
+  decide: (action: ActionId) => Decision;
+}
+
+export const forbidden = (reason: string) => NextResponse.json({ error: reason }, { status: 403 });
+
+/** The caller if they may do ANY of the actions (on this use case, for a use-case action), or the error response.
+ * Replaces requireAdmin where the action is known; a legacy admin still passes everything (see authz.ts). */
+export async function requirePermission(actions: ActionId | ActionId[], ctx: { useCaseId?: string } = {}): Promise<Authorised | NextResponse> {
+  const who = await caller();
+  if (!who) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
+  if (!who.org_id) return forbidden("Forbidden");
+  const assignments = await loadAssignments(who.org_id, who.id);
+  const decide = (action: ActionId) => can({ legacyRole: who.role, assignments }, action, { use_case_id: ctx.useCaseId });
+  const list = Array.isArray(actions) ? actions : [actions];
+  const results = list.map(decide);
+  if (!results.some((d) => d.ok)) return forbidden((results.find((d) => !d.ok) as { reason: string }).reason);
+  return { ...who, assignments, decide };
 }
 
 export const notFound = () =>

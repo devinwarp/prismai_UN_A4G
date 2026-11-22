@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
+import { permissionsFor } from "@/lib/un/permissions-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { governanceApprovers } from "@/lib/un/approvers";
 import { catalogOf, replayGov, verifyGov } from "@/lib/un/gates";
@@ -29,7 +30,7 @@ export default async function GatesPage() {
   const ok = verifyGov(entries);
   const gov = replayGov(entries);
   const catalog = catalogOf(gov);
-  const canEdit = profile.role === "admin";
+  const canEdit = (await permissionsFor(profile, user.id)).can("gate.catalogue.change");
   const requiredBy = (id: string) =>
     RULESETS.filter((r) => r.gates.includes(id) || r.highRisk?.gates.includes(id) || gov.custom[id]?.def.rulesets?.includes(r.id)).map((r) => r.id);
 

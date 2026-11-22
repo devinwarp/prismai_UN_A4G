@@ -5,6 +5,8 @@ import { journeyStatus, type Journey } from "./journey";
 import { gateAcceptance } from "./journey-gates";
 import type { UnUseCaseState } from "./model";
 import type { LogEntry } from "./tuning";
+import { replayTestSet, inForce, type TestEntry } from "./test-sets";
+import { replayParams, type ParamEntry } from "./verdict-params";
 import type { WatchEntry } from "./watchdog";
 import { checkSopKb } from "./skill-extract";
 import { profilesOf } from "./sop/data";
@@ -25,15 +27,20 @@ const asLog = <T,>(rows: Row[] = []): T[] =>
 /** Journey for each given use case, derived from the stored records (one query per table for the whole org). */
 export async function loadJourneys(orgId: string, ucs: Pick<UnUseCaseState, "id" | "ext_id" | "verdict" | "verdict_run_id" | "client_facing" | "affects_rights" | "irreversible">[]): Promise<Map<string, Journey>> {
   const db = createAdminClient();
-  const [sops, profiles, evals, tuning, watch] = await Promise.all([
+  const [sops, profiles, evals, tuning, watch, testLog, paramLog, pilots] = await Promise.all([
     db.from("un_use_case_sops").select("*").eq("org_id", orgId),
     db.from("un_job_profiles").select("*").eq("org_id", orgId).eq("automate", true),
     db.from("un_eval_runs").select("use_case_id, summary, created_at").eq("org_id", orgId).order("created_at", { ascending: false }),
     db.from("un_tuning_log").select("*").eq("org_id", orgId),
     db.from("un_watchdog_log").select("*").eq("org_id", orgId),
+    db.from("un_test_set_log").select("*").eq("org_id", orgId),
+    db.from("un_verdict_param_log").select("*").eq("org_id", orgId),
+    db.from("un_lifecycle_pilot_reports").select("use_case_id, profile, at, report, basis").eq("org_id", orgId),
   ]);
   const sopOf = new Map((sops.data ?? []).map((r: Row) => [String(r.use_case_id), String(r.sop_id)]));
   const ticks = group(profiles.data as Row[] | null), runs = group(evals.data as Row[] | null), tl = group(tuning.data as Row[] | null), wl = group(watch.data as Row[] | null);
+  const tLog = group(testLog.data as Row[] | null), pLog = group(paramLog.data as Row[] | null), pr = group(pilots.data as Row[] | null);
+  const forProfile = (rows: Row[] | undefined, profile: string) => asLog<never>((rows ?? []).filter((r) => r.profile === profile));
   const kb = new Map<string, boolean>();
   const out = new Map<string, Journey>();
   for (const u of ucs) {
@@ -46,6 +53,15 @@ export async function loadJourneys(orgId: string, ucs: Pick<UnUseCaseState, "id"
       sop: { attached: !!sopId, profiles: all?.length ?? 0, ticked: on.length, kbOk: sopId ? !!kb.get(sopId) : false, skills: on.filter((x) => x.skill_sha256).length },
       gates: await gateAcceptance(orgId, u, tickedFlags(on, all)),
       verdict: u.verdict,
+      tests: {
+        ticked: on.length,
+        ready: on.filter((r) => inForce(replayTestSet(forProfile(tLog.get(u.id), String(r.profile)) as TestEntry[])) && !!replayParams(forProfile(pLog.get(u.id), String(r.profile)) as ParamEntry[]).approved).length,
+      },
+      pilot: (() => {
+        const latest = (profile: string) => (pr.get(u.id) ?? []).filter((x) => x.profile === profile).sort((a, b) => (String(a.at) < String(b.at) ? 1 : -1))[0] as { report: { conclusive: boolean; failed: string[]; params_hash: string; test_set_hash: string } } | undefined;
+        const ps = on.map((r) => latest(String(r.profile)));
+        return { ticked: on.length, run: ps.filter(Boolean).length, met: ps.filter((x) => x && x.report.conclusive && x.report.failed.length === 0).length };
+      })(),
       evalSet: evalSetFor(u.ext_id).length > 0,
       evalRuns: r.length,
       evalMet: r[0] ? alignment(r[0].summary as EvalSummary).met : null,
