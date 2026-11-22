@@ -5,7 +5,7 @@ import { useState } from "react";
 import { tr } from "@/lib/un/i18n/dict";
 import type { Review } from "@/lib/un/goal-judge";
 import { useLang } from "../../../_components/Lang";
-import { btnGhost, btnPrimary, field } from "../../../_components/ui";
+import { btnGhost, btnPrimary, field, scrollFocus } from "../../../_components/ui";
 
 type Approver = { title: string; source: string };
 type Choice = "keep" | "met" | "notmet";
@@ -58,7 +58,7 @@ export function GoalReview({ useCaseId, profile, pilotId, review, approvers, may
             {review.approved ? `${tr(lang, "gr.approved", "Approved")} · ${review.approved.approver} · ${review.approved.hash.slice(0, 12)}` : tr(lang, "gr.pending", "Judged by the model, waiting for a person to approve")}
             <span className="ms-2 font-mono text-[11px] text-ink-soft">{review.model}</span>
           </p>
-          <div className="mt-3 overflow-x-auto" role="region" tabIndex={0} aria-label={tr(lang, "gr.h", "Goal alignment")}>
+          <div className="mt-3 overflow-x-auto" role="region" {...scrollFocus} aria-label={tr(lang, "gr.h", "Goal alignment")}>
             <table className="w-full text-sm">
               <thead><tr className="text-ink-soft">
                 <th className="py-1 pe-3 text-start font-normal">{tr(lang, "gr.th.test", "Test")}</th>
