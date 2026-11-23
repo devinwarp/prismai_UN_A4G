@@ -8,6 +8,7 @@ import { loadPilots, savePilot } from "@/lib/un/pilot-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { searchSop } from "@/lib/un/sop-kb";
 import { ALL_CASES, recordedOcr, runCase, SOP_ID } from "@/lib/un/task-evals";
+import { ROLE_OF_PROFILE } from "@/lib/un/testgen";
 import { loadTestLog, requiredFor } from "@/lib/un/test-set-store";
 import { inForce, replayTestSet, verifyTest } from "@/lib/un/test-sets";
 import { loadParamLog } from "@/lib/un/verdict-param-store";
@@ -48,6 +49,10 @@ export async function POST(request: Request, { params }: Ctx) {
   if (!need.ok) return NextResponse.json({ error: need.error }, { status: need.status });
   if (need.sopId !== SOP_ID) return NextResponse.json({ error: `The real agent has executable cases only for ${SOP_ID}` }, { status: 409 });
 
+  // the authority probes bind to the profile's own agent role; a profile with no role is refused, never run as dv
+  if (!Object.hasOwn(ROLE_OF_PROFILE, profile)) return NextResponse.json({ error: `No agent role is defined for the job profile "${profile}", so its pilot cannot be run` }, { status: 422 });
+  const role = ROLE_OF_PROFILE[profile];
+
   const tlog = await loadTestLog(who.org_id!, id, profile);
   if (!verifyTest(tlog).ok) return NextResponse.json({ error: "The test-set log failed verification" }, { status: 409 });
   const tset = replayTestSet(tlog);
@@ -59,8 +64,8 @@ export async function POST(request: Request, { params }: Ctx) {
 
   const env = { retrieve: async (q: string, kind?: string) => (await searchSop(SOP_ID, q, { k: 5, kind })).hits, ocr: recordedOcr() };
   const params_ = pstate.approved.params;
-  const cases = [...ALL_CASES, ...generatedCases(tset.blueprints, ALL_CASES)];
-  const { runs, plan } = await executePilot(tset.blueprints, cases, (c) => runCase(c, env), params_.min_runs_per_test);
+  const cases = [...ALL_CASES, ...generatedCases(tset.blueprints, ALL_CASES, role)];
+  const { runs, plan } = await executePilot(tset.blueprints, cases, (c) => runCase(c, env), params_.min_runs_per_test, Date.now, role);
   const report = buildReport({
     runs, params: params_, test_set_hash: tset.approved!.hash, ext: uc.ext_id, facts: factsOf(uc), requested: "GO_SUPERVISED",
     gov: await loadGov(who.org_id!), reviewerGates: {},
