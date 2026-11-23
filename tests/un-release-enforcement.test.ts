@@ -58,3 +58,16 @@ test("the release route is read-only and open to any signed-in role, like the ot
   assert.match(r, /requirePermission\("view"\)/);
   assert.doesNotMatch(r, /export async function (POST|PATCH|PUT|DELETE)/);
 });
+
+test("a signed verdict assesses, it does not deploy: only the approval sets approved and only the go-live sets deployed, and a verdict never moves a stage backwards", () => {
+  const watch = src("src/app/api/admin/un/use-cases/[id]/watchdog/route.ts");
+  const deploy = watch.slice(watch.indexOf('b.action === "deploy"'));
+  assert.ok(deploy.indexOf("loadRelease(") < deploy.indexOf('stage: "deployed"'), "the stage after the gate");
+  assert.ok(deploy.indexOf("appendWatch(") < deploy.indexOf('stage: "deployed"'), "the stage after the deployment is recorded");
+  const approve = src("src/app/api/admin/un/use-cases/[id]/tuning/approve/route.ts");
+  assert.match(approve, /stage: "approved"/);
+  const runs = src("src/lib/un/runs.ts");
+  assert.match(runs, /if \(uc\.stage === "approved" \|\| uc\.stage === "deployed"\) delete patch\.stage;/);
+  const guard = src("src/lib/un/guard.ts");
+  assert.doesNotMatch(guard, /GO_AUTONOMOUS" \|\| verdict === "GO_SUPERVISED" \? "deployed"/);
+});

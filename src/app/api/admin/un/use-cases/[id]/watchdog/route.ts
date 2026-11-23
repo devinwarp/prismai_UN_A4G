@@ -1,3 +1,4 @@
+import { createAdminClient } from "@/lib/supabase/admin";
 import { loadRelease } from "@/lib/un/release-store";
 import { NextResponse } from "next/server";
 import { bad, forbidden, notFound, requireAdmin, requirePermission } from "@/lib/api-auth";
@@ -49,7 +50,10 @@ export async function POST(request: Request, { params }: Ctx) {
     if (!release.ok) return NextResponse.json({ error: `Going into production needs a met pilot. Not ready: ${release.blockers.slice(0, 6).map((x) => x.message).join(" ")}${release.blockers.length > 6 ? ` (and ${release.blockers.length - 6} more)` : ""}`, blockers: release.blockers }, { status: 409 });
     const entry = appendEntry<WatchEntry["kind"]>(null, "deployed", signer, { version: certified.version, tuning_head_hash: tuning[tuning.length - 1].hash }, now());
     const err = await appendWatch(who.org_id!, id, [entry]);
-    return err ? NextResponse.json({ error: err }, { status: 500 }) : NextResponse.json({ ok: true, status: "active" });
+    if (err) return NextResponse.json({ error: err }, { status: 500 });
+    // the stage label says "deployed" only once the agent really is in production
+    await createAdminClient().from("un_use_cases").update({ stage: "deployed", updated_at: now() }).eq("id", id).eq("org_id", who.org_id!);
+    return NextResponse.json({ ok: true, status: "active" });
   }
 
   if (!state.deployed || !certified) return NextResponse.json({ error: "The agent is not in production yet." }, { status: 409 });
