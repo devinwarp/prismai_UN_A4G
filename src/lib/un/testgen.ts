@@ -105,9 +105,15 @@ export interface GenCase {
   rationale: string;
   /** The model that wrote it; recorded in every entry. */
   model: string;
+  /** True when the case survived only after the one repair call (testgen repair pass); absent on first-round cases and on old entries. */
+  repaired?: true;
 }
 
-export interface Rejection { index: number; id: string | null; reason: string }
+/** `round: 2` marks a rejection by the repair call (the case failed again); absent means the first round (and old entries). */
+export interface Rejection { index: number; id: string | null; reason: string; round?: 2 }
+/** The one repair pass of a run. outcome: "ok" (answer read), "failed" (the call threw), "malformed" (unreadable reply);
+ * on failed and malformed the first-round result is kept unchanged. */
+export interface RepairInfo { calls: number; before: number; rescued: number; prompt_hash: string; outcome: "ok" | "failed" | "malformed"; note?: string }
 export interface CoverageGap { kind: "gate" | "count"; gate?: string; message: string }
 export interface Generated { cases: GenCase[]; rejected: Rejection[]; gaps: CoverageGap[]; refused: string | null }
 
@@ -278,30 +284,73 @@ export function refusalFor(s: GenScenario): string | null {
 }
 
 export function parseGenerated(reply: string, ctx: Ctx): Generated {
-  const refused = refusalFor(ctx.scenario);
-  if (refused) return { cases: [], rejected: [], gaps: [], refused };
-  let o: unknown;
-  try { o = parseLlmJson(reply); } catch { return { cases: [], rejected: [{ index: -1, id: null, reason: "the model's reply is not valid JSON" }], gaps: coverageGaps(ctx.scenario, []), refused: null }; }
-  const list = isObj(o) && Array.isArray(o.cases) ? o.cases : null;
-  if (!list) return { cases: [], rejected: [{ index: -1, id: null, reason: 'the reply has no "cases" list' }], gaps: coverageGaps(ctx.scenario, []), refused: null };
-  const seen = new Set<string>();
-  const cases: GenCase[] = [];
-  const rejected: Rejection[] = [];
-  list.forEach((raw, index) => {
-    const v = validateCase(raw, ctx, seen);
-    if (v.ok) cases.push(v.case); else rejected.push({ index, id: v.id, reason: v.reason });
-  });
-  return { cases, rejected, gaps: coverageGaps(ctx.scenario, cases), refused: null };
+  const g = parseCases(reply, ctx);
+  return { cases: g.cases, rejected: g.rejected, gaps: g.gaps, refused: g.refused };
 }
 
-/** Prompt, one model call, parse. A failed call reports one rejection; it never invents cases. */
-export async function generate(chat: ChatFn, scenario: GenScenario, skill: string, sopLines: SopLine[], ctx: Ctx, fixtures?: Fixtures): Promise<Generated & { prompt_hash: string }> {
-  if (refusalFor(scenario)) return { ...parseGenerated("", ctx), prompt_hash: "" };
+/** parseGenerated, plus the raw JSON of each rejected case (index-aligned with `rejected`) for the repair prompt. */
+function parseCases(reply: string, ctx: Ctx, seen = new Set<string>()): Generated & { raw: unknown[] } {
+  const refused = refusalFor(ctx.scenario);
+  if (refused) return { cases: [], rejected: [], gaps: [], refused, raw: [] };
+  let o: unknown;
+  try { o = parseLlmJson(reply); } catch { return { cases: [], rejected: [{ index: -1, id: null, reason: "the model's reply is not valid JSON" }], gaps: coverageGaps(ctx.scenario, []), refused: null, raw: [] }; }
+  const list = isObj(o) && Array.isArray(o.cases) ? o.cases : null;
+  if (!list) return { cases: [], rejected: [{ index: -1, id: null, reason: 'the reply has no "cases" list' }], gaps: coverageGaps(ctx.scenario, []), refused: null, raw: [] };
+  const cases: GenCase[] = [];
+  const rejected: Rejection[] = [];
+  const rawRejected: unknown[] = [];
+  list.forEach((raw, index) => {
+    const v = validateCase(raw, ctx, seen);
+    if (v.ok) cases.push(v.case); else { rejected.push({ index, id: v.id, reason: v.reason }); rawRejected.push(raw); }
+  });
+  return { cases, rejected, gaps: coverageGaps(ctx.scenario, cases), refused: null, raw: rawRejected };
+}
+
+const hashOf = (p: { system: string; user: string }) => createHash("sha256").update(p.system + p.user).digest("hex").slice(0, 16);
+
+/** The one follow-up call: the first prompt again (so the SOP lines, gates and fixtures are in front of the model, and a
+ * citation can only be a line it is shown), then ONLY the rejected cases with the exact validator reasons, and the gaps.
+ * Cases that passed are not shown. Same validator afterwards; nothing here loosens a rule. */
+export function buildRepairPrompt(base: { system: string; user: string }, rejected: { raw: unknown; reason: string }[], gaps: CoverageGap[]): { system: string; user: string } {
+  const cut = (v: unknown) => { const t = JSON.stringify(v) ?? "null"; return t.length > 2500 ? `${t.slice(0, 2500)} ...[cut]` : t; };
+  const user = [
+    base.user,
+    "",
+    "REPAIR ROUND (the last one: there is no further round). A program checked your first reply. These cases were thrown away, each with the exact reason:",
+    ...rejected.map((r, i) => `${i + 1}. Reason: ${r.reason}\n   Your case: ${cut(r.raw)}`),
+    ...(gaps.length ? ["", "Coverage still missing:", ...gaps.map((g) => `- ${g.message}`)] : []),
+    "",
+    "Reply with the same JSON shape, \"cases\" holding ONLY corrected versions of the thrown-away cases above (fix what the reason names, keep the rest; give a case a new id if the reason is a duplicate id). Add a new case only if it is needed to close a missing gate or count listed above. Do not repeat cases that were accepted. The rules above are unchanged: cite only the SOP lines shown above, use only the gates, licences and documents listed. If a case cannot be corrected under those rules, leave it out.",
+  ].join("\n");
+  return { system: base.system, user };
+}
+
+/** Prompt, one model call, parse; then, when cases were rejected or coverage is short, ONE repair call (hard cap: no
+ * loop, one `if`) whose survivors pass the same validator and are marked `repaired`. A failed call reports one
+ * rejection and invents nothing; a failed or unreadable repair keeps the first-round result and says so in `repair`.
+ * `calls` is the number of model calls made. */
+export async function generate(chat: ChatFn, scenario: GenScenario, skill: string, sopLines: SopLine[], ctx: Ctx, fixtures?: Fixtures): Promise<Generated & { prompt_hash: string; calls: number; repair: RepairInfo | null }> {
+  if (refusalFor(scenario)) return { ...parseGenerated("", ctx), prompt_hash: "", calls: 0, repair: null };
   const p = buildGeneratorPrompt(scenario, skill, scenario.risk, scenario.gates, sopLines, fixtures ?? ctx.fixtures);
-  const prompt_hash = createHash("sha256").update(p.system + p.user).digest("hex").slice(0, 16);
+  const prompt_hash = hashOf(p);
   let reply: string;
-  try { reply = await chat(p); } catch (e) { return { cases: [], rejected: [{ index: -1, id: null, reason: `the model call failed: ${e instanceof Error ? e.message.slice(0, 120) : "error"}` }], gaps: coverageGaps(scenario, []), refused: null, prompt_hash }; }
-  return { ...parseGenerated(reply, ctx), prompt_hash };
+  try { reply = await chat(p); } catch (e) { return { cases: [], rejected: [{ index: -1, id: null, reason: `the model call failed: ${e instanceof Error ? e.message.slice(0, 120) : "error"}` }], gaps: coverageGaps(scenario, []), refused: null, prompt_hash, calls: 1, repair: null }; }
+  const first = parseCases(reply, ctx);
+  const { raw, ...g1 } = first;
+  if (g1.rejected.length === 0 && g1.gaps.length === 0) return { ...g1, prompt_hash, calls: 1, repair: null };
+
+  const rp = buildRepairPrompt(p, g1.rejected.map((r, i) => ({ raw: raw[i] ?? `(no usable case: ${r.reason})`, reason: r.reason })), g1.gaps);
+  const info: RepairInfo = { calls: 1, before: g1.cases.length, rescued: 0, prompt_hash: hashOf(rp), outcome: "ok" };
+  let reply2: string;
+  try { reply2 = await chat(rp); } catch (e) { return { ...g1, prompt_hash, calls: 2, repair: { ...info, outcome: "failed", note: `the repair call failed: ${e instanceof Error ? e.message.slice(0, 120) : "error"}; the first-round result is kept` } }; }
+  // same validator, same ctx (so the same shown lines); ids of the cases already kept count as seen
+  const r2 = parseCases(reply2, ctx, new Set(g1.cases.map((c) => c.id.split(".").slice(1).join("."))));
+  if (r2.cases.length === 0 && r2.rejected.some((r) => r.index === -1)) return { ...g1, prompt_hash, calls: 2, repair: { ...info, outcome: "malformed", note: `the repair reply was unreadable (${r2.rejected[0].reason}); the first-round result is kept` } };
+  const fixed = r2.cases.map((c): GenCase => ({ ...c, repaired: true }));
+  const taken = new Set([...fixed.map((c) => c.id.split(".").slice(1).join(".")), ...r2.rejected.map((r) => r.id)]);
+  const cases = [...g1.cases, ...fixed];
+  const rejected = [...g1.rejected.filter((r) => !(r.id && taken.has(r.id))), ...r2.rejected.map((r): Rejection => ({ ...r, round: 2 }))];
+  return { cases, rejected, gaps: coverageGaps(scenario, cases), refused: null, prompt_hash, calls: 2, repair: { ...info, rescued: fixed.length } };
 }
 
 // ---- checking an expectation against an actual result (used by the pilot comparison, see docs) -------------
@@ -373,7 +422,7 @@ export async function appendGenLogTo(db: Db, orgId: string, useCaseId: string, p
 export const slotOf = (caseId: string) => `gen:${caseId}`;
 
 export interface Proposal { case: GenCase; status: "proposed" | "accepted" | "rejected"; reject_reason?: string; by?: string; at: string }
-export interface GenState { proposals: Proposal[]; runs: { at: string; by: string; model: string; cases: number; rejected: Rejection[]; gaps: CoverageGap[]; refused: string | null; prompt_hash: string; scenario_id: string }[] }
+export interface GenState { proposals: Proposal[]; runs: { at: string; by: string; model: string; cases: number; rejected: Rejection[]; gaps: CoverageGap[]; refused: string | null; prompt_hash: string; scenario_id: string; /** model calls of the run; absent on old entries */ calls?: number; /** the repair pass; absent on old entries and when no repair was needed */ repair?: RepairInfo | null }[] }
 
 /** Replays the log; `blueprints` (the current test set) says which proposals were accepted. */
 export function replayGen(entries: GenEntry[], blueprints: Blueprint[]): GenState {
@@ -383,7 +432,7 @@ export function replayGen(entries: GenEntry[], blueprints: Blueprint[]): GenStat
     if (e.kind === "generated") {
       const cases = Array.isArray(p.cases) ? (p.cases as GenCase[]) : [];
       for (const c of cases) if (!s.proposals.some((x) => x.case.id === c.id)) s.proposals.push({ case: c, status: "proposed", by: e.actor, at: e.at });
-      s.runs.push({ at: e.at, by: e.actor, model: String(p.model ?? ""), cases: cases.length, rejected: (p.rejected as Rejection[]) ?? [], gaps: (p.gaps as CoverageGap[]) ?? [], refused: typeof p.refused === "string" ? p.refused : null, prompt_hash: String(p.prompt_hash ?? ""), scenario_id: String(p.scenario_id ?? "") });
+      s.runs.push({ at: e.at, by: e.actor, model: String(p.model ?? ""), cases: cases.length, rejected: (p.rejected as Rejection[]) ?? [], gaps: (p.gaps as CoverageGap[]) ?? [], refused: typeof p.refused === "string" ? p.refused : null, prompt_hash: String(p.prompt_hash ?? ""), scenario_id: String(p.scenario_id ?? ""), ...(typeof p.calls === "number" ? { calls: p.calls } : {}), repair: isObj(p.repair) ? (p.repair as unknown as RepairInfo) : null });
     } else if (e.kind === "rejected") {
       const x = s.proposals.find((q) => q.case.id === p.case_id);
       if (x) { x.status = "rejected"; x.reject_reason = typeof p.reason === "string" ? p.reason : ""; x.by = e.actor; x.at = e.at; }

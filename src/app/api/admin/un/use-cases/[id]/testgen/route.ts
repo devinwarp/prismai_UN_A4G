@@ -90,9 +90,9 @@ export async function POST(request: Request, { params }: Ctx) {
     let g;
     try { g = await generate(defaultChat(built.ctx.model), built.scenario, built.skill, built.lines, built.ctx); } finally { running.delete(key); }
     if (g.refused) return NextResponse.json({ error: g.refused }, { status: 422 });
-    const fail = await writeGen("generated", { scenario_id: built.scenario.id, model: built.ctx.model, prompt_hash: g.prompt_hash, cases: g.cases, rejected: g.rejected, gaps: g.gaps, refused: null });
+    const fail = await writeGen("generated", { scenario_id: built.scenario.id, model: built.ctx.model, prompt_hash: g.prompt_hash, calls: g.calls, repair: g.repair, cases: g.cases, rejected: g.rejected, gaps: g.gaps, refused: null });
     if (fail) return fail;
-    return NextResponse.json({ ok: true, model: built.ctx.model, cases: g.cases.length, rejected: g.rejected, gaps: g.gaps });
+    return NextResponse.json({ ok: true, model: built.ctx.model, cases: g.cases.length, calls: g.calls, repair: g.repair, rejected: g.rejected, gaps: g.gaps });
   }
 
   const caseId = text(b.case_id, 120);

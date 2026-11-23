@@ -231,3 +231,7 @@ Not touched: the goal judge, verdict parameters, gates logic, `test-sets.ts`, `t
 Permissions: generating needs `scenario.propose` (test author, process owner); approving or rejecting a case needs `scenario.edit` (process owner); reading needs any signed-in role; a viewer gets 403. Approving a case adds it to the test set as a draft through the existing `add` path; locking the set is the existing `scenario.approve` flow.
 
 The pilot comparison ("disputed") is designed, not built: `docs/un-testgen-design.md`. Until then an accepted generated case is listed by the pilot as not executed.
+
+## Testgen repair pass (one bounded repair call)
+
+Edited: `src/lib/un/testgen.ts` (`buildRepairPrompt`, `generate()` makes at most one repair call; `GenCase.repaired`, `Rejection.round`, `RepairInfo`), the generate route (`.../use-cases/[id]/testgen/route.ts`: logs and returns `calls` and `repair`; cooldown and running lock unchanged), `src/app/admin/federal/use-cases/[id]/tests/TestgenPanel.tsx` (repaired badge, counts), `src/lib/un/i18n/testgen-ar.ts` (draft strings), `tests/un-testgen.test.ts`, `docs/un-testgen-design.md`. Data: a `generated` entry payload gains `calls` and `repair` ({calls, before, rescued, prompt_hash, outcome, note}); a case may carry `repaired: true`; a rejection may carry `round: 2`. No column or table changed; old entries replay and verify as before. Validator, goal judge, verdict, gates, test-sets, pilot, approve and production routes untouched.
