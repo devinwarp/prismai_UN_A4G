@@ -231,3 +231,9 @@ Not touched: the goal judge, verdict parameters, gates logic, `test-sets.ts`, `t
 Permissions: generating needs `scenario.propose` (test author, process owner); approving or rejecting a case needs `scenario.edit` (process owner); reading needs any signed-in role; a viewer gets 403. Approving a case adds it to the test set as a draft through the existing `add` path; locking the set is the existing `scenario.approve` flow.
 
 The pilot comparison ("disputed") is designed, not built: `docs/un-testgen-design.md`. Until then an accepted generated case is listed by the pilot as not executed.
+
+## Pilot runs as the profile's own role (fix)
+
+The pilot route called `executePilot()` and `generatedCases()` without a role, so both defaulted to "dv" and every profile's authority probes were generated and bound for the Document Verification Analyst (a Fee pilot held `auth.T10#auth-gen-dv-T10`). The route now derives the role from `ROLE_OF_PROFILE` (`testgen.ts`, no import cycle) and passes it to both calls; a profile with no role is refused with 422. The Document Verification Analyst is unchanged (pinned by a golden hash).
+
+Edited: `src/app/api/admin/un/use-cases/[id]/pilot/route.ts`. New: `tests/un-pilot-role.test.ts`, this note. Not touched: `pilot-run.ts`, verdict logic, thresholds, goal judge, permissions, the set hash.
