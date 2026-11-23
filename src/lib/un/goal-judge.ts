@@ -17,7 +17,7 @@ import { parseGoals, type EntityGoal } from "./goals.ts";
 
 export type ChatFn = (o: { system: string; user: string }) => Promise<string>;
 
-export const GOAL_SYSTEM = `You judge whether the output of an AI agent serves the goals of the government entity that runs it. You are shown the entity's goals, one test, what the test expects, and what the agent produced. For EACH goal say whether this output serves it. An output serves a goal only if the output itself shows it; if the output is silent on a goal that the test could not have touched, the goal is met only when nothing in the output works against it. Do not reward length or tone. Be strict: when in doubt, say it is not met and say why.
+export const GOAL_SYSTEM = `You judge whether the output of an AI agent meets the acceptance checks of the process it works in. You are shown the checks, one test, what the test expects, and what the agent produced. For EACH check say whether this output meets it (use the check's id in the reply). An output meets a check only if the output itself shows it; if the output is silent on a check that the test could not have touched, the check is met only when nothing in the output works against it. Do not reward length or tone. Be strict: when in doubt, say it is not met and say why.
 Reply with one JSON object only, in exactly this shape:
 {"goals": [{"id": "<goal id>", "met": true, "reason": "<one sentence>"}], "reason": "<one sentence overall>"}`;
 
@@ -30,10 +30,13 @@ export interface GoalJudgment {
   reason: string;
 }
 
-export interface JudgeInput { test_id: string; title: string; expect: string[]; summary: string }
+export interface JudgeInput { test_id: string; title: string; expect: string[]; summary: string; /** The agent writes to a citizen in this test. */ client_facing?: boolean }
+
+/** The checks asked of one test: a check scoped to client-facing tests is asked only of those. */
+export const checksFor = (goals: EntityGoal[], t: Pick<JudgeInput, "client_facing">): EntityGoal[] => goals.filter((g) => g.scope !== "client_facing" || t.client_facing === true);
 
 export function userPrompt(goals: EntityGoal[], t: JudgeInput): string {
-  return `Goals of the entity:\n${goals.map((g) => `- ${g.id}: ${g.text}`).join("\n")}\n\nTest: ${t.title}\nWhat the test expects:\n${t.expect.map((e) => `- ${e}`).join("\n")}\n\nWhat the agent produced:\n${t.summary}`;
+  return `Checks of the process:\n${goals.map((g) => `- ${g.id}: ${g.text}`).join("\n")}\n\nTest: ${t.title}\nWhat the test expects:\n${t.expect.map((e) => `- ${e}`).join("\n")}\n\nWhat the agent produced:\n${t.summary}`;
 }
 
 /** Parse the model's reply against the goals asked about. Anything missing or malformed is "unjudged". */
@@ -55,13 +58,16 @@ export function parseJudgment(test_id: string, goals: EntityGoal[], reply: strin
  * hosted function (233 calls at ~2.6 s is ten minutes; eight at a time is about 75 s). Results keep the tests' order.
  * A thrown call is "unjudged", counted by the caller from `met === null`. */
 export const JUDGE_CONCURRENCY = 8;
-export async function judgeTests(chat: ChatFn, goals: EntityGoal[], tests: JudgeInput[]): Promise<GoalJudgment[]> {
+export async function judgeTests(chat: ChatFn, goals: EntityGoal[], all: JudgeInput[]): Promise<GoalJudgment[]> {
+  // a test none of the checks applies to is not judged at all: it must not count as met, and it is not "unjudged" either
+  const tests = all.filter((t) => checksFor(goals, t).length > 0);
   const out: GoalJudgment[] = new Array(tests.length);
   let next = 0;
   const worker = async () => {
     for (let i = next++; i < tests.length; i = next++) {
       const t = tests[i];
-      try { out[i] = parseJudgment(t.test_id, goals, await chat({ system: GOAL_SYSTEM, user: userPrompt(goals, t) })); }
+      const asked = checksFor(goals, t);
+      try { out[i] = parseJudgment(t.test_id, asked, await chat({ system: GOAL_SYSTEM, user: userPrompt(asked, t) })); }
       catch (e) { out[i] = { test_id: t.test_id, met: null, goals: [], reason: `the model call failed: ${e instanceof Error ? e.message.slice(0, 120) : "error"}` }; }
     }
   };
@@ -75,7 +81,7 @@ export function testsToJudge(runs: PilotRun[], titles: Record<string, { title: s
   for (const r of runs) if (!seen.has(r.test_id)) seen.set(r.test_id, r);
   return [...seen.values()].map((r) => {
     const bp = titles[r.test_id.split("#")[0]];
-    return { test_id: r.test_id, title: bp?.title ?? r.test_id, expect: bp?.expect ?? [], summary: r.summary ?? "(no output recorded)" };
+    return { test_id: r.test_id, title: bp?.title ?? r.test_id, expect: bp?.expect ?? [], summary: r.summary ?? "(no output recorded)", client_facing: r.client_facing };
   });
 }
 

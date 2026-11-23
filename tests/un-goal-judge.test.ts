@@ -41,7 +41,7 @@ test("judge: calls run a few at a time (a pilot has hundreds of tests) and resul
 test("tests to judge: one per distinct test, with the first run's output and the blueprint's wording", () => {
   const t = testsToJudge([run("bp1#c1", 1), run("bp1#c1", 2), run("bp2#c2", 1)], { bp1: { title: "Normal case", expect: ["Produces X"] } });
   assert.equal(t.length, 2);
-  assert.deepEqual(t[0], { test_id: "bp1#c1", title: "Normal case", expect: ["Produces X"], summary: '{"ok":true,"id":"bp1#c1"}' });
+  assert.deepEqual(t[0], { test_id: "bp1#c1", title: "Normal case", expect: ["Produces X"], summary: '{"ok":true,"id":"bp1#c1"}', client_facing: false });
   assert.equal(t[1].title, "bp2#c2");
 });
 
@@ -156,4 +156,15 @@ test("the same chain passes through a database round trip (jsonb reorders keys) 
   const chained = [old, appendReview(old, "judged", "u", p.payload, "2026-11-22T10:00:00.000Z")];
   const reordered = JSON.parse(JSON.stringify(chained, (_, v) => (v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).reverse()) : v))) as ReviewEntry[];
   assert.equal(verifyReviews(reordered).ok, true);
+});
+
+test("a check scoped to client-facing tests is asked only of those, and a test with no applicable check is not judged", async () => {
+  const checks = [{ id: "C1", text: "fee only from the table", criterion: "hallucination" as const, scope: "all" as const }, { id: "C2", text: "officer releases", criterion: "human_final_approval" as const, scope: "client_facing" as const }];
+  const asked: string[][] = [];
+  const chat = async ({ user }: { system: string; user: string }) => { const ids = [...user.matchAll(/- (C\d):/g)].map((m) => m[1]); asked.push(ids); return JSON.stringify({ goals: ids.map((id) => ({ id, met: true, reason: "ok" })), reason: "ok" }); };
+  const tests = [{ test_id: "internal", title: "a", expect: [], summary: "{}", client_facing: false }, { test_id: "cf", title: "b", expect: [], summary: "{}", client_facing: true }];
+  const out = await judgeTests(chat, checks, tests);
+  assert.deepEqual(out.map((j) => [j.test_id, j.goals.map((g) => g.id)]), [["internal", ["C1"]], ["cf", ["C1", "C2"]]]);
+  const only = await judgeTests(chat, [checks[1]], tests);
+  assert.deepEqual(only.map((j) => j.test_id), ["cf"]);
 });

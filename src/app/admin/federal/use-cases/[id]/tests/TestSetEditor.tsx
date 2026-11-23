@@ -33,13 +33,13 @@ function useCall(path: string, profile: string) {
 
 const Err = ({ msg }: { msg: string | null }) => (msg ? <p role="alert" className="mt-2 text-sm" style={{ color: "var(--color-v-nogo)" }}>{msg}</p> : null);
 
-function ChainNote({ chain }: { chain: Chain }) {
+export function ChainNote({ chain }: { chain: Chain }) {
   const lang = useLang();
   return <p className="text-xs text-ink-soft">{chain.ok ? tr(lang, "ts.chain.ok", "Log chain verified.") : tr(lang, "ts.chain.bad", "The log chain is broken; changes are refused until it is repaired.")}</p>;
 }
 
 /** The approval box shared by the test set and the parameters. */
-function ApproveBox({ idp, approvers, selfAuthor, disabledReason, busy, onApprove }: { idp: string; approvers: Approver[]; selfAuthor: boolean; disabledReason: string | null; busy: boolean; onApprove: (a: { approver: string; self_approval_reason?: string }) => void }) {
+export function ApproveBox({ idp, approvers, selfAuthor, disabledReason, busy, onApprove }: { idp: string; approvers: Approver[]; selfAuthor: boolean; disabledReason: string | null; busy: boolean; onApprove: (a: { approver: string; self_approval_reason?: string }) => void }) {
   const lang = useLang();
   const [approver, setApprover] = useState(approvers[0]?.title ?? "");
   const [why, setWhy] = useState("");

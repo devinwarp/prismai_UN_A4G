@@ -4,7 +4,8 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
 import { replayReviews } from "@/lib/un/goal-judge";
-import { ENTITY_GOALS } from "@/lib/un/goals";
+import { loadTargetLog } from "@/lib/un/target-store";
+import { checksOf, replayTargets } from "@/lib/un/targets";
 import { isUuid } from "@/lib/un/model";
 import { loadPilots, loadReviewLog } from "@/lib/un/pilot-store";
 import { loadAttachedSop } from "@/lib/un/profiles-store";
@@ -48,12 +49,14 @@ export default async function TestDrillPage({ params, searchParams }: { params: 
   const [rlog, tlog, plog, sopId] = await Promise.all([loadReviewLog(profile.org_id, id, q.profile), loadTestLog(profile.org_id, id, q.profile), loadParamLog(profile.org_id, id, q.profile), loadAttachedSop(profile.org_id, id)]);
   const tset = replayTestSet(tlog);
   const pstate = replayParams(plog);
+  // the checks the use case has now (its approved process targets): only used for a review recorded before checks were kept
+  const checksNow = checksOf(replayTargets(await loadTargetLog(profile.org_id, id).catch(() => [])).approved?.targets ?? []);
   const d = assembleDrill({
     testId: q.test,
     pilot: { id: pilot.id, at: pilot.at, actor: pilot.actor, reps: pilot.reps, plan: pilot.plan, test_set_hash: pilot.report.test_set_hash, params_hash: pilot.report.params_hash },
     runs: pilot.run_records,
     review: replayReviews(rlog).reviews[pilot.basis?.pilot_id ?? pilot.id] ?? null,
-    goalsNow: ENTITY_GOALS[uc.entity] ?? [],
+    goalsNow: checksNow,
     blueprints: tset.blueprints,
     chunks: sopId ? loadSop(sopId).chunks : [],
     current: { test_set_hash: tset.approved?.hash ?? null, params_hash: pstate.approved ? paramsHash(pstate.approved.params) : null },
