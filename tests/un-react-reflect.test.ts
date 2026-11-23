@@ -25,6 +25,11 @@ test("verifyReflection: the quote must be a real sentence of a cited passage (ca
   assert.equal(verifyReflection({ answers: true, quote: "Food and hospitality ... 10% of base", why: "" }, T).ok, true);
   assert.equal(verifyReflection({ answers: true, quote: "10% of base ... Food and hospitality", why: "" }, T).ok, false, "fragments must be in order");
   assert.equal(verifyReflection({ answers: true, quote: "Food and hospitality ... 12% of base", why: "" }, T).ok, false, "every fragment must be exact");
+  // a table header and a cell of its column, joined with "|"; two stray words are not a quote
+  const T2 = [{ chunk_id: "SOP-LIC-014#S6", text: "| Activity group | Base renewal fee | Late fee (days 1 to 30 after expiry) |\n|---|---|---|\n| Retail and trading | 1,200 | 10% of base |" }];
+  assert.equal(verifyReflection({ answers: true, quote: "Late fee (days 1 to 30 after expiry) | 10% of base", why: "" }, T2).ok, true);
+  assert.equal(verifyReflection({ answers: true, quote: "Group | Fee", why: "" }, T2).ok, false, "no substantial fragment");
+  assert.equal(verifyReflection({ answers: true, quote: "Retail and trading | 1,200 | 99% of base", why: "" }, T2).ok, false, "every fragment must be exact");
 });
 
 test("reflection: a finish whose reflection says no is refused, the cited passages are dropped, and the run ends outside the SOP", async () => {

@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { llmReasoner, type ChatFn } from "../src/lib/un/react-llm.ts";
-import { commonTerms, enumerationKind, inScope, itemChunks, reactAnswer, type Reflector } from "../src/lib/un/react-sop.ts";
+import { commonTerms, enumerationKind, groundedHits, inScope, itemChunks, reactAnswer, type Reflector } from "../src/lib/un/react-sop.ts";
 import { loadSop, searchSop } from "../src/lib/un/sop-kb.ts";
 
 const SOP = "SOP-LIC-014";
@@ -94,4 +94,24 @@ test("a rejected finish keeps the gathered list, so the reasoner can try again; 
   assert.equal(reflections, 2);
   assert.equal(r.status, "answered");
   assert.deepEqual(ids(r.citations), D);
+});
+
+const hit = (id: string, body: string) => ({ score: 1, chunk: { chunk_id: id, source_id: "S", text: `SOP v1 | heading\n${body}`, sha256: "x", title: "t", url: "", issuer: "", jurisdiction: "", instrument_type: "", binding: true, date: null, topics: [], matrix_quadrants: [] } }) as unknown as Parameters<typeof groundedHits>[0][number];
+
+test("support needs one sentence that shares enough of the question AND a rare word of it: two sentences cannot split the two conditions", () => {
+  // 'documents' and 'required' are common in this SOP; 'open', 'bank' and 'account' are rare. In the first passage the common words
+  // sit in one sentence and the rare word 'open' in another: the passage does not answer a question about a bank account.
+  const common = new Set(["documents", "required", "licence", "renew"]);
+  const q = "which documents are required to open a bank account";
+  const split = hit("S#A", "Tell the applicant which documents are required and the next step. Open the case file when the request arrives.");
+  const same = hit("S#B", "Ask the applicant which documents are required to open a bank account. Then record it.");
+  assert.deepEqual(groundedHits([split], q, common).map((x) => x.hit.chunk.chunk_id), []);
+  assert.deepEqual(groundedHits([same], q, common).map((x) => x.hit.chunk.chunk_id), ["S#B"]);
+});
+
+test("a question about a bank account, a passport or another city is not answered from a passage that merely says documents are required", async () => {
+  for (const q of ["which documents are required to open a bank account", "which documents are required to get a passport", "can I renew my trade licence in another city instead"]) {
+    const r = await reactAnswer(SOP, q, { retrieve, requestOutside: () => "queued" });
+    assert.equal(r.status, "outside_kb", q);
+  }
 });

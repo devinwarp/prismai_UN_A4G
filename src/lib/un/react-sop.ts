@@ -55,12 +55,15 @@ const squash = (t: string) => t.toLowerCase().replace(/[*_`>#|-]+/g, " ").replac
 
 /** Does the reflection stand? It must claim an answer, and its quote must be real text of a cited passage (not a paraphrase
  * and not a made-up one): the model cannot pass this step by saying yes. A passage may be a table, so the quote may be a row
- * or cells; it may skip text with "..." as long as every fragment is word for word in ONE passage, in order. */
+ * or cells; it may skip text with "..." or join a table header and a cell with "|", as long as every fragment is word for word in ONE passage,
+ * in order, and at least one fragment is substantial. */
 export function verifyReflection(r: Reflection | null, passages: { chunk_id: string; text: string }[]): { ok: true; chunk_id: string; quote: string } | { ok: false; why: string } {
   if (!r || r.answers !== true) return { ok: false, why: r?.why?.slice(0, 200) || "no cited passage states the answer to this question" };
-  const parts = String(r.quote ?? "").split(/\.{3}|\u2026/).map(squash).filter((x) => x.length > 0);
-  const words = parts.join(" ").split(" ").filter(Boolean);
-  if (parts.join("").length < 8 || words.length < 2) return { ok: false, why: "the reflection gave no quote that states the answer" };
+  // fragments are separated by "..." or by "|" (a table cell boundary: a header and a cell of its column are two fragments)
+  const parts = String(r.quote ?? "").split(/\.{3}|\u2026|\|/).map(squash).filter((x) => x.length > 0);
+  // at least one fragment must be substantial: two stray words ("licence | renew") are not a quote of what states the answer
+  const longest = parts.reduce((a, b) => (b.length > a.length ? b : a), "");
+  if (longest.length < 8 || longest.split(" ").filter(Boolean).length < 2) return { ok: false, why: "the reflection gave no quote that states the answer" };
   const inOrder = (text: string) => { let at = 0; for (const part of parts) { const i = text.indexOf(part, at); if (i < 0) return false; at = i + part.length; } return true; };
   const hit = passages.find((p) => inOrder(squash(p.text)));
   return hit ? { ok: true, chunk_id: hit.chunk_id, quote: String(r.quote).trim().slice(0, 400) } : { ok: false, why: "the quote is not text of any cited passage" };
@@ -145,8 +148,8 @@ export const keywords = (q: string) => words(q).filter((w) => !FILLER.has(w)).jo
 
 /** Hits that support an answer to `query`: (1) a sentence shares enough distinct content terms with
  * it (about 40% of them, at least 2, at most 4; at least 2 once the search was narrowed to a kind
- * of passage), (2) at least one of those terms is rare in this SOP, so the match is not just
- * "licence" and "renewal", and (3) the chunk is not the document-control table unless the
+ * of passage), (2) at least one of the shared terms is rare in this SOP, so the match is not just
+ * "licence" and "renewal" (the same sentence must meet (1) and (2)), and (3) the chunk is not the document-control table unless the
  * question is about the document itself. */
 export function groundedHits(hits: Hit[], query: string, common: Set<string> = new Set(), narrowed = false, cfg: Pick<ReactConfig, "minOverlap" | "overlapShare" | "maxNeed"> = DEFAULT_REACT_CONFIG): { hit: Hit; overlap: number }[] {
   const terms = [...new Set(words(query).filter((w) => !FILLER.has(w)))];
@@ -157,7 +160,17 @@ export function groundedHits(hits: Hit[], query: string, common: Set<string> = n
     .filter((h) => aboutDoc || !h.chunk.topics.includes("overview"))
     .map((hit) => {
       const body = hit.chunk.text.split("\n").slice(1).join("\n");
-      return { hit, overlap: bestSentence(body, terms.join(" ")).overlap, rareOverlap: rare.length ? bestSentence(body, rare.join(" ")).overlap : 1 };
+      // both conditions must hold in the SAME sentence: a sentence that shares enough of the question's words and, among them, at
+      // least one rare word. (Judged on the passage as a whole, the common words of one sentence ("documents", "required") could be
+      // paired with a rare word of another ("open the case"), and a passage would "support" a question it does not answer.)
+      let overlap = 0;
+      let rareOverlap = rare.length ? 0 : 1;
+      for (const sentence of body.split(/(?<=[.!?])\s+/).filter(Boolean)) {
+        const o = bestSentence(sentence, terms.join(" ")).overlap;
+        const r = rare.length ? bestSentence(sentence, rare.join(" ")).overlap : 1;
+        if (r >= 1 && o > overlap) { overlap = o; rareOverlap = r; }
+      }
+      return { hit, overlap, rareOverlap };
     })
     .filter((x) => x.overlap >= need && x.rareOverlap >= 1)
     .map(({ hit, overlap }) => ({ hit, overlap }))
