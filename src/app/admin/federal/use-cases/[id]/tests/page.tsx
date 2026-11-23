@@ -14,7 +14,10 @@ import { loadParamLog } from "@/lib/un/verdict-param-store";
 import { DEFAULT_PARAMS, FLOORS, replayParams, verifyParams } from "@/lib/un/verdict-params";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card } from "../../../_components/ui";
+import { TestgenPanel } from "./TestgenPanel";
 import { ParamsPanel, TestSetEditor } from "./TestSetEditor";
+import { replayGen, testgenModel, verifyGen } from "@/lib/un/testgen";
+import { loadGenLog } from "@/lib/un/testgen-store";
 
 export const metadata: Metadata = { title: "Pilot tests and parameters", robots: { index: false, follow: false } };
 
@@ -29,6 +32,7 @@ export default async function TestsPage({ params, searchParams }: { params: Prom
   const perms = await permissionsFor(profile, user.id);
   const mayEdit = perms.can("scenario.edit", id);
   const mayApprove = perms.can("scenario.approve", id);
+  const mayPropose = perms.can("scenario.propose", id);
 
   const sopId = await loadAttachedSop(profile.org_id, id);
   const names = new Set(sopId ? (await loadProfileRows(profile.org_id, id, sopId)).filter((r) => r.automate).map((r) => r.profile) : []);
@@ -43,6 +47,9 @@ export default async function TestsPage({ params, searchParams }: { params: Prom
       const state = replayTestSet(log);
       const plog = await loadParamLog(profile.org_id, id, current.name);
       const pstate = replayParams(plog);
+      let glog: Awaited<ReturnType<typeof loadGenLog>> = [];
+      let genError: string | null = null;
+      try { glog = await loadGenLog(profile.org_id, id, current.name); } catch (e) { genError = e instanceof Error ? e.message : "The proposal log could not be read"; }
       const approvers = (await approversForUseCase(profile.org_id, id)).map((a) => ({ title: a.title, source: a.source }));
       body = (
         <>
@@ -57,6 +64,17 @@ export default async function TestsPage({ params, searchParams }: { params: Prom
             mayEdit={mayEdit}
             mayApprove={mayApprove}
             userId={user.id}
+          />
+          <TestgenPanel
+            useCaseId={id}
+            profile={current.name}
+            state={replayGen(glog, state.blueprints)}
+            chain={verifyGen(glog)}
+            tasks={current.tasks.map((t) => ({ id: t.id, title: t.title }))}
+            model={testgenModel()}
+            mayPropose={mayPropose}
+            mayEdit={mayEdit}
+            storeError={genError}
           />
           <ParamsPanel
             useCaseId={id}

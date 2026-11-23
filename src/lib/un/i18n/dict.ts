@@ -12,6 +12,7 @@ import { UI_C_AR } from "./ui-c-ar.ts";
 import { TESTS_AR } from "./tests-ar.ts";
 import { PILOT_AR } from "./pilot-ar.ts";
 import { DRILLDOWN_AR } from "./drilldown-ar.ts";
+import { TESTGEN_AR } from "./testgen-ar.ts";
 import { PEOPLE_AR } from "./people-ar.ts";
 
 // Lightweight Arabic/English dictionary for the federal admin UI. Pure, no
@@ -324,6 +325,7 @@ export const AR: Record<string, string> = {
   ...TESTS_AR,
   ...PILOT_AR,
   ...DRILLDOWN_AR,
+  ...TESTGEN_AR,
   ...PEOPLE_AR,
   ...UI_C_AR,
 };

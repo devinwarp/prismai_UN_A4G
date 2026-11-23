@@ -40,7 +40,7 @@ export const ACTIONS = {
   "watchdog.window": def("Run a production monitoring window", true, ["operator"], true),
   "reinstate": def("Reinstate a taken-down agent, with a comment", true, ["process_owner"], true),
   // tests and scenarios (the editor is not built yet)
-  "scenario.propose": def("Propose a scenario", true, ["test_author", "process_owner"]),
+  "scenario.propose": def("Propose a scenario", true, ["test_author", "process_owner"], true),
   "scenario.edit": def("Add, edit or retire a scenario", true, ["process_owner"], true),
   "scenario.approve": def("Approve and lock a test set and its verdict parameters", true, ["process_owner"], true),
   // people
