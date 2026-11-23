@@ -394,3 +394,7 @@ test("repair: the route logs the calls and the repair and keeps the cooldown and
   assert.match(src, /running\.has\(key\)/);
   assert.equal((src.match(/await generate\(/g) ?? []).length, 1, "one generate() per run; the repair is inside it");
 });
+
+test("the generate route sets maxDuration, like the pilot routes (a repaired run makes two model calls)", () => {
+  assert.match(readFileSync("src/app/api/admin/un/use-cases/[id]/testgen/route.ts", "utf8"), /export const maxDuration = 300;/);
+});
