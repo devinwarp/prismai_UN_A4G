@@ -4,6 +4,7 @@ import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { appendTestLog, loadTestLog, requiredFor } from "@/lib/un/test-set-store";
 import { appendTest, plan, replayTestSet, verifyTest } from "@/lib/un/test-sets";
+import { metered } from "@/lib/un/cost";
 import { loadPilots } from "@/lib/un/pilot-store";
 import { appendGen, blueprintOf, cooldownLeft, describeStoreError, generate, planRuling, replayGen, verifyGen } from "@/lib/un/testgen";
 import { appendGenLog, buildScenario, defaultChat, loadGenLog } from "@/lib/un/testgen-store";
@@ -91,10 +92,11 @@ export async function POST(request: Request, { params }: Ctx) {
     if (wait > 0) return NextResponse.json({ error: `A generation finished moments ago; try again in ${Math.ceil(wait / 1000)} seconds` }, { status: 429, headers: { "Retry-After": String(Math.ceil(wait / 1000)) } });
     // a scenario with no skill (or no agent role) is refused
     running.add(key);
-    let g;
-    try { g = await generate(defaultChat(built.ctx.model), built.scenario, built.skill, built.lines, built.ctx); } finally { running.delete(key); }
+    let g, usage;
+    // what the generation used (the model calls and tokens, repair call included) is kept with the run, for the cost ledger
+    try { const m = await metered(() => generate(defaultChat(built.ctx.model), built.scenario, built.skill, built.lines, built.ctx)); g = m.result; usage = m.usage; } finally { running.delete(key); }
     if (g.refused) return NextResponse.json({ error: g.refused }, { status: 422 });
-    const fail = await writeGen("generated", { scenario_id: built.scenario.id, model: built.ctx.model, prompt_hash: g.prompt_hash, calls: g.calls, repair: g.repair, cases: g.cases, rejected: g.rejected, gaps: g.gaps, refused: null });
+    const fail = await writeGen("generated", { scenario_id: built.scenario.id, model: built.ctx.model, prompt_hash: g.prompt_hash, calls: g.calls, usage, repair: g.repair, cases: g.cases, rejected: g.rejected, gaps: g.gaps, refused: null });
     if (fail) return fail;
     return NextResponse.json({ ok: true, model: built.ctx.model, cases: g.cases.length, calls: g.calls, repair: g.repair, rejected: g.rejected, gaps: g.gaps });
   }

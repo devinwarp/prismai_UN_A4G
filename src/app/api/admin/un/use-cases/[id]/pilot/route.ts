@@ -4,7 +4,9 @@ import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { isUuid } from "@/lib/un/model";
 import { buildReport } from "@/lib/un/pilot";
 import { couldNotRun, executePilot, generatedCases, planPilot, spreadSample, type AgentInfo } from "@/lib/un/pilot-run";
+import { costOf, metered, recordToolCalls } from "@/lib/un/cost";
 import { makeDrafter } from "@/lib/un/notice-draft";
+import { prices } from "@/lib/un/price-store";
 import { llmReasoner, llmReflector } from "@/lib/un/react-llm";
 import { loadPilots, savePilot } from "@/lib/un/pilot-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
@@ -84,10 +86,19 @@ export async function POST(request: Request, { params }: Ctx) {
   const only = wantTests ? new Set(spreadSample(bound, wantTests)) : undefined;
   // an accepted generated case that cannot run is recorded as disputed, with the reason; it must not end the pilot
   const generatedIds = new Set(tset.blueprints.filter((x) => x.gen).map((x) => x.id));
-  const run = async (c: Parameters<typeof runCase>[0]) => { try { return await runCase(c, env); } catch (e) { if (generatedIds.has(c.id)) return couldNotRun(c, e); throw e; } };
-  const { runs, plan } = await executePilot(tset.blueprints, cases, run, wantReps, Date.now, role, only);
+  // every test run is metered: the model calls and tokens it used and the tool calls the agent made, priced at the prices in force now
+  const table = prices();
+  const run = async (c: Parameters<typeof runCase>[0]) => {
+    const m = await metered(async () => {
+      try { const o = await runCase(c, env); recordToolCalls(o.calls.length); return o; } catch (e) { if (generatedIds.has(c.id)) return couldNotRun(c, e); throw e; }
+    });
+    return { ...m.result, usage: m.usage, cost_usd: costOf(m.usage, table).usd };
+  };
+  const whole = await metered(() => executePilot(tset.blueprints, cases, run, wantReps, Date.now, role, only));
+  const { runs, plan } = whole.result;
+  const pilotCost = costOf(whole.usage, table);
   const agent: AgentInfo = { reasoner: llm ? "llm" : "rule", ...(llm ? { model: llm.model, usage: { calls: llm.usage.calls, fallbacks: llm.usage.fallbacks, prompt_tokens: llm.usage.prompt_tokens, completion_tokens: llm.usage.completion_tokens } } : {}), ...(drafter ? { drafter: { model: drafter.model, ...drafter.usage } } : {}), ...(reflector ? { reflection: { model: reflector.model, ...reflector.usage } } : {}), ...(only || wantReps < params_.min_runs_per_test ? { sample: { tests: only ? only.size : bound.length, of: bound.length, reps: wantReps } } : {}) };
-  plan.agent = agent;
+  plan.agent = { ...agent, cost: { usage: whole.usage, usd: pilotCost.usd, unpriced: pilotCost.unpriced, gross_calls: whole.usage.total.calls + whole.usage.total.tool_calls } };
   const report = buildReport({
     runs, params: params_, test_set_hash: tset.approved!.hash, ext: uc.ext_id, facts: factsOf(uc), requested: "GO_SUPERVISED",
     gov: await loadGov(who.org_id!), reviewerGates: {},

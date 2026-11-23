@@ -3,6 +3,7 @@ import { bad, forbidden, notFound, requirePermission } from "@/lib/api-auth";
 import { appendAuto, DEFAULT_BUDGET, modelCallsToday, noticeOf, planStart, planSwitch, planThreshold, replayAuto, verifyAuto, type AutoEntry } from "@/lib/un/auto-tune";
 import { appendAutoLog, loadAutoLog } from "@/lib/un/autotune-store";
 import { runAutoTune } from "@/lib/un/autotune-service";
+import { metered } from "@/lib/un/cost";
 import { appKbStore } from "@/lib/un/kb-store-app";
 import { chatCompletion } from "@/lib/llm";
 import { isUuid } from "@/lib/un/model";
@@ -97,7 +98,8 @@ export async function POST(request: Request, { params }: Ctx) {
   if (!start.ok) return NextResponse.json({ error: start.error }, { status: 429 });
   const failStart = await write("started", start.payload);
   if (failStart) return failStart;
-  const record = await runAutoTune(ctx, { state, actor, mode: start.mode, chat: tuningChat(), modelCallsLeft: Math.max(0, DEFAULT_BUDGET.modelCallsPerDay - modelCallsToday(state)) });
+  const cycle = await metered(() => runAutoTune(ctx, { state, actor, mode: start.mode, chat: tuningChat(), modelCallsLeft: Math.max(0, DEFAULT_BUDGET.modelCallsPerDay - modelCallsToday(state)) }));
+  const record = { ...cycle.result, usage: cycle.usage };
   const failEnd = await write("finished", { record });
   if (failEnd) return failEnd;
   return NextResponse.json({ ok: true, record });

@@ -6,6 +6,7 @@ import { permissionsFor } from "@/lib/un/permissions-server";
 import { evalSetFor } from "@/lib/un/evalset";
 import { approvalBlockers, effectiveGates, evidenceFor } from "@/lib/un/gates";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
+import { loadLedger } from "@/lib/un/cost-ledger-store";
 import { loadRelease } from "@/lib/un/release-store";
 import { loadRun } from "@/lib/un/runs";
 import { isUuid } from "@/lib/un/model";
@@ -18,6 +19,7 @@ import { realAgentEvals } from "@/lib/un/tuning-service";
 import { RuleSentence, RuleText } from "../../../_components/EvalText";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card } from "../../../_components/ui";
+import { CostPanel } from "../CostPanel";
 import { ReleasePanel } from "../ReleasePanel";
 import { ApproveForm, TuningControls } from "./TuningControls";
 
@@ -138,6 +140,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
   const hasSet = evalSetFor(uc.ext_id).length > 0;
   const state = approvalState(log);
   const release = await loadRelease(profile.org_id, id);
+  const ledger = await loadLedger(profile.org_id, id, release.profiles);
   // the same check the approve route makes (409 otherwise): say it up front instead of offering a button that fails
   let approveBlocked: string | null = null;
   if (state === "ready") {
@@ -199,6 +202,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
               </section>
 
               <ReleasePanel id={id} release={release} />
+              <CostPanel ledger={ledger} />
 
               {state === "ready" && mayApprove && (
                 <section className={`${card} mt-4`} aria-label="Decision">

@@ -1,3 +1,4 @@
+import type { UsageSnapshot } from "./cost.ts";
 import type { Tally } from "./tuning-bank.ts";
 import { appendEntry, verifyChain, type ChainEntry } from "./tuning.ts";
 import type { Scores } from "./tuning-versions.ts";
@@ -40,6 +41,8 @@ export interface CycleRecord {
   discarded: { summary: string; reason: string }[];
   stop: StopReason;
   model_calls: number;
+  /** What the cycle used (model calls and tokens per model), for the cost ledger. */
+  usage?: UsageSnapshot;
   error?: string;
 }
 

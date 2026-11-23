@@ -1,3 +1,4 @@
+import { metered, type UsageSnapshot } from "./cost.ts";
 import { createHash } from "node:crypto";
 import { parseLlmJson } from "../llm.ts";
 import type { PilotRun } from "./pilot.ts";
@@ -25,6 +26,8 @@ Reply with one JSON object only, in exactly this shape:
 
 export interface GoalVerdict { id: string; met: boolean; reason: string }
 export interface GoalJudgment {
+  /** What judging this test used (calls and tokens per model), for the cost ledger. */
+  usage?: UsageSnapshot;
   test_id: string;
   /** All goals met: true; some not met: false; the model could not judge: null. */
   met: boolean | null;
@@ -73,19 +76,21 @@ export async function judgeTests(chat: ChatFn, goals: EntityGoal[], all: JudgeIn
   const tests = all.filter((t) => checksFor(goals, t).length > 0);
   const out: GoalJudgment[] = new Array(tests.length);
   let next = 0;
+  const RETRY = "\n\nYour last reply could not be read. Reply with the one JSON object only, with one short sentence per reason.";
   const worker = async () => {
     for (let i = next++; i < tests.length; i = next++) {
       const t = tests[i];
       const asked = checksFor(goals, t);
-      try {
-        // a reply that cannot be read (cut off, or wrapped in prose) is asked for once more; if it still cannot be read the test stays unjudged
-        let j = parseJudgment(t.test_id, asked, await chat({ system: GOAL_SYSTEM, user: userPrompt(asked, t) }));
-        if (j.met === null && /could not be read|no goals/.test(j.reason)) j = parseJudgment(t.test_id, asked, await chat({ system: GOAL_SYSTEM, user: `${userPrompt(asked, t)}
-
-Your last reply could not be read. Reply with the one JSON object only, with one short sentence per reason.` }));
-        out[i] = j;
-      }
-      catch (e) { out[i] = { test_id: t.test_id, met: null, goals: [], reason: `the model call failed: ${e instanceof Error ? e.message.slice(0, 120) : "error"}` }; }
+      // what judging this test used (the calls, tokens and model) goes with the judgment, for the cost ledger
+      const m = await metered(async (): Promise<GoalJudgment> => {
+        try {
+          // a reply that cannot be read (cut off, or wrapped in prose) is asked for once more; if it still cannot be read the test stays unjudged
+          let j = parseJudgment(t.test_id, asked, await chat({ system: GOAL_SYSTEM, user: userPrompt(asked, t) }));
+          if (j.met === null && /could not be read|no goals/.test(j.reason)) j = parseJudgment(t.test_id, asked, await chat({ system: GOAL_SYSTEM, user: userPrompt(asked, t) + RETRY }));
+          return j;
+        } catch (e) { return { test_id: t.test_id, met: null, goals: [], reason: `the model call failed: ${e instanceof Error ? e.message.slice(0, 120) : "error"}` }; }
+      });
+      out[i] = { ...m.result, usage: m.usage };
     }
   };
   await Promise.all(Array.from({ length: Math.min(JUDGE_CONCURRENCY, tests.length) }, worker));

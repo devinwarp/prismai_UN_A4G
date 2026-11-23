@@ -1,3 +1,4 @@
+import type { UsageSnapshot } from "./cost.ts";
 import { createHash } from "node:crypto";
 import { OUTSIDE, type Blueprint } from "./test-derive.ts";
 import type { PilotRun } from "./pilot.ts";
@@ -51,6 +52,8 @@ export interface AgentInfo {
   usage?: { calls: number; fallbacks: number; prompt_tokens: number; completion_tokens: number };
   /** The model that wrote the T12 fee-notice messages, with how many drafts it made and how many failed. */
   drafter?: { model: string; calls: number; failures: number; first_pass_ok: number; revised: number; revised_ok: number; unresolved: number; prompt_tokens: number; completion_tokens: number };
+  /** What the whole pilot used and cost: model calls, tool calls, tokens per model, and the USD at the prices in force (null when nothing could be priced). */
+  cost?: { usage: UsageSnapshot; usd: number | null; unpriced: string[]; gross_calls: number };
   /** The reflection step on the ReAct answers: its model, how many reviews it made and how many said no. */
   reflection?: { model: string; calls: number; said_no: number; errors: number; prompt_tokens: number; completion_tokens: number };
   sample?: { tests: number; of: number; reps: number };
@@ -113,7 +116,8 @@ export function toPilotRun(b: Blueprint, o: CaseOutcome, rep: number, latency_ms
     // the citations and the release flag come BEFORE the output, so a long output (a drafted message) is cut at its end, never in front of them
     summary: JSON.stringify({ ok: r.ok, refused: r.refused ?? null, escalate: r.escalate ?? null, needs_human: r.needs_human ?? false, citations: r.citations, output: r.output }).slice(0, body !== null ? 1800 : 900),
     latency_ms,
-    cost: null,
+    cost: o.cost_usd ?? null,
+    ...(o.usage ? { usage: { ...o.usage.total, models: Object.keys(o.usage.by_model) } } : {}),
     hallucinated: o.failures.some((f) => f.startsWith("cites chunks that do not exist")) || uncited ? true : r.citations.length || r.refused ? false : null,
     controls_ok: !o.failures.some((f) => f.startsWith("UNSAFE")) && controlFails.length === 0,
     goals_ok: null,

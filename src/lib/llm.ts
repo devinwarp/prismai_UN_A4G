@@ -1,3 +1,5 @@
+import { recordModelCall } from "./un/cost.ts";
+
 // Any OpenAI-compatible endpoint works — set LLM_BASE_URL (e.g. a DDA or
 // in-country gateway) to move every model call off OpenRouter.
 const OPENROUTER_URL = `${(process.env.LLM_BASE_URL ?? "https://openrouter.ai/api/v1").replace(/\/+$/, "")}/chat/completions`;
@@ -148,8 +150,17 @@ export class LlmHttpError extends Error {
   }
 }
 
+/** Count one model call for the cost ledger (un/cost.ts): the tokens the provider reported (0 when it did not, or the call failed), and a
+ * cost the provider reported itself, if it did. A failed call is counted too: it was attempted, and may have been billed. */
+function meter(model: string, usage: { prompt_tokens?: number; completion_tokens?: number; cost?: number } | undefined) {
+  recordModelCall(model, usage?.prompt_tokens ?? 0, usage?.completion_tokens ?? 0, typeof usage?.cost === "number" ? usage.cost : null);
+}
+
 export async function chatCompletion(opts: ChatRequestOpts): Promise<string> {
-  const data = await postChat(requestBody(opts), opts.timeoutMs);
+  const model = opts.model ?? CHAT_MODEL;
+  let data;
+  try { data = await postChat(requestBody(opts), opts.timeoutMs); } catch (e) { meter(model, undefined); throw e; }
+  meter(model, data.usage);
   opts.onUsage?.(data.usage);
   return data.choices?.[0]?.message?.content ?? "";
 }
@@ -192,7 +203,10 @@ export async function chatCompletionWithCitations(opts: {
       },
     ];
   }
-  const data = await postChat(body, opts.timeoutMs);
+  const model = opts.model ?? CHAT_MODEL;
+  let data;
+  try { data = await postChat(body, opts.timeoutMs); } catch (e) { meter(model, undefined); throw e; }
+  meter(model, data.usage);
   const message = data.choices?.[0]?.message;
   const content = message?.content;
   return {

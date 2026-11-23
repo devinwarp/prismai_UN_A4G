@@ -389,10 +389,10 @@ test("repair: the log keeps calls, repair and repaired; old entries without them
 
 test("repair: the route logs the calls and the repair and keeps the cooldown and the running lock", () => {
   const src = readFileSync("src/app/api/admin/un/use-cases/[id]/testgen/route.ts", "utf8");
-  assert.match(src, /calls: g\.calls, repair: g\.repair/);
+  assert.match(src, /calls: g\.calls, usage, repair: g\.repair/);
   assert.match(src, /cooldownLeft\(gstate\.runs/);
   assert.match(src, /running\.has\(key\)/);
-  assert.equal((src.match(/await generate\(/g) ?? []).length, 1, "one generate() per run; the repair is inside it");
+  assert.equal((src.match(/metered\(\(\) => generate\(/g) ?? []).length, 1, "one generate() per run; the repair is inside it");
 });
 
 test("the generate route sets maxDuration, like the pilot routes (a repaired run makes two model calls)", () => {

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { notFound, requirePermission } from "@/lib/api-auth";
 import { isUuid } from "@/lib/un/model";
+import { loadLedger } from "@/lib/un/cost-ledger-store";
 import { loadRelease } from "@/lib/un/release-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { targetsHash } from "@/lib/un/targets";
@@ -16,5 +17,7 @@ export async function GET(_request: Request, { params }: Ctx) {
   if (who instanceof NextResponse) return who;
   if (!(await loadUseCase(who.org_id!, id))) return notFound();
   const r = await loadRelease(who.org_id!, id);
-  return NextResponse.json({ ok: r.ok, blockers: r.blockers, reports: r.reports, profiles: r.profiles, targets_hash: r.targets ? targetsHash(r.targets) : null });
+  // the approver sees what the whole process cost: every model call and tool call recorded for generation, pilots, judging, tuning and production
+  const ledger = await loadLedger(who.org_id!, id, r.profiles);
+  return NextResponse.json({ ok: r.ok, blockers: r.blockers, reports: r.reports, profiles: r.profiles, targets_hash: r.targets ? targetsHash(r.targets) : null, cost: { summary: ledger.summary, entries: ledger.entries.map(({ usage: _u, ...e }) => e) } });
 }

@@ -1,3 +1,4 @@
+import type { UsageSnapshot } from "./cost.ts";
 import { OFFICE, type Drafter } from "./notice-draft.ts";
 import { readFileSync } from "node:fs";
 import path from "node:path";
@@ -269,6 +270,9 @@ export interface CaseOutcome {
   calls: CallDecision[];
   probe: boolean;
   agent: Role;
+  /** What running the case used (model calls, tokens, tool calls) and what that cost in USD at the prices in force, when the pilot measured it. */
+  usage?: UsageSnapshot;
+  cost_usd?: number | null;
 }
 
 function toolsFor(c: TaskCase, env: EvalEnv, caseId: string): Tools {

@@ -36,7 +36,10 @@ export interface PilotRun {
   /** A short readable form of the output, for a reviewer or a judge. */
   summary?: string;
   latency_ms: number | null;
+  /** What the run cost in USD at the prices in force when it ran, or null when a model it used has no price (its tokens are in `usage`). */
   cost: number | null;
+  /** What the run used: model calls, tokens, tool calls, and the models. Absent on a pilot recorded before this was kept. */
+  usage?: { calls: number; prompt_tokens: number; completion_tokens: number; tool_calls: number; models: string[] };
   /** A claim that no cited passage supports. null: the run made no claim. */
   hallucinated: boolean | null;
   /** Every SOP control held in this output. null: not applicable to this test. */

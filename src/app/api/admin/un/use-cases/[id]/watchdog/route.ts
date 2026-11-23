@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { metered, recordToolCalls } from "@/lib/un/cost";
 import { loadRelease } from "@/lib/un/release-store";
 import { NextResponse } from "next/server";
 import { bad, forbidden, notFound, requireAdmin, requirePermission } from "@/lib/api-auth";
@@ -65,7 +66,11 @@ export async function POST(request: Request, { params }: Ctx) {
       if (typeof b.drift !== "string" || !(b.drift in SUBJECT_RULES) || !certified.rules.includes(b.drift as SubjectRule)) return bad("drift must be one of the agent's rules");
       drift = b.drift as SubjectRule;
     }
-    const w = runWindow(certified, all, designationOf(tuning), drift);
+    // what the window used is recorded with it: the model calls and tokens, and the tool calls the agent made. (This window is simulated, so it
+    // makes no model calls; real production traffic served by the model-driven agent records the same way.)
+    const win = await metered(async () => { const r = runWindow(certified, all, designationOf(tuning), drift); recordToolCalls(r.run.summary.sijil.calls); return r; });
+    const w = win.result;
+    w.payload.usage = win.usage;
     const entries = appendWindow(watch, w, "watchdog (simulated)", now);
     const err = await appendWatch(who.org_id!, id, entries);
     if (err) return NextResponse.json({ error: err }, { status: 500 });
