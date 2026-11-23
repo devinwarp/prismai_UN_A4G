@@ -241,3 +241,7 @@ Edited: `src/lib/un/testgen.ts` (`buildRepairPrompt`, `generate()` makes at most
 The pilot route called `executePilot()` and `generatedCases()` without a role, so both defaulted to "dv" and every profile's authority probes were generated and bound for the Document Verification Analyst (a Fee pilot held `auth.T10#auth-gen-dv-T10`). The route now derives the role from `ROLE_OF_PROFILE` (`testgen.ts`, no import cycle) and passes it to both calls; a profile with no role is refused with 422. The Document Verification Analyst is unchanged (pinned by a golden hash).
 
 Edited: `src/app/api/admin/un/use-cases/[id]/pilot/route.ts`. New: `tests/un-pilot-role.test.ts`, this note. Not touched: `pilot-run.ts`, verdict logic, thresholds, goal judge, permissions, the set hash.
+
+## Testgen route: maxDuration
+
+Edited: `src/app/api/admin/un/use-cases/[id]/testgen/route.ts` (one line, `export const maxDuration = 300;`, as on the pilot routes) and `tests/un-testgen.test.ts` (one source guard). A repaired generation makes two model calls, and without it the platform's default function limit applies.

@@ -8,6 +8,9 @@ import { appendGen, blueprintOf, cooldownLeft, describeStoreError, generate, rep
 import { appendGenLog, buildScenario, defaultChat, loadGenLog } from "@/lib/un/testgen-store";
 
 type Ctx = { params: Promise<{ id: string }> };
+/** A generation can make two model calls (generate + one repair), each up to its own timeout. */
+export const maxDuration = 300;
+
 /** Generations in flight in this server process, by use case and profile: a second click while one runs is refused. */
 const running = new Set<string>();
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
