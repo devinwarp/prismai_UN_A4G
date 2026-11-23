@@ -245,3 +245,7 @@ Edited: `src/app/api/admin/un/use-cases/[id]/pilot/route.ts`. New: `tests/un-pil
 ## Testgen route: maxDuration
 
 Edited: `src/app/api/admin/un/use-cases/[id]/testgen/route.ts` (one line, `export const maxDuration = 300;`, as on the pilot routes) and `tests/un-testgen.test.ts` (one source guard). A repaired generation makes two model calls, and without it the platform's default function limit applies.
+
+## check-entity-goals script
+
+New: `scripts/check_entity_goals.ts` (read-only; compares the `un_entities` rows with `ENTITY_GOALS`). Edited: `package.json` (one script, `check-entity-goals`). The seed file is already checked against the code by `tests/un-goals.test.ts`; this covers the live rows, which a test without a database cannot.

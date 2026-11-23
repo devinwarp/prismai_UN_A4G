@@ -15,6 +15,7 @@
     "export-replay": "node scripts/export-replay.ts",
     "a11y": "node scripts/a11y-check.mjs",
     "verify-log": "node scripts/verify_log.ts",
+    "check-entity-goals": "node scripts/check_entity_goals.ts",
     "eval-agents": "node scripts/eval_agents.ts",
     "kb:score": "node scripts/eval_retrieval.ts",
     "test": "node --test \"tests/*.test.ts\""
