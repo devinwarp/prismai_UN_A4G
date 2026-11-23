@@ -110,7 +110,8 @@ export function toPilotRun(b: Blueprint, o: CaseOutcome, rep: number, latency_ms
     rep,
     passed: o.verdict === "correct" && controlFails.length === 0,
     answer: digest({ ok: r.ok, output: stable(r.output), refused: !!r.refused, citations: [...r.citations].sort() }),
-    summary: JSON.stringify({ ok: r.ok, output: r.output, refused: r.refused ?? null, escalate: r.escalate ?? null, citations: r.citations }).slice(0, 900),
+    // the citations and the release flag come BEFORE the output, so a long output (a drafted message) is cut at its end, never in front of them
+    summary: JSON.stringify({ ok: r.ok, refused: r.refused ?? null, escalate: r.escalate ?? null, needs_human: r.needs_human ?? false, citations: r.citations, output: r.output }).slice(0, body !== null ? 1800 : 900),
     latency_ms,
     cost: null,
     hallucinated: o.failures.some((f) => f.startsWith("cites chunks that do not exist")) || uncited ? true : r.citations.length || r.refused ? false : null,

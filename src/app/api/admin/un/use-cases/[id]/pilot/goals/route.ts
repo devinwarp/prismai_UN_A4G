@@ -4,6 +4,8 @@ import { resolveApprover } from "@/lib/un/approvers";
 import { approversForUseCase } from "@/lib/un/approvers-store";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { appendReview, applyGoals, judgeTests, planReview, replayReviews, testsToJudge, verifyReviews, type Override, type ReviewAction } from "@/lib/un/goal-judge";
+import { loadAttachedSop } from "@/lib/un/profiles-store";
+import { loadSop } from "@/lib/un/sop-kb";
 import { loadTargetLog } from "@/lib/un/target-store";
 import { checksOf, replayTargets } from "@/lib/un/targets";
 import { isUuid } from "@/lib/un/model";
@@ -80,7 +82,10 @@ export async function POST(request: Request, { params }: Ctx) {
     const tset = replayTestSet(await loadTestLog(who.org_id!, id, profile));
     const titles = Object.fromEntries(tset.blueprints.map((x) => [x.id, { title: x.title, expect: x.expect.map((c) => c.text) }]));
     const model = JUDGE_MODEL();
-    const judgments = await judgeTests(({ system, user }) => chatCompletion({ system, messages: [{ role: "user", content: user }], maxTokens: 600, timeoutMs: 60_000, seed: 7, model }), goals, testsToJudge(pilot.run_records, titles));
+    // the judge is shown the SOP passages each run cited, so it can check a figure against the source instead of guessing
+    const sopId = await loadAttachedSop(who.org_id!, id);
+    const passages = new Map((sopId ? loadSop(sopId).chunks : []).map((c) => [c.chunk_id, c.text.split("\n").slice(1).join("\n")] as const));
+    const judgments = await judgeTests(({ system, user }) => chatCompletion({ system, messages: [{ role: "user", content: user }], maxTokens: 1500, timeoutMs: 60_000, seed: 7, model }), goals, testsToJudge(pilot.run_records, titles, passages));
     action = { type: "judge", pilot_id: pilotId, model, judgments, goals };
   } else if (act === "approve") {
     const a = resolveApprover(b.approver, await approversForUseCase(who.org_id!, id));

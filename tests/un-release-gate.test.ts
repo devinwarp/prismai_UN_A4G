@@ -109,3 +109,47 @@ test("every blocker names what to do about it, and a profile's blockers are labe
   assert.ok(r.blockers.filter((b) => b.profile).every((b) => b.message.startsWith("Fee and Payment Officer: ")));
   assert.ok(r.blockers.every((b) => b.message.length > 20));
 });
+
+const withMeasures = (m: Record<string, { k: number; n: number }>, hallucinationK = 0) => report({ measures: { disclosure: m.disclosure ?? { k: 0, n: 0 }, client_facing_compliance: m.compliance ?? { k: 0, n: 0 }, fee: m.fee ?? { k: 0, n: 0 }, hallucination: { k: hallucinationK, n: 100 } } as never });
+
+test("a control the pilot measures in code is proven by that measure, whatever a model judged", async () => {
+  const { measuredProof } = await import("../src/lib/un/release-gate.ts");
+  const judgedBad = review([{ test_id: "t1", goals: [{ id: "C1", met: false }, { id: "C2", met: false }] }]);
+  const held = withMeasures({ disclosure: { k: 7, n: 7 }, compliance: { k: 7, n: 7 }, fee: { k: 7, n: 7 } });
+  // the model said no on both, but the measures say every message kept the rule: proven
+  assert.equal(releaseReadiness({ profiles: [good({ report: held, review: judgedBad })], targets }).blockers.filter((b) => b.code.startsWith("control")).length, 0);
+  assert.deepEqual(measuredProof("ai_disclosure", held), { k: 7, n: 7, also_ok: true });
+  assert.deepEqual(measuredProof("human_final_approval", held), { k: 7, n: 7, also_ok: true });
+  assert.equal(measuredProof("accuracy", held), null, "accuracy has no measure in code: the judgments decide");
+  assert.equal(measuredProof("hallucination", null), null);
+  // one message missed the rule: unmet, with the count
+  const missed = withMeasures({ compliance: { k: 6, n: 7 }, fee: { k: 7, n: 7 } });
+  const a = releaseReadiness({ profiles: [good({ report: missed })], targets });
+  assert.match(a.blockers.find((b) => b.code === "control_unmet" && b.target === "C2")!.message, /did not hold on every message the pilot measured it on \(6 of 7\)/);
+  // a fee that held, but a claim with no support elsewhere in the pilot, is not proven
+  const unsupported = withMeasures({ fee: { k: 7, n: 7 }, compliance: { k: 7, n: 7 } }, 2);
+  assert.match(releaseReadiness({ profiles: [good({ report: unsupported })], targets }).blockers.find((b) => b.target === "C1")!.message, /a claim had no support/);
+  // nothing measured (no message was written): the judgments decide, as before
+  const none = withMeasures({});
+  assert.ok(codes(releaseReadiness({ profiles: [good({ report: none, review: judgedBad })], targets })).includes("control_unmet"));
+});
+
+test("a run's summary keeps the citations and the release flag in front of the output; one with a message is not cut inside it", async () => {
+  const { toPilotRun } = await import("../src/lib/un/pilot-run.ts");
+  const big = "x".repeat(1300);
+  const o = (output: Record<string, unknown>) => ({ id: "c", task: "T12", title: "t", split: "holdout", verdict: "correct", failures: [], calls: [], probe: false, agent: "fp", result: { task: "T12", ok: true, output, citations: ["SOP-LIC-014#S6"], needs_human: true } }) as never;
+  const bp = { id: "T12.cf.x", family: "client_facing", task: "T12" } as never;
+  const withBody = toPilotRun(bp, o({ notice: { amount: 2200 }, email: { to: "a@b.example", body: big } }), 1, 1);
+  assert.ok(withBody.summary!.length > 900 && withBody.summary!.length <= 1800);
+  assert.ok(withBody.summary!.indexOf('"citations"') < withBody.summary!.indexOf('"output"'));
+  assert.ok(withBody.summary!.indexOf('"needs_human":true') < withBody.summary!.indexOf('"output"'));
+  const plain = toPilotRun({ id: "T11.happy", family: "happy_path", task: "T11" } as never, o({ filler: big + big }), 1, 1);
+  assert.equal(plain.summary!.length, 900);
+});
+
+test("the judge asks the message checks only of a run that wrote a message", async () => {
+  const { testsToJudge } = await import("../src/lib/un/goal-judge.ts");
+  const run = (test_id: string, disclosed: boolean | null) => ({ test_id, family: "client_facing", task: "T12", rep: 1, passed: true, answer: "a", summary: "{}", latency_ms: 1, cost: null, hallucinated: null, controls_ok: true, goals_ok: null, refusal_expected: false, refused: null, logged: true, rejected_calls: 0, client_facing: true, compliance_ok: true, disclosed, promotion_free: null, fee_ok: null }) as never;
+  const t = testsToJudge([run("hands-over", null), run("drafted", true)], {});
+  assert.deepEqual(t.map((x) => [x.test_id, x.client_facing]), [["hands-over", false], ["drafted", true]]);
+});

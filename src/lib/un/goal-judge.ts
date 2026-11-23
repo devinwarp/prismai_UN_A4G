@@ -17,7 +17,9 @@ import { parseGoals, type EntityGoal } from "./goals.ts";
 
 export type ChatFn = (o: { system: string; user: string }) => Promise<string>;
 
-export const GOAL_SYSTEM = `You judge whether the output of an AI agent meets the acceptance checks of the process it works in. You are shown the checks, one test, what the test expects, and what the agent produced. For EACH check say whether this output meets it (use the check's id in the reply). An output meets a check only if the output itself shows it; if the output is silent on a check that the test could not have touched, the check is met only when nothing in the output works against it. Do not reward length or tone. Be strict: when in doubt, say it is not met and say why.
+export const GOAL_SYSTEM = `You judge whether the output of an AI agent meets the acceptance checks of the process it works in. You are shown the checks, one test, what the test expects, the SOP passages the agent cited (when it cited any) and what the agent produced. For EACH check say whether this output meets it (use the check's id in the reply).
+Judge ONLY the checks listed. What the test expects is background about what the test is for: never fail a check because the output differs from the test's expected text, and never add a requirement the check does not state.
+A check that forbids something ("never", "no") is met whenever the output does not do it: an output that quotes no fee meets a check about the fees it quotes, and an output that sends no message meets a check about messages. A check that requires something of a message (a disclosure, an officer's release) applies only to an output that contains a message. A figure that follows from a cited passage (for example a base fee plus the late fee the table states) follows from it. Fail a check only when the output itself shows the violation, or lacks what the check requires of what the output contains. Do not reward length or tone.
 Reply with one JSON object only, in exactly this shape:
 {"goals": [{"id": "<goal id>", "met": true, "reason": "<one sentence>"}], "reason": "<one sentence overall>"}`;
 
@@ -30,13 +32,21 @@ export interface GoalJudgment {
   reason: string;
 }
 
-export interface JudgeInput { test_id: string; title: string; expect: string[]; summary: string; /** The agent writes to a citizen in this test. */ client_facing?: boolean }
+/** A passage of the SOP the agent cited, shown to the judge so it can check a figure or a claim against the source. */
+export interface Evidence { chunk_id: string; text: string }
+
+export interface JudgeInput { test_id: string; title: string; expect: string[]; summary: string; /** the SOP passages the run cited (at most MAX_EVIDENCE) */ evidence?: Evidence[]; /** The agent writes to a citizen in this test. */ client_facing?: boolean }
 
 /** The checks asked of one test: a check scoped to client-facing tests is asked only of those. */
 export const checksFor = (goals: EntityGoal[], t: Pick<JudgeInput, "client_facing">): EntityGoal[] => goals.filter((g) => g.scope !== "client_facing" || t.client_facing === true);
 
+export const MAX_EVIDENCE = 3;
+const EVIDENCE_CHARS = 700;
+
 export function userPrompt(goals: EntityGoal[], t: JudgeInput): string {
-  return `Checks of the process:\n${goals.map((g) => `- ${g.id}: ${g.text}`).join("\n")}\n\nTest: ${t.title}\nWhat the test expects:\n${t.expect.map((e) => `- ${e}`).join("\n")}\n\nWhat the agent produced:\n${t.summary}`;
+  const ev = (t.evidence ?? []).slice(0, MAX_EVIDENCE);
+  const cited = ev.length ? `\n\nThe SOP passages the agent cited, word for word (check every figure and claim against them; the published fee table is among them when it was cited):\n${ev.map((e) => `[${e.chunk_id}] ${e.text.replace(/\s+/g, " ").slice(0, EVIDENCE_CHARS)}`).join("\n")}` : "";
+  return `Checks of the process:\n${goals.map((g) => `- ${g.id}: ${g.text}`).join("\n")}\n\nTest: ${t.title}\nWhat the test expects:\n${t.expect.map((e) => `- ${e}`).join("\n")}\n\nWhat the agent produced:\n${t.summary}${cited}`;
 }
 
 /** Parse the model's reply against the goals asked about. Anything missing or malformed is "unjudged". */
@@ -67,7 +77,14 @@ export async function judgeTests(chat: ChatFn, goals: EntityGoal[], all: JudgeIn
     for (let i = next++; i < tests.length; i = next++) {
       const t = tests[i];
       const asked = checksFor(goals, t);
-      try { out[i] = parseJudgment(t.test_id, asked, await chat({ system: GOAL_SYSTEM, user: userPrompt(asked, t) })); }
+      try {
+        // a reply that cannot be read (cut off, or wrapped in prose) is asked for once more; if it still cannot be read the test stays unjudged
+        let j = parseJudgment(t.test_id, asked, await chat({ system: GOAL_SYSTEM, user: userPrompt(asked, t) }));
+        if (j.met === null && /could not be read|no goals/.test(j.reason)) j = parseJudgment(t.test_id, asked, await chat({ system: GOAL_SYSTEM, user: `${userPrompt(asked, t)}
+
+Your last reply could not be read. Reply with the one JSON object only, with one short sentence per reason.` }));
+        out[i] = j;
+      }
       catch (e) { out[i] = { test_id: t.test_id, met: null, goals: [], reason: `the model call failed: ${e instanceof Error ? e.message.slice(0, 120) : "error"}` }; }
     }
   };
@@ -75,13 +92,21 @@ export async function judgeTests(chat: ChatFn, goals: EntityGoal[], all: JudgeIn
   return out;
 }
 
+/** The passages a run cited, read from its summary (the ids are in it, ahead of the output): the first few that exist in the SOP. */
+export function citedPassages(summary: string | undefined, passages: Map<string, string>): Evidence[] {
+  let ids: unknown;
+  try { ids = (JSON.parse(summary ?? "{}") as { citations?: unknown }).citations; } catch { ids = (summary ?? "").match(/SOP-[A-Z0-9-]+#[A-Za-z0-9.-]+/g); }
+  const list = Array.isArray(ids) ? ids.filter((x): x is string => typeof x === "string") : [];
+  return [...new Set(list)].filter((id) => passages.has(id)).slice(0, MAX_EVIDENCE).map((id) => ({ chunk_id: id, text: passages.get(id)! }));
+}
+
 /** One test per distinct test_id, with the first run's summary. */
-export function testsToJudge(runs: PilotRun[], titles: Record<string, { title: string; expect: string[] }>): JudgeInput[] {
+export function testsToJudge(runs: PilotRun[], titles: Record<string, { title: string; expect: string[] }>, passages?: Map<string, string>): JudgeInput[] {
   const seen = new Map<string, PilotRun>();
   for (const r of runs) if (!r.generated && !seen.has(r.test_id)) seen.set(r.test_id, r);
   return [...seen.values()].map((r) => {
     const bp = titles[r.test_id.split("#")[0]];
-    return { test_id: r.test_id, title: bp?.title ?? r.test_id, expect: bp?.expect ?? [], summary: r.summary ?? "(no output recorded)", client_facing: r.client_facing };
+    return { test_id: r.test_id, title: bp?.title ?? r.test_id, expect: bp?.expect ?? [], summary: r.summary ?? "(no output recorded)", client_facing: r.client_facing && r.disclosed !== null, ...(passages ? { evidence: citedPassages(r.summary, passages) } : {}) };
   });
 }
 
