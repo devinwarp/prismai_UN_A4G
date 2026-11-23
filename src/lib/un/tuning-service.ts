@@ -24,7 +24,7 @@ export const PROFILES = ["Document Verification Analyst", "Fee and Payment Offic
 export interface Ctx { store: KbStore; sopId?: string; retrieve?: Retrieve; now?: () => string }
 const sop = (c: Ctx) => c.sopId ?? SOP_ID;
 const now = (c: Ctx) => (c.now ?? (() => new Date().toISOString()))();
-const retrieveOf = (c: Ctx): Retrieve => c.retrieve ?? (async (q, kind) => (await searchSop(sop(c), q, { k: 5, kind })).hits);
+export const retrieveOf = (c: Ctx): Retrieve => c.retrieve ?? (async (q, kind) => (await searchSop(sop(c), q, { k: 5, kind })).hits);
 
 export interface TaskRow { id: string; task: string; title: string; split: "tune" | "holdout"; verdict: CaseOutcome["verdict"]; failures: string[] }
 const taskRow = (o: CaseOutcome): TaskRow => ({ id: o.id, task: o.task, title: o.title, split: o.split, verdict: o.verdict, failures: o.failures });

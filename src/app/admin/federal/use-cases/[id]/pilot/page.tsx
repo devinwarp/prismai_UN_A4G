@@ -54,7 +54,7 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
         <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase"><T k="pi.eyebrow" en="Pilot and verdict" /></p>
         <h1 className="font-display mt-2 text-3xl font-medium tracking-tight sm:text-4xl"><TV k="pi.h1" en="What the pilot of {uc} measured" v={{ uc: uc.ext_id }} /></h1>
         <p className="mt-3 max-w-[68ch] text-base text-ink-soft"><T k="pi.lede" en="The approved tests run on the real agent, under the approved thresholds. Tests with no executable case are listed, not scored. The verdict below rests on the measured gates only; reviewer gates are not recorded here yet." /></p>
-        <p className="mt-3"><Link className="text-sm underline" href={`/admin/federal/use-cases/${id}/tests${current ? `?profile=${encodeURIComponent(current.name)}` : ""}`}><T k="pi.tests" en="Tests and verdict parameters" /></Link></p>
+        <p className="mt-3"><Link className="text-sm underline" href={`/admin/federal/use-cases/${id}/tests${current ? `?profile=${encodeURIComponent(current.name)}` : ""}`}><T k="pi.tests" en="Tests and verdict parameters" /></Link><Link className="ms-4 text-sm underline" href={`/admin/federal/use-cases/${id}/improve`}><T k="im.link" en="Improve the agent" /></Link></p>
 
         {!current ? (
           <section className={`${card} mt-6`}><p className="text-sm font-medium"><T k="ts.none" en="Attach an SOP and tick Automate on a job profile first: tests are written for the agent that will do its work." /></p></section>

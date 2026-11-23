@@ -76,3 +76,5 @@ var/
 /scripts/probe-notice.mts
 /scripts/ab-react.mts
 /scripts/e2e-setup.sh
+/scripts/judge-compare.ps1
+/scripts/gate-demo.sh
