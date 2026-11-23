@@ -4,6 +4,7 @@ import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { isUuid } from "@/lib/un/model";
 import { buildReport } from "@/lib/un/pilot";
 import { executePilot, generatedCases, planPilot, spreadSample, type AgentInfo } from "@/lib/un/pilot-run";
+import { makeDrafter } from "@/lib/un/notice-draft";
 import { llmReasoner } from "@/lib/un/react-llm";
 import { loadPilots, savePilot } from "@/lib/un/pilot-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
@@ -70,14 +71,17 @@ export async function POST(request: Request, { params }: Ctx) {
   const useLlm = b.agent === "llm";
   if (useLlm && !(process.env.LLM_API_KEY ?? process.env.OPENROUTER_API_KEY)) return NextResponse.json({ error: "No model is configured for the agent (set LLM_API_KEY)" }, { status: 409 });
   const llm = useLlm ? llmReasoner() : null;
-  const env = { retrieve: async (q: string, kind?: string) => (await searchSop(SOP_ID, q, { k: 5, kind })).hits, ocr: recordedOcr(), ...(llm ? { reasoner: llm.reasoner } : {}) };
-  const cases = [...ALL_CASES, ...generatedCases(tset.blueprints, ALL_CASES, role)];
+  // with a model, the same model also writes the T12 fee-notice messages (a draft for an officer), and the T12 client-facing
+  // scenarios run on those messages; without one there is no message, so those scenarios stay unexecuted
+  const drafter = useLlm ? makeDrafter() : null;
+  const env = { retrieve: async (q: string, kind?: string) => (await searchSop(SOP_ID, q, { k: 5, kind })).hits, ocr: recordedOcr(), ...(llm ? { reasoner: llm.reasoner } : {}), ...(drafter ? { drafter: drafter.draft } : {}) };
+  const cases = [...ALL_CASES, ...generatedCases(tset.blueprints, ALL_CASES, role, !!drafter)];
   const wantReps = Number.isInteger(b.reps) && (b.reps as number) >= 1 ? Math.min(b.reps as number, params_.min_runs_per_test) : params_.min_runs_per_test;
   const bound = Object.keys(planPilot(tset.blueprints, cases, role).bound);
   const wantTests = Number.isInteger(b.sample) && (b.sample as number) >= 1 ? (b.sample as number) : null;
   const only = wantTests ? new Set(spreadSample(bound, wantTests)) : undefined;
   const { runs, plan } = await executePilot(tset.blueprints, cases, (c) => runCase(c, env), wantReps, Date.now, role, only);
-  const agent: AgentInfo = { reasoner: llm ? "llm" : "rule", ...(llm ? { model: llm.model, usage: { calls: llm.usage.calls, fallbacks: llm.usage.fallbacks, prompt_tokens: llm.usage.prompt_tokens, completion_tokens: llm.usage.completion_tokens } } : {}), ...(only || wantReps < params_.min_runs_per_test ? { sample: { tests: only ? only.size : bound.length, of: bound.length, reps: wantReps } } : {}) };
+  const agent: AgentInfo = { reasoner: llm ? "llm" : "rule", ...(llm ? { model: llm.model, usage: { calls: llm.usage.calls, fallbacks: llm.usage.fallbacks, prompt_tokens: llm.usage.prompt_tokens, completion_tokens: llm.usage.completion_tokens } } : {}), ...(drafter ? { drafter: { model: drafter.model, ...drafter.usage } } : {}), ...(only || wantReps < params_.min_runs_per_test ? { sample: { tests: only ? only.size : bound.length, of: bound.length, reps: wantReps } } : {}) };
   plan.agent = agent;
   const report = buildReport({
     runs, params: params_, test_set_hash: tset.approved!.hash, ext: uc.ext_id, facts: factsOf(uc), requested: "GO_SUPERVISED",

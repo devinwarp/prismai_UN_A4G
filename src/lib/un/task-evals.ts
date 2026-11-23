@@ -1,3 +1,4 @@
+import { OFFICE, type Drafter } from "./notice-draft.ts";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { openAgent, type Agent, type CaseRequest, type TaskResult, type Tools } from "./analyst-agent.ts";
@@ -59,7 +60,7 @@ const has = (arr: unknown, s: string) => Array.isArray(arr) && arr.some((x) => S
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const out = (r: TaskResult) => r.output as Record<string, any>;
 export const GOOD = ["noor-d1", "noor-d2", "noor-d3", "noor-d4"];
-const BAKERY = ["bakery-d1", "bakery-d2", "bakery-d3", "bakery-d4"];
+export const BAKERY = ["bakery-d1", "bakery-d2", "bakery-d3", "bakery-d4"];
 export const without = (k: string) => GOOD.filter((x) => x !== k);
 export const swap = (k: string, to: string) => GOOD.map((x) => (x === k ? to : x));
 export const ALL_DV = ["T04", "T05", "T06", "T07", "T08", "T09"];
@@ -242,6 +243,8 @@ export interface EvalEnv {
   ocr: OcrEngine;
   /** reasoner for ReAct questions; default is the rule-based one */
   reasoner?: Reasoner;
+  /** writes the message of the T12 fee notice (a model); without it the notice carries no message body */
+  drafter?: Drafter;
   /** reads a synthetic document image by DOCS key */
   image?: (key: string) => Buffer;
   /** approved ReAct glossary, routing and thresholds (defaults when absent) */
@@ -306,6 +309,13 @@ export async function runCase(c: TaskCase, env: EvalEnv): Promise<CaseOutcome> {
     result = { task: "ASK", ok: r.status === "answered", output: { status: r.status, quotes: r.answer, steps: r.steps.length }, citations: r.citations };
   } else {
     result = await (await agentFor(role)).run(c.task);
+    // T12: the agent worked out the notice; the drafter (a model) only writes the message that carries it, as a draft for
+    // an officer. The address is the notice's own, never the draft's. A failed draft leaves no email, and the case fails.
+    const notice = (result.output as { notice?: { to: string; amount: number; due: string; pay_by: string[]; case: string } | null }).notice;
+    if (c.task === "T12" && env.drafter && result.ok && notice) {
+      try { result = { ...result, output: { ...result.output, email: { to: notice.to, body: await env.drafter({ ...OFFICE, to: notice.to, amount: notice.amount, due: notice.due, pay_by: notice.pay_by, case: notice.case, note: c.request?.note }), drafted: true } } }; }
+      catch (e) { result = { ...result, output: { ...result.output, email: null, draft_error: e instanceof Error ? e.message.slice(0, 160) : "error" } }; }
+    }
   }
   const state = dv.state();
   const known = new Set(loadSop(SOP_ID).chunks.map((k) => k.chunk_id));
