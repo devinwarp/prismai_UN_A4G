@@ -32,4 +32,4 @@ Running a generated case is feasible: its input maps one to one onto a `TaskCase
 
 - Coverage of a gate is by label: a case that names `ai_disclosure` has at least one assertion, but code cannot check the assertion is about disclosure (the task result of T12 has no message body to assert on).
 - Expectations are only as good as the SOP lines retrieved; retrieval is BM25 plus the passages the task names.
-- One model call per scenario, no repair pass: an invalid case is dropped, not fixed.
+- One model call per scenario, plus at most ONE repair call (hard cap in code) when cases were rejected or coverage is short: the model sees only its rejected cases with the validator's exact reasons and the gaps, the same validator re-checks the answers, survivors are marked `repaired`. A failed or unreadable repair keeps the first-round result. Cases the validator still rejects are dropped.

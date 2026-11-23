@@ -8,7 +8,7 @@ import { deriveTests } from "../src/lib/un/test-derive.ts";
 import { profilesOf } from "../src/lib/un/sop/data.ts";
 import { appendTest, plan, replayTestSet, verifyTest, type TestEntry } from "../src/lib/un/test-sets.ts";
 import {
-  appendGen, appendGenLogTo, blueprintOf, buildGeneratorPrompt, checkExpectation, coverageGaps, cooldownLeft, describeStoreError, generate, refusalFor, loadGenLogFrom, minCases, parseGenerated, replayGen, riskClass,
+  appendGen, appendGenLogTo, blueprintOf, buildGeneratorPrompt, buildRepairPrompt, checkExpectation, coverageGaps, cooldownLeft, describeStoreError, generate, refusalFor, loadGenLogFrom, minCases, parseGenerated, replayGen, riskClass,
   TESTGEN_DEFAULT_MODEL, testgenModel, verifyGen, type Ctx, type GenScenario,
 } from "../src/lib/un/testgen.ts";
 
@@ -269,4 +269,128 @@ test("an unapplied migration is reported as such, not as an empty log", async ()
   assert.equal(describeStoreError("connection reset"), "connection reset");
   const missing = { from: () => ({ select: () => ({ eq: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: null, error: { message: "Could not find the table 'public.un_testgen_log' in the schema cache" } }) }) }) }) }) };
   await assert.rejects(() => loadGenLogFrom(missing, "o", "u", "p"), /un-testgen\.sql/);
+});
+
+// ---- the repair pass ------------------------------------------------------------------------------------
+
+const bad = (id: string, over: Record<string, unknown> = {}) => good(id, { title: `BAD-${id}`, citations: ["SOP-LIC-014#NOPE"], ...over });
+const seq = (...replies: (string | Error)[]) => {
+  const prompts: string[] = [];
+  const chat = async (o: { system: string; user: string }) => { prompts.push(o.user); const r = replies[Math.min(prompts.length - 1, replies.length - 1)]; if (r instanceof Error) throw r; return r; };
+  return { chat, prompts };
+};
+const gen = (chat: Parameters<typeof generate>[0], s = scenario()) => generate(chat, s, "skill", [], ctx(s));
+
+test("repair: the prompt shows only the rejected cases with reasons; fixed ones are merged and marked; still-bad ones stay rejected", async () => {
+  const first = reply(good("keep-1", { title: "KEEP-ONE", gates: ["ai_disclosure"] }), good("keep-2", { title: "KEEP-TWO" }), bad("fix-me"), bad("hopeless"));
+  const second = reply(good("fix-me", { title: "FIXED" }), bad("hopeless", { title: "STILL-BAD" }));
+  const { chat, prompts } = seq(first, second);
+  const g = await gen(chat);
+  assert.equal(prompts.length, 2);
+  assert.equal(g.calls, 2);
+  assert.ok(prompts[1].includes("BAD-fix-me") && prompts[1].includes("BAD-hopeless") && prompts[1].includes("not in the SOP knowledge base"));
+  assert.ok(!prompts[1].includes("KEEP-ONE") && !prompts[1].includes("KEEP-TWO"), "accepted cases are not shown again");
+  assert.deepEqual(g.cases.map((c) => [c.id, !!c.repaired]), [["t12.keep-1", false], ["t12.keep-2", false], ["t12.fix-me", true]]);
+  assert.deepEqual(g.rejected.map((r) => [r.id, r.round]), [["hopeless", 2]]);
+  assert.equal(g.repair?.rescued, 1);
+  assert.equal(g.repair?.before, 2);
+  assert.equal(g.repair?.outcome, "ok");
+  assert.notEqual(g.repair?.prompt_hash, g.prompt_hash);
+  assert.equal(g.repair?.prompt_hash.length, 16);
+  assert.deepEqual(g.gaps.map((x) => x.kind), ["count"], "the gate gaps are closed, the count (4) is still short with 3 cases");
+});
+
+test("repair: the same validator applies, so a repaired case with an unknown citation stays rejected, and no loosening", async () => {
+  const { chat } = seq(reply(bad("a-1")), reply(bad("a-1", { title: "again", citations: ["SOP-LIC-014#MADE-UP"] })));
+  const g = await gen(chat);
+  assert.equal(g.cases.length, 0);
+  assert.match(g.rejected[0].reason, /not in the SOP knowledge base/);
+  assert.equal(g.rejected[0].round, 2);
+  assert.equal(g.repair?.rescued, 0);
+});
+
+test("repair: at most ONE repair call even when the second reply is also bad", async () => {
+  const { chat, prompts } = seq(reply(bad("a-1")), reply(bad("a-1")), reply(good("a-1")));
+  const g = await gen(chat);
+  assert.equal(prompts.length, 2);
+  assert.equal(g.calls, 2);
+  assert.equal(g.cases.length, 0);
+});
+
+test("repair: a clean first round makes no second call", async () => {
+  const { chat, prompts } = seq(reply(good("c-1", { gates: ["ai_disclosure", "fee_accuracy"] }), good("c-2"), good("c-3"), good("c-4")));
+  const g = await gen(chat);
+  assert.equal(prompts.length, 1);
+  assert.equal(g.calls, 1);
+  assert.equal(g.repair, null);
+});
+
+test("repair: gaps alone (no rejection) trigger the repair call, and its cases may close them", async () => {
+  const { chat, prompts } = seq(reply(good("c-1")), reply(good("c-2", { gates: ["ai_disclosure"] }), good("c-3"), good("c-4")));
+  const g = await gen(chat);
+  assert.equal(prompts.length, 2);
+  assert.ok(prompts[1].includes('No case exercises the gate "ai_disclosure"'));
+  assert.equal(g.cases.length, 4);
+  assert.deepEqual(g.gaps, []);
+  assert.equal(g.repair?.rescued, 3);
+});
+
+test("repair: a repair id that duplicates an accepted case is rejected", async () => {
+  const { chat } = seq(reply(good("same-id"), bad("other")), reply(good("same-id")));
+  const g = await gen(chat);
+  assert.equal(g.cases.length, 1);
+  assert.match(g.rejected.find((r) => r.round === 2)!.reason, /duplicate id/);
+});
+
+test("repair: a failed or unreadable repair call keeps the first-round result and says so", async () => {
+  for (const [second, outcome] of [[new Error("503 upstream"), "failed"], ["not json at all", "malformed"]] as const) {
+    const { chat, prompts } = seq(reply(good("keep-1"), bad("lost")), second);
+    const g = await gen(chat);
+    assert.equal(prompts.length, 2);
+    assert.equal(g.calls, 2);
+    assert.deepEqual(g.cases.map((c) => c.id), ["t12.keep-1"]);
+    assert.deepEqual(g.rejected.map((r) => [r.id, r.round]), [["lost", undefined]], "the first-round rejection stands");
+    assert.equal(g.repair?.outcome, outcome);
+    assert.match(g.repair?.note ?? "", /first-round result is kept/);
+  }
+});
+
+test("repair: a failed FIRST call is not repaired; a refused scenario makes no call", async () => {
+  const { chat, prompts } = seq(new Error("boom"));
+  const g = await gen(chat);
+  assert.equal(prompts.length, 1);
+  assert.equal(g.calls, 1);
+  const none = await gen(chat, scenario({ skill_id: null }));
+  assert.equal(none.calls, 0);
+  assert.equal(prompts.length, 1);
+});
+
+test("repair: buildRepairPrompt is the first prompt plus the rejected cases, reasons and gaps", () => {
+  const base = { system: "SYS", user: "BASE-USER [SOP-LIC-014#T12]" };
+  const p = buildRepairPrompt(base, [{ raw: { id: "x-1" }, reason: "R-ONE" }], [{ kind: "count", message: "GAP-MSG" }]);
+  assert.equal(p.system, "SYS");
+  for (const m of ["BASE-USER [SOP-LIC-014#T12]", "R-ONE", '"x-1"', "GAP-MSG"]) assert.ok(p.user.includes(m), m);
+});
+
+test("repair: the log keeps calls, repair and repaired; old entries without them replay and verify", () => {
+  const { chat } = seq(reply(good("k-1"), bad("fix")), reply(good("fix")));
+  return gen(chat).then((g) => {
+    const old = appendGen(null, "generated", "x", { scenario_id: "s", model: "m", prompt_hash: "h", cases: [good("o-1")], rejected: [], gaps: [], refused: null }, "2026-11-21T10:00:00.000Z");
+    const next = appendGen(old, "generated", "x", { scenario_id: "s", model: "m", prompt_hash: g.prompt_hash, calls: g.calls, repair: g.repair, cases: g.cases, rejected: g.rejected, gaps: g.gaps, refused: null }, "2026-11-21T10:01:00.000Z");
+    assert.equal(verifyGen([old, next]).ok, true);
+    const st = replayGen([old, next], []);
+    assert.equal(st.runs[0].calls, undefined);
+    assert.equal(st.runs[0].repair, null);
+    assert.equal(st.runs[1].calls, 2);
+    assert.equal(st.runs[1].repair?.rescued, 1);
+    assert.equal(st.proposals.find((p) => p.case.id === "t12.fix")?.case.repaired, true);
+  });
+});
+
+test("repair: the route logs the calls and the repair and keeps the cooldown and the running lock", () => {
+  const src = readFileSync("src/app/api/admin/un/use-cases/[id]/testgen/route.ts", "utf8");
+  assert.match(src, /calls: g\.calls, repair: g\.repair/);
+  assert.match(src, /cooldownLeft\(gstate\.runs/);
+  assert.match(src, /running\.has\(key\)/);
+  assert.equal((src.match(/await generate\(/g) ?? []).length, 1, "one generate() per run; the repair is inside it");
 });

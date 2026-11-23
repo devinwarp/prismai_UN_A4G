@@ -61,7 +61,15 @@ export function TestgenPanel({ useCaseId, profile, state, chain, tasks, model, m
 
       {last && (
         <div className="mt-4 rounded-lg border border-line px-3 py-2 text-sm" role="status">
-          <p className="font-medium">{tr(lang, "tg.last", "Last run")}: {last.scenario_id} · {last.cases} {tr(lang, "tg.kept", "cases kept")} · {last.rejected.length} {tr(lang, "tg.dropped", "dropped")}</p>
+          <p className="font-medium">{tr(lang, "tg.last", "Last run")}: {last.scenario_id} · {last.cases} {tr(lang, "tg.kept", "cases kept")} · {last.rejected.length} {tr(lang, "tg.dropped", "dropped")}{last.calls !== undefined && ` · ${last.calls} ${tr(lang, "tg.calls", "model calls")}`}</p>
+          {last.repair && (
+            <p className="mt-1" data-testid="tg-repair">
+              {last.repair.outcome === "ok"
+                ? `${tr(lang, "tg.repair.ok", "Repair pass")}: ${last.repair.before} → ${last.cases} ${tr(lang, "tg.kept", "cases kept")} (${last.repair.rescued} ${tr(lang, "tg.rescued", "rescued by the repair call")})`
+                : `${tr(lang, "tg.repair.bad", "The repair call did not help; the first result was kept")}: ${last.repair.note ?? last.repair.outcome}`}
+              <span className="font-mono text-xs text-ink-soft" dir="ltr"> · {tr(lang, "tg.hashes", "prompt hashes")} {last.prompt_hash} / {last.repair.prompt_hash}</span>
+            </p>
+          )}
           {last.rejected.length > 0 && <ul className="mt-1 list-disc ps-5">{last.rejected.map((r, i) => <li key={i}>{r.id ?? tr(lang, "tg.noid", "(no id)")}: {r.reason}</li>)}</ul>}
           {last.gaps.length > 0 && (
             <>
@@ -78,7 +86,7 @@ export function TestgenPanel({ useCaseId, profile, state, chain, tasks, model, m
         {state.proposals.map(({ case: c, status: st, reject_reason }) => (
           <li key={c.id} className="rounded-xl border border-line p-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
-              <p className="text-sm font-medium">{c.title}</p>
+              <p className="text-sm font-medium">{c.title}{c.repaired && <span className="ms-2 rounded border border-line px-1.5 py-0.5 text-[11px] font-normal">{tr(lang, "tg.repaired", "repaired")}</span>}</p>
               <p className="font-mono text-[11px] text-ink-soft">{c.id} · {c.family} · {tr(lang, "tg.conf", "confidence")} {c.confidence}</p>
             </div>
             <p className="mt-1 text-sm">{tr(lang, "tg.expect", "Expected")}: {c.expect.summary}</p>
