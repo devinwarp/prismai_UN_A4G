@@ -47,9 +47,12 @@ const clip = (t: string, n: number) => (t.length > n ? t.slice(0, n) + "..." : t
 
 export function promptFor(s: ReactState): string {
   const hist = s.steps.map((x, i) => `${i + 1}. thought: ${clip(x.thought, 200)}\n   action: ${JSON.stringify(x.action)}\n   observation: ${clip(x.observation, 300)}`).join("\n");
-  const shown = [...s.retrieved.values()].slice(-6).map((c) => `[${c.chunk_id}] ${clip(c.text.split("\n").slice(1).join(" "), 380)}`).join("\n");
+  const list = s.enumerated?.length ? s.enumerated.map((id) => s.retrieved.get(id)).filter((c): c is NonNullable<typeof c> => !!c) : [];
+  const listed = new Set(list.map((c) => c.chunk_id));
+  const shown = [...list, ...[...s.retrieved.values()].filter((c) => !listed.has(c.chunk_id)).slice(-4)].map((c) => `[${c.chunk_id}] ${clip(c.text.split("\n").slice(1).join(" "), 380)}`).join("\n");
   const sup = [...s.supported.keys()];
-  return `Question: ${s.question}\n\nSteps so far:\n${hist || "(none)"}\n\nPassages retrieved so far:\n${shown || "(none)"}\n\nPassages the program has checked as supporting the question: ${sup.length ? sup.join(", ") : "none yet"}\nNext action as JSON.`;
+  const note = list.length ? `\n\nThe question asks for a LIST. The SOP keeps one passage per item, so the program has gathered every item passage (${list.map((c) => c.chunk_id.split("#")[1]).join(", ")}) and shows all of them below. Together they ARE the answer: finish now, citing any of them, and quote the text of one item in your thought. Do not search for a passage you can already see.` : "";
+  return `Question: ${s.question}${note}\n\nSteps so far:\n${hist || "(none)"}\n\nPassages retrieved so far:\n${shown || "(none)"}\n\nPassages the program has checked as supporting the question: ${sup.length ? sup.join(", ") : "none yet"}\nNext action as JSON.`;
 }
 
 export function parseStep(text: string): { thought: string; action: Action } {
@@ -84,8 +87,9 @@ export function llmReasoner(o: LlmReasonerOptions = {}): LlmReasoner {
   return { reasoner, usage, model };
 }
 
-export function reflectPrompt(question: string, passages: { chunk_id: string; text: string }[]): string {
-  return `Question: ${question}\n\nCited passages:\n${passages.map((p) => `[${p.chunk_id}] ${clip(p.text.replace(/\s+/g, " "), 1200)}`).join("\n")}\n\nReply as JSON.`;
+export function reflectPrompt(question: string, passages: { chunk_id: string; text: string }[], opts: { list?: boolean } = {}): string {
+  const list = opts.list ? `\nThe question asks for a LIST. The program gathered every item passage of the list: each cited passage is ONE item of it. Answer true if the items are what the question asks for, and quote the exact text of any ONE item (not a summary of all of them).\n` : "";
+  return `Question: ${question}\n${list}\nCited passages:\n${passages.map((p) => `[${p.chunk_id}] ${clip(p.text.replace(/\s+/g, " "), 1200)}`).join("\n")}\n\nReply as JSON.`;
 }
 
 /** Parse a reflection reply. An unreadable reply is "does not answer": a failed review never lets a finish through. */
@@ -108,10 +112,10 @@ export function llmReflector(o: { model?: string; chat?: ChatFn } = {}): LlmRefl
     system, messages: [{ role: "user", content: user }], maxTokens: 1500, timeoutMs: 60_000, model, json: true,
     onUsage: (u) => { usage.prompt_tokens += u?.prompt_tokens ?? 0; usage.completion_tokens += u?.completion_tokens ?? 0; },
   }));
-  const reflect: Reflector = async (question, passages) => {
+  const reflect: Reflector = async (question, passages, opts) => {
     usage.calls++;
     try {
-      const r = parseReflection(await chat({ system: REFLECT_SYSTEM, user: reflectPrompt(question, passages) }));
+      const r = parseReflection(await chat({ system: REFLECT_SYSTEM, user: reflectPrompt(question, passages, opts) }));
       if (!r.answers) usage.said_no++;
       return r;
     } catch (e) { usage.errors++; throw e; }

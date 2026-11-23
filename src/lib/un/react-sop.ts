@@ -1,6 +1,6 @@
 import { bestSentence, type Chunk, type Hit } from "./kb.ts";
 import { loadSop, searchSopForAgent, type SopChunk } from "./sop-kb.ts";
-import { DEFAULT_REACT_CONFIG, termRegex, type GlossaryEntry, type ReactConfig, type RouteRule } from "./react-config.ts";
+import { DEFAULT_REACT_CONFIG, termRegex, type GlossaryEntry, type ReactConfig, type RouteKind, type RouteRule } from "./react-config.ts";
 import { simulatedGate, type CallDecision } from "./sijil-calls.ts";
 
 // ReAct (Thought, Action, Observation) over one SOP's knowledge base.
@@ -40,13 +40,16 @@ export interface ReactState {
   retrieved: Map<string, Chunk>;
   /** chunk id -> the query it supports */
   supported: Map<string, string>;
+  /** Set when the question asks for ALL items of a kind ("which documents are required"): the ids of every passage of that kind,
+   * which the loop gathered itself because the SOP keeps one passage per item and a search returns only the top few. */
+  enumerated?: string[];
 }
 
 /** A reflection: after the reasoner proposes to finish, a second look at ONLY the question and the cited passages. It must say
  * whether a passage states the answer to THIS question (its place, amount, person or condition included) and quote the
  * sentence that does. The loop checks the quote itself: it must exist word for word in a cited passage. */
 export interface Reflection { answers: boolean; quote: string; why: string }
-export type Reflector = (question: string, passages: { chunk_id: string; text: string }[]) => Promise<Reflection>;
+export type Reflector = (question: string, passages: { chunk_id: string; text: string }[], opts?: { list?: boolean }) => Promise<Reflection>;
 
 const squash = (t: string) => t.toLowerCase().replace(/[*_`>#|-]+/g, " ").replace(/\s+/g, " ").trim();
 
@@ -100,7 +103,7 @@ export function checkAction(a: unknown, kinds: Set<string>): { ok: true; action:
   if (!REACT_TOOLS.includes(tool)) return { ok: false, tool, why: `${tool} is not one of the tools this agent has (${REACT_TOOLS.join(", ")})` };
   if (tool === "search_sop") {
     if (typeof o.query !== "string" || !o.query.trim()) return { ok: false, tool, why: "search_sop needs a non-empty query" };
-    if (o.kind !== undefined && (typeof o.kind !== "string" || !kinds.has(o.kind))) return { ok: false, tool, why: `unknown passage kind ${JSON.stringify(o.kind)}` };
+    if (o.kind != null && (typeof o.kind !== "string" || !kinds.has(o.kind))) return { ok: false, tool, why: `unknown passage kind ${JSON.stringify(o.kind)}` };
     return { ok: true, action: { tool, query: o.query.slice(0, 300), ...(o.kind ? { kind: o.kind as string } : {}) } };
   }
   if (tool === "request_outside_information") return { ok: true, action: { tool, question: String(o.question ?? ""), reason: String(o.reason ?? "").slice(0, 300) } };
@@ -159,6 +162,43 @@ export function groundedHits(hits: Hit[], query: string, common: Set<string> = n
     .filter((x) => x.overlap >= need && x.rareOverlap >= 1)
     .map(({ hit, overlap }) => ({ hit, overlap }))
     .sort((a, b) => b.overlap - a.overlap);
+}
+
+/** Questions that ask for ALL items of a kind. The noun says which kind; the kinds are the routes' (react-config.ts). Kept in code,
+ * like the loop's exits: it is not a setting a person can tune into answering things the SOP does not say. Only kinds whose
+ * passages are one per numbered item (D1, D2, ...) are listed: a fee table is one passage, and needs no gathering. */
+const ENUMERATIONS: { noun: RegExp; kind: RouteKind }[] = [
+  { noun: /\bdocuments\b/i, kind: "required-documents" },
+];
+
+/** Words that name the list or the asking, not the subject: a list question must still carry a subject of the SOP besides these. */
+const LIST_WORDS = /^(documents?|required?|requirements?|need|needed|list|name|which|what|please|show)$/;
+
+/** Is a list question about this SOP? Besides the words that name the list and the asking, it has no other content word (a bare
+ * "which documents are required", put to an agent that works on this SOP), or at least one of them is a subject term of the SOP
+ * (licence, renew, trade: terms found in many of its passages). "Which documents to open a bank account" has three content words
+ * and none is a subject term, so it is not. */
+export function inScope(question: string, common: Set<string>): boolean {
+  const content = [...new Set(words(question))].filter((w) => !FILLER.has(w) && !LIST_WORDS.test(w));
+  return content.length === 0 || content.some((w) => common.has(w));
+}
+
+/** The passages that ARE the items of a kind: those whose own heading is a numbered item ("D1. Trade name certificate"). */
+export function itemChunks<T extends { text: string; topics: string[] }>(chunks: T[], kind: string): T[] {
+  return chunks.filter((c) => c.topics.includes(kind) && !c.topics.includes("overview") && /^[A-Z]{1,3}\d+[.:)]/.test(c.text.split("\n")[0].split(" | ").pop()?.trim() ?? ""));
+}
+
+/** The kind a "which / what / list ... <plural noun>" question asks to be listed, or null for any other question. */
+export function enumerationKind(question: string): RouteKind | null {
+  if (!/\b(which|what|list|name)\b/i.test(question)) return null;
+  return ENUMERATIONS.find((e) => e.noun.test(question))?.kind ?? null;
+}
+
+/** Content words of the question that appear nowhere in the SOP (after the glossary): a place, a body or a thing the SOP never
+ * mentions. A list question with one of these is not about this SOP's list, so it is not enumerated. */
+export function outOfVocabulary(question: string, chunks: { text: string }[], glossary: GlossaryEntry[] = DEFAULT_REACT_CONFIG.glossary): string[] {
+  const vocab = new Set(chunks.flatMap((c) => words(c.text)));
+  return [...new Set(words(question))].filter((w) => !FILLER.has(w) && !vocab.has(w) && !words(rewrite(w, glossary)).some((x) => vocab.has(x)));
 }
 
 const searchedQueries = (s: ReactState) => s.steps.flatMap((x) => (x.action.tool === "search_sop" ? [x.action.query] : []));
@@ -241,14 +281,28 @@ export async function reactAnswer(sopId: string, question: string, opts: ReactOp
       for (const h of hits) s.retrieved.set(h.chunk.chunk_id, h.chunk);
       const g = groundedHits(hits, action.query, common, !!action.kind, cfg);
       for (const x of g) if (!s.supported.has(x.hit.chunk.chunk_id)) s.supported.set(x.hit.chunk.chunk_id, action.query);
+      // a list question: gather every passage of the kind, once. Only for a question about this SOP: it carries a subject term of
+      // the SOP (licence, renew, trade...) and no word the SOP never uses (another city, a bank account...).
+      if (!s.enumerated?.length) {
+        const kind = enumerationKind(question);
+        if (kind && inScope(question, common) && outOfVocabulary(question, sop, cfg.glossary).length === 0 && !names.length && !person) {
+          const items = itemChunks(sop, kind);
+          if (items.length >= 2) {
+            for (const c of items) { s.retrieved.set(c.chunk_id, c); if (!s.supported.has(c.chunk_id)) s.supported.set(c.chunk_id, question); }
+            s.enumerated = items.map((c) => c.chunk_id);
+          }
+        }
+      }
       s.steps.push({
         thought, action,
-        observation: `${hits.map((h) => h.chunk.chunk_id.split("#")[1]).join(", ") || "no hits"}; supporting: ${g.map((x) => x.hit.chunk.chunk_id.split("#")[1]).join(", ") || "none"}`,
+        observation: `${hits.map((h) => h.chunk.chunk_id.split("#")[1]).join(", ") || "no hits"}; supporting: ${g.map((x) => x.hit.chunk.chunk_id.split("#")[1]).join(", ") || "none"}${s.enumerated?.length ? `; the question asks for all of them, so every passage of this kind is gathered: ${s.enumerated.map((id) => id.split("#")[1]).join(", ")}` : ""}`,
       });
     } else if (action.tool === "request_outside_information") {
       return outside(thought, action.reason);
     } else {
-      const valid = names.length || person ? [] : action.citations.filter((c) => s.supported.has(c));
+      let valid = names.length || person ? [] : action.citations.filter((c) => s.supported.has(c));
+      // a list question is answered with the whole list, not with whichever item the reasoner happened to cite
+      if (valid.length && s.enumerated?.length && valid.some((c) => s.enumerated!.includes(c))) valid = [...s.enumerated];
       if (!valid.length) {
         s.steps.push({ thought, action, observation: person ? "rejected: the question asks for a named person; the SOP names roles, not people" : names.length ? `rejected: the question names ${names.join(", ")}, which the SOP never mentions` : "rejected: no cited chunk was retrieved and shown to support the question" });
         return outside("A finish without a supported citation is not allowed, so the answer cannot come from the knowledge base.", "The answer had no supporting passage in the SOP knowledge base.");
@@ -258,16 +312,16 @@ export async function reactAnswer(sopId: string, question: string, opts: ReactOp
       if (opts.reflect) {
         const passages = valid.map((id) => ({ chunk_id: id, text: s.retrieved.get(id)!.text.split("\n").slice(1).join("\n") }));
         let refl: Reflection | null = null;
-        try { refl = await opts.reflect(question, passages); } catch (e) { refl = { answers: false, quote: "", why: `the reflection step failed: ${(e as Error).message.slice(0, 100)}` }; }
+        try { refl = await opts.reflect(question, passages, { list: !!s.enumerated?.length }); } catch (e) { refl = { answers: false, quote: "", why: `the reflection step failed: ${(e as Error).message.slice(0, 100)}` }; }
         const v = verifyReflection(refl, passages);
         if (!v.ok) {
           // a rejected finish is not an answer: drop what was cited, so only a new search can support a new one
           s.steps.push({ thought, action, observation: `rejected by reflection: ${v.why}` });
-          for (const id of valid) s.supported.delete(id);
+          for (const id of valid) if (!s.enumerated?.includes(id)) s.supported.delete(id);
           continue;
         }
         verified = v;
-        cites = [v.chunk_id];
+        cites = s.enumerated?.length ? valid : [v.chunk_id];
       }
       s.steps.push({ thought, action, observation: `accepted: ${cites.join(", ")}${verified ? " (reflection quoted the answer)" : ""}` });
       return {
