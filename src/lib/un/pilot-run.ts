@@ -35,7 +35,20 @@ export function casesFor(b: Blueprint, cases: TaskCase[], role: Role = "dv"): Ta
   }
 }
 
+/** What drove the agent in a pilot, kept with the pilot so a report can say what was tested. "rule" is the code-based
+ * reasoner of the ReAct loop; "llm" is a language model choosing the searches (the controls are still enforced by code),
+ * with how many calls it made and how often it fell back to the rule step. `sample` is set when the pilot ran fewer
+ * tests or repetitions than the approved set asks for: such a pilot is never conclusive. */
+export interface AgentInfo {
+  reasoner: "rule" | "llm";
+  model?: string;
+  usage?: { calls: number; fallbacks: number; prompt_tokens: number; completion_tokens: number };
+  sample?: { tests: number; of: number; reps: number };
+}
+
 export interface PilotPlan {
+  /** What drove the agent in this pilot. Absent on pilots recorded before this was kept (the rule-based reasoner). */
+  agent?: AgentInfo;
   /** blueprint id → the case ids that will run for it. */
   bound: Record<string, string[]>;
   unexecuted: { id: string; family: string; task: string | null; why: string }[];
@@ -96,9 +109,19 @@ export function toPilotRun(b: Blueprint, o: CaseOutcome, rep: number, latency_ms
 
 export type RunCase = (c: TaskCase) => Promise<CaseOutcome>;
 
+/** `n` of the blueprints that have an executable case, spread evenly over the list (not the first n, which would be all
+ * one task). Deterministic. All of them when n is at least as large. */
+export function spreadSample(boundIds: string[], n: number): string[] {
+  if (n >= boundIds.length) return boundIds;
+  if (n <= 0) return [];
+  return Array.from({ length: n }, (_, i) => boundIds[Math.floor((i * boundIds.length) / n)]);
+}
+
 /** Execute the plan: every bound case, `reps` times. `now` is injected (Date.now in the app). */
-export async function executePilot(blueprints: Blueprint[], cases: TaskCase[], run: RunCase, reps: number, now: () => number = Date.now, role: Role = "dv"): Promise<{ runs: PilotRun[]; plan: PilotPlan }> {
+export async function executePilot(blueprints: Blueprint[], cases: TaskCase[], run: RunCase, reps: number, now: () => number = Date.now, role: Role = "dv", only?: Set<string>): Promise<{ runs: PilotRun[]; plan: PilotPlan }> {
   const plan = planPilot(blueprints, cases, role);
+  // a sample runs only the named blueprints; the others are not run and not listed as unexecuted either
+  if (only) for (const id of Object.keys(plan.bound)) if (!only.has(id)) delete plan.bound[id];
   const byId = new Map(cases.map((c) => [c.id, c]));
   const runs: PilotRun[] = [];
   for (const b of blueprints) {

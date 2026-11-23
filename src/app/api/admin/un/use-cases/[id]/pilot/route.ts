@@ -3,7 +3,8 @@ import { bad, notFound, requirePermission } from "@/lib/api-auth";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { isUuid } from "@/lib/un/model";
 import { buildReport } from "@/lib/un/pilot";
-import { executePilot, generatedCases } from "@/lib/un/pilot-run";
+import { executePilot, generatedCases, planPilot, spreadSample, type AgentInfo } from "@/lib/un/pilot-run";
+import { llmReasoner } from "@/lib/un/react-llm";
 import { loadPilots, savePilot } from "@/lib/un/pilot-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { searchSop } from "@/lib/un/sop-kb";
@@ -62,15 +63,27 @@ export async function POST(request: Request, { params }: Ctx) {
   const pstate = replayParams(plog);
   if (!pstate.approved) return NextResponse.json({ error: "Approve the verdict parameters first: the pilot is judged only against approved thresholds" }, { status: 409 });
 
-  const env = { retrieve: async (q: string, kind?: string) => (await searchSop(SOP_ID, q, { k: 5, kind })).hits, ocr: recordedOcr() };
   const params_ = pstate.approved.params;
+  // agent: "llm" lets a language model choose the searches of the agent's ReAct loop (AGENT_LLM_MODEL); the default is the
+  // code-based reasoner. A sample ({ sample: n tests, reps }) runs fewer tests or repetitions to measure cost and time first:
+  // it is recorded as a sample and is never conclusive.
+  const useLlm = b.agent === "llm";
+  if (useLlm && !(process.env.LLM_API_KEY ?? process.env.OPENROUTER_API_KEY)) return NextResponse.json({ error: "No model is configured for the agent (set LLM_API_KEY)" }, { status: 409 });
+  const llm = useLlm ? llmReasoner() : null;
+  const env = { retrieve: async (q: string, kind?: string) => (await searchSop(SOP_ID, q, { k: 5, kind })).hits, ocr: recordedOcr(), ...(llm ? { reasoner: llm.reasoner } : {}) };
   const cases = [...ALL_CASES, ...generatedCases(tset.blueprints, ALL_CASES, role)];
-  const { runs, plan } = await executePilot(tset.blueprints, cases, (c) => runCase(c, env), params_.min_runs_per_test, Date.now, role);
+  const wantReps = Number.isInteger(b.reps) && (b.reps as number) >= 1 ? Math.min(b.reps as number, params_.min_runs_per_test) : params_.min_runs_per_test;
+  const bound = Object.keys(planPilot(tset.blueprints, cases, role).bound);
+  const wantTests = Number.isInteger(b.sample) && (b.sample as number) >= 1 ? (b.sample as number) : null;
+  const only = wantTests ? new Set(spreadSample(bound, wantTests)) : undefined;
+  const { runs, plan } = await executePilot(tset.blueprints, cases, (c) => runCase(c, env), wantReps, Date.now, role, only);
+  const agent: AgentInfo = { reasoner: llm ? "llm" : "rule", ...(llm ? { model: llm.model, usage: { calls: llm.usage.calls, fallbacks: llm.usage.fallbacks, prompt_tokens: llm.usage.prompt_tokens, completion_tokens: llm.usage.completion_tokens } } : {}), ...(only || wantReps < params_.min_runs_per_test ? { sample: { tests: only ? only.size : bound.length, of: bound.length, reps: wantReps } } : {}) };
+  plan.agent = agent;
   const report = buildReport({
     runs, params: params_, test_set_hash: tset.approved!.hash, ext: uc.ext_id, facts: factsOf(uc), requested: "GO_SUPERVISED",
     gov: await loadGov(who.org_id!), reviewerGates: {},
   });
-  const saved = await savePilot(who.org_id!, id, { at: new Date().toISOString(), actor: who.email ?? who.id, profile, reps: params_.min_runs_per_test, runs: runs.length, plan, report, run_records: runs, basis: null });
+  const saved = await savePilot(who.org_id!, id, { at: new Date().toISOString(), actor: who.email ?? who.id, profile, reps: wantReps, runs: runs.length, plan, report, run_records: runs, basis: null });
   if ("error" in saved) return NextResponse.json({ error: saved.error }, { status: 500 });
-  return NextResponse.json({ ok: true, pilot_id: saved.id, runs: runs.length, unexecuted: plan.unexecuted.length, conclusive: report.conclusive, verdict: report.verdict, report_hash: report.report_hash });
+  return NextResponse.json({ ok: true, pilot_id: saved.id, agent, runs: runs.length, unexecuted: plan.unexecuted.length, conclusive: report.conclusive, verdict: report.verdict, report_hash: report.report_hash });
 }
