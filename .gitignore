@@ -39,7 +39,7 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-supabase/.temp
+supabase/**/.temp
 
 # step dry-run output (scripts/dryrun-*.ts)
 /scratchpad/
