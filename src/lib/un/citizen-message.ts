@@ -60,3 +60,6 @@ export function draftCitizenMessage(entity: string, contact: string, lang: MsgLa
     ? `مرحبًا، أنا مساعد ذكاء اصطناعي من ${entity}. قد تحتوي إجاباتي على أخطاء، ويراجعها موظف مختص عند الحاجة. للتحدث مع موظف بشري تواصل معنا على ${contact}.`
     : `Hello, I am an AI assistant from ${entity}. My answers may contain mistakes. To speak with a human staff member, contact us at ${contact}.`;
 }
+
+/** Wording that promises more than the SOP does in a message to an applicant. */
+export const PROMISE = /\b(guarantee|guaranteed|promise|will be (approved|renewed|issued)|has been (approved|renewed|issued)|waived|discount|free of charge)\b/i;

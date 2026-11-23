@@ -2,7 +2,7 @@ import { CaseMemory, type CaseState, type MemoryStore } from "./case-memory.ts";
 import { addDays, CORE_CODES, CORE_DOC_TYPES, daysBetween, DOC_CODE, DOC_LABEL, readDocument, verifyDocument, type DocCode, type DocContext, type DocType, type Finding, type LicenceRecord, type OcrEngine } from "./doc-ocr.ts";
 import { simulatedGate, type CallDecision } from "./sijil-calls.ts";
 import type { Registry, Payment } from "./fixtures-uc02.ts";
-import { reactAnswer, type OutsideRequest, type ReactResult, type Reasoner, type Retrieve } from "./react-sop.ts";
+import { reactAnswer, type OutsideRequest, type ReactResult, type Reasoner, type Reflector, type Retrieve } from "./react-sop.ts";
 import { reasonerFromEnv } from "./react-llm.ts";
 import { withTunedRules, type ReactConfig } from "./react-config.ts";
 import { extractSkill, loadSop, type SkillFile } from "./sop-kb.ts";
@@ -28,6 +28,8 @@ export interface Tools {
   react?: ReactConfig;
   /** Reasoner for ReAct questions. Default: the model one if AGENT_REASONER=llm and an endpoint is set, else rule-based. */
   reasoner?: Reasoner;
+  /** Reflection on a proposed finish of a ReAct question (see react-sop.ts); without it a supported citation is enough. */
+  reflect?: Reflector;
 }
 
 export interface CaseRequest {
@@ -143,7 +145,7 @@ export class Agent {
     if (prior) {
       return { status: "outside_kb", steps: [], citations: [], answer: [], evidence: [], calls: [], outside: { question, reason: prior.reason ?? "waiting for a person", tried: [] } };
     }
-    const r = await reactAnswer(this.sopId, question, { retrieve: this.tools.retrieve, requestOutside: this.tools.requestOutside, reasoner: this.tools.reasoner ?? reasonerFromEnv(), config: this.tools.react });
+    const r = await reactAnswer(this.sopId, question, { retrieve: this.tools.retrieve, requestOutside: this.tools.requestOutside, reasoner: this.tools.reasoner ?? reasonerFromEnv(), reflect: this.tools.reflect, config: this.tools.react });
     for (const c of r.calls) this.calls.push(c);
     if (r.status === "outside_kb") await this.memory.write("outside_request", this.actor, { question, reason: r.outside?.reason ?? "", tried: r.outside?.tried ?? [] });
     return r;

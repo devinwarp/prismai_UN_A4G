@@ -42,6 +42,27 @@ export interface ReactState {
   supported: Map<string, string>;
 }
 
+/** A reflection: after the reasoner proposes to finish, a second look at ONLY the question and the cited passages. It must say
+ * whether a passage states the answer to THIS question (its place, amount, person or condition included) and quote the
+ * sentence that does. The loop checks the quote itself: it must exist word for word in a cited passage. */
+export interface Reflection { answers: boolean; quote: string; why: string }
+export type Reflector = (question: string, passages: { chunk_id: string; text: string }[]) => Promise<Reflection>;
+
+const squash = (t: string) => t.toLowerCase().replace(/[*_`>#|-]+/g, " ").replace(/\s+/g, " ").trim();
+
+/** Does the reflection stand? It must claim an answer, and its quote must be real text of a cited passage (not a paraphrase
+ * and not a made-up one): the model cannot pass this step by saying yes. A passage may be a table, so the quote may be a row
+ * or cells; it may skip text with "..." as long as every fragment is word for word in ONE passage, in order. */
+export function verifyReflection(r: Reflection | null, passages: { chunk_id: string; text: string }[]): { ok: true; chunk_id: string; quote: string } | { ok: false; why: string } {
+  if (!r || r.answers !== true) return { ok: false, why: r?.why?.slice(0, 200) || "no cited passage states the answer to this question" };
+  const parts = String(r.quote ?? "").split(/\.{3}|\u2026/).map(squash).filter((x) => x.length > 0);
+  const words = parts.join(" ").split(" ").filter(Boolean);
+  if (parts.join("").length < 8 || words.length < 2) return { ok: false, why: "the reflection gave no quote that states the answer" };
+  const inOrder = (text: string) => { let at = 0; for (const part of parts) { const i = text.indexOf(part, at); if (i < 0) return false; at = i + part.length; } return true; };
+  const hit = passages.find((p) => inOrder(squash(p.text)));
+  return hit ? { ok: true, chunk_id: hit.chunk_id, quote: String(r.quote).trim().slice(0, 400) } : { ok: false, why: "the quote is not text of any cited passage" };
+}
+
 export type Reasoner = (s: ReactState) => { thought: string; action: Action } | Promise<{ thought: string; action: Action }>;
 export type Retrieve = (query: string, kind?: string) => Promise<Hit[]> | Hit[];
 
@@ -176,6 +197,9 @@ export interface ReactOptions {
   config?: ReactConfig;
   retrieve?: Retrieve;
   reasoner?: Reasoner;
+  /** Reflection on a proposed finish (see Reflection). Without it a supported citation is enough, as before. When it fails or
+   * the reflector errors the finish is refused (fail closed) and the cited passages are dropped from the supported set. */
+  reflect?: Reflector;
   maxSteps?: number;
   /** The required tool. Called at most once per run; its return value is recorded in the trace. */
   requestOutside?: (r: OutsideRequest) => Promise<string> | string;
@@ -229,10 +253,26 @@ export async function reactAnswer(sopId: string, question: string, opts: ReactOp
         s.steps.push({ thought, action, observation: person ? "rejected: the question asks for a named person; the SOP names roles, not people" : names.length ? `rejected: the question names ${names.join(", ")}, which the SOP never mentions` : "rejected: no cited chunk was retrieved and shown to support the question" });
         return outside("A finish without a supported citation is not allowed, so the answer cannot come from the knowledge base.", "The answer had no supporting passage in the SOP knowledge base.");
       }
-      s.steps.push({ thought, action, observation: `accepted: ${valid.join(", ")}` });
+      let cites = valid;
+      let verified: { chunk_id: string; quote: string } | null = null;
+      if (opts.reflect) {
+        const passages = valid.map((id) => ({ chunk_id: id, text: s.retrieved.get(id)!.text.split("\n").slice(1).join("\n") }));
+        let refl: Reflection | null = null;
+        try { refl = await opts.reflect(question, passages); } catch (e) { refl = { answers: false, quote: "", why: `the reflection step failed: ${(e as Error).message.slice(0, 100)}` }; }
+        const v = verifyReflection(refl, passages);
+        if (!v.ok) {
+          // a rejected finish is not an answer: drop what was cited, so only a new search can support a new one
+          s.steps.push({ thought, action, observation: `rejected by reflection: ${v.why}` });
+          for (const id of valid) s.supported.delete(id);
+          continue;
+        }
+        verified = v;
+        cites = [v.chunk_id];
+      }
+      s.steps.push({ thought, action, observation: `accepted: ${cites.join(", ")}${verified ? " (reflection quoted the answer)" : ""}` });
       return {
-        status: "answered", steps: s.steps, calls, citations: valid, evidence: valid.map((id) => s.retrieved.get(id)!),
-        answer: valid.map((id) => ({ chunk_id: id, quote: bestSentence(s.retrieved.get(id)!.text.split("\n").slice(1).join("\n"), words(s.supported.get(id)!).filter((w) => !FILLER.has(w)).join(" "), 300).sentence })),
+        status: "answered", steps: s.steps, calls, citations: cites, evidence: cites.map((id) => s.retrieved.get(id)!),
+        answer: cites.map((id) => ({ chunk_id: id, quote: verified && verified.chunk_id === id ? verified.quote : bestSentence(s.retrieved.get(id)!.text.split("\n").slice(1).join("\n"), words(s.supported.get(id)!).filter((w) => !FILLER.has(w)).join(" "), 300).sentence })),
       };
     }
   }

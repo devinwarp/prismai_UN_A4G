@@ -74,3 +74,4 @@ var/
 /scripts/inspect-db.mts
 /scripts/compare-goals.mts
 /scripts/probe-notice.mts
+/scripts/ab-react.mts

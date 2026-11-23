@@ -7,7 +7,7 @@ import { cachedOcr, type OcrEngine, type OcrResult } from "./doc-ocr.ts";
 import { DOC_DIR, DOCS, NO_REGISTRY, RECORDS, REGISTRY, REPRESENTATIVE, TODAY, TRANSLATORS, type Payment } from "./fixtures-uc02.ts";
 import type { ReactConfig } from "./react-config.ts";
 import type { CallDecision } from "./sijil-calls.ts";
-import type { Reasoner, Retrieve } from "./react-sop.ts";
+import type { Reasoner, Reflector, Retrieve } from "./react-sop.ts";
 import { loadSop } from "./sop-kb.ts";
 
 // Per-task evals for the two automated job profiles of SOP-LIC-014 (T04 to T10 for the Document
@@ -245,6 +245,8 @@ export interface EvalEnv {
   reasoner?: Reasoner;
   /** writes the message of the T12 fee notice (a model); without it the notice carries no message body */
   drafter?: Drafter;
+  /** reflection on a proposed finish of a ReAct question; without it a supported citation is enough */
+  reflect?: Reflector;
   /** reads a synthetic document image by DOCS key */
   image?: (key: string) => Buffer;
   /** approved ReAct glossary, routing and thresholds (defaults when absent) */
@@ -275,6 +277,7 @@ function toolsFor(c: TaskCase, env: EvalEnv, caseId: string): Tools {
     ocr: env.ocr,
     translatorRegistered: (r) => TRANSLATORS.has(r),
     reasoner: env.reasoner,
+    reflect: env.reflect,
     retrieve: env.retrieve,
     requestOutside: () => `queued for a person (${caseId})`,
     react: env.react,

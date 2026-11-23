@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { figureProblems, figuresIn, makeDrafter, mentionsDate, noticePrompt, parseDraft, type NoticeFacts } from "../src/lib/un/notice-draft.ts";
+import { draftProblems, figureProblems, figuresIn, makeDrafter, mentionsDate, noticePrompt, parseDraft, type NoticeFacts } from "../src/lib/un/notice-draft.ts";
 import { casesFor, generatedCases, noticeChecks, noticeScenarioCase, toPilotRun } from "../src/lib/un/pilot-run.ts";
 import { runCase, recordedOcr, SOP_ID } from "../src/lib/un/task-evals.ts";
 import { searchSop } from "../src/lib/un/sop-kb.ts";
@@ -42,13 +42,51 @@ test("the prompt carries the facts and puts the applicant's note in quotes as un
   assert.doesNotMatch(p, /a@b\.example/, "the address is never shown to the model");
 });
 
-test("a drafter counts its calls and failures, and a failed call throws", async () => {
+const FACTS: NoticeFacts = { entity: "Marsa Public Services Authority", contact: "licensing@marsa.example", to: bakeryEmail, amount: 2200, due: "2026-12-04", pay_by: ["card on the portal"], case: "CASE-1" };
+const ok = JSON.stringify({ body: GOOD_BODY });
+const BAD_BODY = JSON.stringify({ body: "Hello. Your fee is 2,000 plus a late fee of 200. Contact us." });
+
+test("a drafter whose first draft passes every check makes one call", async () => {
+  const d = makeDrafter({ model: "m", chat: async () => ok });
+  assert.equal(await d.draft(FACTS), GOOD_BODY);
+  assert.deepEqual({ calls: d.usage.calls, first_pass_ok: d.usage.first_pass_ok, revised: d.usage.revised, unresolved: d.usage.unresolved }, { calls: 1, first_pass_ok: 1, revised: 0, unresolved: 0 });
+});
+
+test("a failed draft is sent back with the exact problems and the revision is used", async () => {
+  const seen: string[] = [];
   let n = 0;
-  const d = makeDrafter({ model: "m", chat: async () => { n++; if (n === 2) throw new Error("boom"); return JSON.stringify({ body: "ok body" }); } });
-  const f: NoticeFacts = { entity: "E", contact: "c", to: "t", amount: 1, due: "2026-12-04", pay_by: [], case: "C" };
-  assert.equal(await d.draft(f), "ok body");
-  await assert.rejects(d.draft(f), /boom/);
-  assert.deepEqual({ calls: d.usage.calls, failures: d.usage.failures }, { calls: 2, failures: 1 });
+  const d = makeDrafter({ model: "m", chat: async ({ user }) => { seen.push(user); return n++ === 0 ? BAD_BODY : ok; } });
+  assert.equal(await d.draft(FACTS), GOOD_BODY);
+  assert.match(seen[1], /Your previous draft/);
+  assert.match(seen[1], /does not say that an AI assistant wrote it/);
+  assert.match(seen[1], /states a figure that is not the notice's: 2000/);
+  assert.deepEqual({ calls: d.usage.calls, first_pass_ok: d.usage.first_pass_ok, revised: d.usage.revised, revised_ok: d.usage.revised_ok, unresolved: d.usage.unresolved }, { calls: 2, first_pass_ok: 0, revised: 1, revised_ok: 1, unresolved: 0 });
+});
+
+test("a draft that never passes is revised at most twice, returned as it is, and counted as unresolved", async () => {
+  const d = makeDrafter({ model: "m", chat: async () => BAD_BODY });
+  const body = await d.draft(FACTS);
+  assert.match(body, /late fee of 200/);
+  assert.deepEqual({ calls: d.usage.calls, revised: d.usage.revised, unresolved: d.usage.unresolved }, { calls: 3, revised: 1, unresolved: 1 });
+});
+
+test("a failed first call throws and counts; a failed revision keeps the last draft", async () => {
+  const dead = makeDrafter({ model: "m", chat: async () => { throw new Error("boom"); } });
+  await assert.rejects(dead.draft(FACTS), /boom/);
+  assert.equal(dead.usage.failures, 1);
+  let n = 0;
+  const d = makeDrafter({ model: "m", chat: async () => { if (n++ === 0) return BAD_BODY; throw new Error("down"); } });
+  assert.match(await d.draft(FACTS), /late fee of 200/);
+  assert.deepEqual({ failures: d.usage.failures, unresolved: d.usage.unresolved }, { failures: 1, unresolved: 1 });
+});
+
+test("draftProblems and noticeChecks agree on the words of a draft", () => {
+  const bodies = [GOOD_BODY, GOOD_BODY.replace("AI assistant", "helper"), GOOD_BODY.replace("2,200", "100"), GOOD_BODY + " Your renewal has been approved.", GOOD_BODY.replace("licensing@marsa.example", "us")];
+  for (const b of bodies) {
+    const mine = draftProblems(b, FACTS).length === 0;
+    const theirs = noticeChecks(res(b), bakeryEmail).length === 0;
+    assert.equal(mine, theirs, b.slice(0, 60));
+  }
 });
 
 test("noticeChecks passes a good draft and names each way a draft can fail", () => {

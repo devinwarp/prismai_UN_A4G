@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { OUTSIDE, type Blueprint } from "./test-derive.ts";
 import type { PilotRun } from "./pilot.ts";
-import { checkCitizenMessage } from "./citizen-message.ts";
+import { checkCitizenMessage, PROMISE } from "./citizen-message.ts";
 import { figureProblems, mentionsDate, OFFICE } from "./notice-draft.ts";
 import { ALL_DV, BAKERY, GOOD, swap, without, type CaseOutcome, type Role, type TaskCase } from "./task-evals.ts";
 import { RECORDS } from "./fixtures-uc02.ts";
@@ -47,7 +47,9 @@ export interface AgentInfo {
   model?: string;
   usage?: { calls: number; fallbacks: number; prompt_tokens: number; completion_tokens: number };
   /** The model that wrote the T12 fee-notice messages, with how many drafts it made and how many failed. */
-  drafter?: { model: string; calls: number; failures: number; prompt_tokens: number; completion_tokens: number };
+  drafter?: { model: string; calls: number; failures: number; first_pass_ok: number; revised: number; revised_ok: number; unresolved: number; prompt_tokens: number; completion_tokens: number };
+  /** The reflection step on the ReAct answers: its model, how many reviews it made and how many said no. */
+  reflection?: { model: string; calls: number; said_no: number; errors: number; prompt_tokens: number; completion_tokens: number };
   sample?: { tests: number; of: number; reps: number };
 }
 
@@ -79,7 +81,11 @@ const digest = (v: unknown) => createHash("sha256").update(JSON.stringify(v)).di
  * is reduced to its address and whether one was written; its facts are judged by the checks, not by the digest. */
 const stable = (o: Record<string, unknown>) => {
   const e = o.email as { to?: string; body?: string } | null | undefined;
-  return e && typeof e === "object" ? { ...o, email: { to: e.to, drafted: typeof e.body === "string" } } : o;
+  const base = e && typeof e === "object" ? { ...o, email: { to: e.to, drafted: typeof e.body === "string" } } : o;
+  // how many reasoning steps a question took is the route, not the answer
+  const { steps: _steps, ...rest } = base as Record<string, unknown>;
+  void _steps;
+  return "status" in rest ? rest : base;
 };
 
 /** One run of one case, turned into a PilotRun. */
@@ -185,8 +191,7 @@ export function generatedCases(blueprints: Blueprint[], base: TaskCase[], role: 
 
 // ---- client-facing scenarios and SOP controls ---------------------------------------------------------------
 
-/** Wording that promises more than the SOP does in a message to an applicant. */
-export const PROMISE = /\b(guarantee|guaranteed|promise|will be (approved|renewed|issued)|has been (approved|renewed|issued)|waived|discount|free of charge)\b/i;
+export { PROMISE };
 
 const NOOR = RECORDS.noor;
 const out = (r: { output: unknown }) => r.output as Record<string, any>; // eslint-disable-line @typescript-eslint/no-explicit-any
