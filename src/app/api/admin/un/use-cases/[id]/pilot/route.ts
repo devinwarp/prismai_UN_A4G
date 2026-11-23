@@ -3,7 +3,7 @@ import { bad, notFound, requirePermission } from "@/lib/api-auth";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { isUuid } from "@/lib/un/model";
 import { buildReport } from "@/lib/un/pilot";
-import { executePilot, generatedCases, planPilot, spreadSample, type AgentInfo } from "@/lib/un/pilot-run";
+import { couldNotRun, executePilot, generatedCases, planPilot, spreadSample, type AgentInfo } from "@/lib/un/pilot-run";
 import { makeDrafter } from "@/lib/un/notice-draft";
 import { llmReasoner, llmReflector } from "@/lib/un/react-llm";
 import { loadPilots, savePilot } from "@/lib/un/pilot-store";
@@ -82,7 +82,10 @@ export async function POST(request: Request, { params }: Ctx) {
   const bound = Object.keys(planPilot(tset.blueprints, cases, role).bound);
   const wantTests = Number.isInteger(b.sample) && (b.sample as number) >= 1 ? (b.sample as number) : null;
   const only = wantTests ? new Set(spreadSample(bound, wantTests)) : undefined;
-  const { runs, plan } = await executePilot(tset.blueprints, cases, (c) => runCase(c, env), wantReps, Date.now, role, only);
+  // an accepted generated case that cannot run is recorded as disputed, with the reason; it must not end the pilot
+  const generatedIds = new Set(tset.blueprints.filter((x) => x.gen).map((x) => x.id));
+  const run = async (c: Parameters<typeof runCase>[0]) => { try { return await runCase(c, env); } catch (e) { if (generatedIds.has(c.id)) return couldNotRun(c, e); throw e; } };
+  const { runs, plan } = await executePilot(tset.blueprints, cases, run, wantReps, Date.now, role, only);
   const agent: AgentInfo = { reasoner: llm ? "llm" : "rule", ...(llm ? { model: llm.model, usage: { calls: llm.usage.calls, fallbacks: llm.usage.fallbacks, prompt_tokens: llm.usage.prompt_tokens, completion_tokens: llm.usage.completion_tokens } } : {}), ...(drafter ? { drafter: { model: drafter.model, ...drafter.usage } } : {}), ...(reflector ? { reflection: { model: reflector.model, ...reflector.usage } } : {}), ...(only || wantReps < params_.min_runs_per_test ? { sample: { tests: only ? only.size : bound.length, of: bound.length, reps: wantReps } } : {}) };
   plan.agent = agent;
   const report = buildReport({

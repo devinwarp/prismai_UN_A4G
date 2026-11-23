@@ -1,4 +1,4 @@
-import { approvable, coverage, FAMILIES, SCENARIOS, testSetHash, type Blueprint, type Check, type Family, type Gap, type Scenario } from "./test-derive.ts";
+import { approvable, coverage, FAMILIES, SCENARIOS, testSetHash, type Blueprint, type Check, type Family, type Gap, type GenSpec, type Scenario } from "./test-derive.ts";
 import { appendEntry, verifyChain, type ChainEntry } from "./tuning.ts";
 
 // The test set of one job profile of one use case, as a hash-chained log. Pure: no I/O.
@@ -81,7 +81,7 @@ export function replayTestSet(entries: TestEntry[]): TestSetState {
 
 export type Action =
   | { type: "create"; profile: string; sop_id: string; required: Blueprint[] }
-  | { type: "add"; blueprint: { title: string; family: Family; task?: string | null; scenario?: Scenario; slot?: string; expect: Check[]; gates?: string[]; source?: string[] } }
+  | { type: "add"; blueprint: { title: string; family: Family; task?: string | null; scenario?: Scenario; slot?: string; expect: Check[]; gates?: string[]; source?: string[]; gen?: GenSpec } }
   | { type: "edit"; id: string; changes: { title?: string; expect?: Check[]; gates?: string[]; scenario?: Scenario }; reason?: string }
   | { type: "retire"; id: string; reason: string; waiver_approver?: string }
   | { type: "restore"; id: string; reason: string }
@@ -91,6 +91,26 @@ export type Action =
 export type Plan = { ok: true; kind: TestKind; payload: Record<string, unknown> } | { ok: false; error: string };
 
 const bad = (error: string): Plan => ({ ok: false, error });
+/** The operators of a generated assertion (the same list as OPS in testgen.ts, kept here so this file stays free of the model client). */
+const GEN_OPS = ["eq", "ne", "contains", "gte", "lte", "true", "false", "null"];
+const GEN_OUTCOMES = ["produce", "refuse", "escalate"];
+
+/** What is wrong with the generated-case part of a blueprint, or null. Only the proposal route supplies it, from a case in the log
+ * that the generator's own validator already passed; this is a second look at its shape, since the pilot will run it. */
+export function genSpecProblem(g: unknown): string | null {
+  const o = g as Record<string, unknown> | null;
+  if (!o || typeof o !== "object") return "a generated test needs its case";
+  if (typeof o.case_id !== "string" || !o.case_id || o.case_id.length > 120) return "a generated test needs its case id";
+  if (typeof o.model !== "string") return "a generated test records the model that wrote it";
+  const i = o.input as Record<string, unknown> | null;
+  if (!i || typeof i !== "object" || typeof i.agent !== "string" || typeof i.task !== "string" || typeof i.licence !== "string") return "a generated test needs an input with an agent, a task and a licence";
+  const e = o.expect as { outcome?: unknown; assertions?: unknown } | null;
+  if (!e || typeof e !== "object" || !GEN_OUTCOMES.includes(String(e.outcome))) return "a generated test needs an expected outcome";
+  if (!Array.isArray(e.assertions) || e.assertions.length < 1 || e.assertions.length > 12) return "a generated test needs 1 to 12 assertions";
+  for (const a of e.assertions as Record<string, unknown>[]) if (!a || typeof a.path !== "string" || !a.path || !GEN_OPS.includes(String(a.op))) return "an assertion needs a path and a known operator";
+  return null;
+}
+
 const checkOk = (c: unknown): c is Check =>
   !!c && typeof c === "object" && ["exact", "rubric", "metric"].includes((c as Check).kind) && typeof (c as Check).text === "string" && (c as Check).text.trim().length > 0 && (c as Check).text.length <= 600;
 
@@ -110,11 +130,13 @@ export function plan(state: TestSetState, required: Blueprint[], a: Action, by: 
     const title = str(b.title).trim();
     if (!title || title.length > 200) return bad("A test needs a title of at most 200 characters");
     if (!Array.isArray(b.expect) || !b.expect.length || !b.expect.every(checkOk)) return bad("A test needs at least one expected-output check, each with text of at most 600 characters");
+    if (b.gen !== undefined) { const why = genSpecProblem(b.gen); if (why) return bad(why); }
+    if (b.gen && state.blueprints.some((x) => x.gen?.case_id === b.gen!.case_id && x.status === "active")) return bad("This generated case is already in the test set");
     let n = 1;
     while (state.blueprints.some((x) => x.id === `manual.${n}`)) n++;
     const blueprint: Blueprint = {
       id: `manual.${n}`, slot: b.slot?.trim() || `manual:${n}`, family: b.family, task: b.task ?? null, ...(b.scenario ? { scenario: b.scenario } : {}),
-      title, source: b.source ?? [], derived: false, status: "active", expect: b.expect.map((c) => ({ kind: c.kind, text: c.text.trim() })), ...(b.gates?.length ? { gates: b.gates } : {}),
+      title, source: b.source ?? [], derived: false, status: "active", expect: b.expect.map((c) => ({ kind: c.kind, text: c.text.trim() })), ...(b.gates?.length ? { gates: b.gates } : {}), ...(b.gen ? { gen: b.gen } : {}),
     };
     return { ok: true, kind: "added", payload: { blueprint, by } };
   }

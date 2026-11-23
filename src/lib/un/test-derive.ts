@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type { SopChunk } from "./sop-kb.ts";
+import type { Expectation, GenInput } from "./testgen.ts";
 import { canon } from "./tuning.ts";
 
 // Pilot tests derived from a skill. Pure: no I/O.
@@ -45,7 +46,14 @@ export interface Blueprint {
   expect: Check[];
   /** Client-facing gates this test provides evidence for. */
   gates?: string[];
+  /** Set on a test that came from an accepted AI-generated case: what the pilot RUNS (the structured input) and what it compares the
+   * result with (the machine-checkable assertions). It is part of the blueprint, so the approved set's hash covers it: an approved
+   * case cannot be changed without breaking the approval. */
+  gen?: GenSpec;
 }
+
+/** The part of a generated case the pilot needs: its id in the proposal log, the model that wrote it, the input, the expectation. */
+export interface GenSpec { case_id: string; model: string; input: GenInput; expect: Expectation }
 
 export interface DeriveInput {
   sopId: string;

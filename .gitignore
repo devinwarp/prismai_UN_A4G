@@ -75,3 +75,4 @@ var/
 /scripts/compare-goals.mts
 /scripts/probe-notice.mts
 /scripts/ab-react.mts
+/scripts/e2e-setup.sh

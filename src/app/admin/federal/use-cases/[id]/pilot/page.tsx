@@ -7,11 +7,15 @@ import { permissionsFor } from "@/lib/un/permissions-server";
 import { approversForUseCase } from "@/lib/un/approvers-store";
 import { replayReviews } from "@/lib/un/goal-judge";
 import { loadPilots, loadReviewLog } from "@/lib/un/pilot-store";
+import { replayGen } from "@/lib/un/testgen";
+import { loadGenLog } from "@/lib/un/testgen-store";
 import { loadAttachedSop, loadProfileRows } from "@/lib/un/profiles-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { profilesOf } from "@/lib/un/sop/data";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card, scrollFocus, VerdictBadge } from "../../../_components/ui";
+import { AgentLine } from "./AgentLine";
+import { GeneratedCases } from "./GeneratedCases";
 import { GoalReview } from "./GoalReview";
 import { RunPilot } from "./PilotControls";
 
@@ -41,6 +45,8 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
   const original = pilots.find((p) => !p.basis) ?? null;
   const review = original && current ? (replayReviews(await loadReviewLog(profile.org_id, id, current.name)).reviews[original.id] ?? null) : null;
   const approvers = (await approversForUseCase(profile.org_id, id)).map((a) => ({ title: a.title, source: a.source }));
+  // rulings on disputed generated cases (the proposal log); the page still shows the pilot when that log cannot be read
+  const rulings = current && original?.report.generated ? await loadGenLog(profile.org_id, id, current.name).then((l) => replayGen(l, []).rulings).catch(() => []) : [];
 
   return (
     <LangShell>
@@ -76,6 +82,7 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
                   <span>{last.report.conclusive ? <T k="pi.conclusive" en="Conclusive" /> : <T k="pi.inconclusive" en="Inconclusive: the sample is too small to pass anything" />}</span>
                 </p>
                 <p className="mt-2 text-xs text-ink-soft"><TV k="pi.meta" en="{runs} runs ({reps} repetitions of each test) · {at} · {by}" v={{ runs: last.runs, reps: last.reps, at: new Date(last.at).toLocaleString("en-GB", { timeZone: "Asia/Dubai" }), by: last.actor }} /></p>
+                {last.plan.agent && <AgentLine agent={last.plan.agent} />}
                 <p className="mt-1 font-mono text-[11px] text-ink-soft">tests {last.report.test_set_hash.slice(0, 12)} · params {last.report.params_hash.slice(0, 12)} · report {last.report.report_hash.slice(0, 12)}</p>
 
                 <div className="mt-4 overflow-x-auto" role="region" {...scrollFocus} aria-label="Findings">
@@ -128,6 +135,7 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
                 )}
               </section>
             )}
+            {original?.report.generated && current && <GeneratedCases useCaseId={id} profile={current.name} pilotId={original.id} block={original.report.generated} rulings={rulings} mayRule={mayApproveGoals} />}
             {original && <GoalReview useCaseId={id} profile={current.name} pilotId={original.id} review={review} approvers={approvers} mayRun={mayRun} mayApprove={mayApproveGoals} modelConfigured={!!(process.env.LLM_API_KEY ?? process.env.OPENROUTER_API_KEY)} />}
           </>
         )}

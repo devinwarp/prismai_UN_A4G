@@ -59,6 +59,16 @@ export interface PilotRun {
   promotion_free: boolean | null;
   /** Every figure quoted matched the fee table. null: not a fee test. */
   fee_ok: boolean | null;
+  /** The run is of an accepted AI-generated case. Generated runs are NEVER part of the baseline measures (see measure): they have
+   * their own block in the report (generatedBlock), so the numbers of the hand-written cases do not move. */
+  generated?: true;
+  /** The id of the generated case in the proposal log. */
+  gen_case?: string;
+  /** The actual result did not meet the generated case's expectation. Not "failed": the expectation may be the wrong one, and a
+   * person rules on it (testgen.ts, planRuling). */
+  disputed?: boolean;
+  /** What differed, from checkExpectation. */
+  differences?: string[];
 }
 
 export interface Rate { k: number; n: number; rate: number | null; lower: number | null }
@@ -122,7 +132,9 @@ export function percentile(values: number[], p: number): number | null {
 
 const TASK_FAMILIES: Family[] = ["happy_path", "exception", "boundary", "client_facing"];
 
-export function measure(runs: PilotRun[], confidence = 0.95): Measures {
+export function measure(all: PilotRun[], confidence = 0.95): Measures {
+  // the baseline is the hand-written cases only: a generated case may carry a wrong expectation, so it cannot move a threshold
+  const runs = all.filter((r) => !r.generated);
   const byTest = new Map<string, PilotRun[]>();
   for (const r of runs) byTest.set(r.test_id, [...(byTest.get(r.test_id) ?? []), r]);
   const per_task: Measures["per_task"] = {};
@@ -230,7 +242,33 @@ export function pilotVerdict(o: { ext: string; facts: HitlFacts; requested: Requ
   return { decision, gates };
 }
 
+/** The accepted AI-generated cases of a pilot, apart from the baseline: how many agreed with their expectation and which were disputed.
+ * No threshold applies to it. A person rules on each disputed case (testgen.ts). */
+export interface GeneratedBlock {
+  tests: number;
+  runs: number;
+  /** tests whose every repetition met the expectation */
+  agree: number;
+  /** tests with at least one repetition that did not */
+  disputed: number;
+  cases: { test_id: string; case_id: string; reps: number; disputed_reps: number; differences: string[] }[];
+}
+
+export function generatedBlock(all: PilotRun[]): GeneratedBlock | null {
+  const gen = all.filter((r) => r.generated);
+  if (!gen.length) return null;
+  const by = new Map<string, PilotRun[]>();
+  for (const r of gen) by.set(r.test_id, [...(by.get(r.test_id) ?? []), r]);
+  const cases = [...by].map(([test_id, rs]) => ({
+    test_id, case_id: rs[0].gen_case ?? "", reps: rs.length, disputed_reps: rs.filter((r) => r.disputed).length,
+    differences: [...new Set(rs.flatMap((r) => r.differences ?? []))].slice(0, 8),
+  }));
+  return { tests: cases.length, runs: gen.length, agree: cases.filter((c) => c.disputed_reps === 0).length, disputed: cases.filter((c) => c.disputed_reps > 0).length, cases };
+}
+
 export interface PilotReport {
+  /** The generated cases, apart from the baseline; absent when the pilot ran none. */
+  generated?: GeneratedBlock;
   test_set_hash: string;
   params_hash: string;
   measures: Measures;
@@ -250,6 +288,7 @@ export function buildReport(o: { runs: PilotRun[]; params: Params; test_set_hash
   const j = judge(measures, o.params);
   const measured_gates = measuredGates(measures, o.params, j);
   const { decision } = pilotVerdict({ ext: o.ext, facts: o.facts, requested: o.requested, ruleset: o.ruleset, gov: o.gov, reviewerGates: o.reviewerGates, measured: measured_gates, hitlBreaches: o.hitlBreaches });
-  const body = { test_set_hash: o.test_set_hash, params_hash: paramsHash(o.params), measures, findings: j.findings, failed: j.failed, conclusive: j.conclusive, insufficient: j.insufficient, measured_gates, verdict: decision.verdict, reasons: decision.reasons };
+  const generated = generatedBlock(o.runs);
+  const body = { test_set_hash: o.test_set_hash, params_hash: paramsHash(o.params), measures, findings: j.findings, failed: j.failed, conclusive: j.conclusive, insufficient: j.insufficient, measured_gates, verdict: decision.verdict, reasons: decision.reasons, ...(generated ? { generated } : {}) };
   return { ...body, report_hash: createHash("sha256").update(canon(body)).digest("hex") };
 }

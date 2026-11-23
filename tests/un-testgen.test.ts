@@ -216,9 +216,9 @@ test("viewers get 403; a test author may propose but not accept; a process owner
 test("the route checks permission before reading any state, and never weakens it", () => {
   const src = readFileSync("src/app/api/admin/un/use-cases/[id]/testgen/route.ts", "utf8");
   const post = src.slice(src.indexOf("export async function POST"));
-  assert.match(post, /requirePermission\(\["scenario\.propose", "scenario\.edit"\]/);
+  assert.match(post, /requirePermission\(\["scenario\.propose", "scenario\.edit", "goals\.approve"\]/);
   assert.ok(post.indexOf("who.decide(") < post.indexOf("loadUseCase"), "permission before state");
-  assert.match(post, /act === "generate" \? "scenario\.propose" : "scenario\.edit"/);
+  assert.match(post, /act === "generate" \? "scenario\.propose" : act === "rule" \? "goals\.approve" : "scenario\.edit"/);
   assert.match(src, /requirePermission\("view"\)/);
 });
 

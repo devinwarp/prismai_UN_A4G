@@ -78,7 +78,7 @@ export async function judgeTests(chat: ChatFn, goals: EntityGoal[], all: JudgeIn
 /** One test per distinct test_id, with the first run's summary. */
 export function testsToJudge(runs: PilotRun[], titles: Record<string, { title: string; expect: string[] }>): JudgeInput[] {
   const seen = new Map<string, PilotRun>();
-  for (const r of runs) if (!seen.has(r.test_id)) seen.set(r.test_id, r);
+  for (const r of runs) if (!r.generated && !seen.has(r.test_id)) seen.set(r.test_id, r);
   return [...seen.values()].map((r) => {
     const bp = titles[r.test_id.split("#")[0]];
     return { test_id: r.test_id, title: bp?.title ?? r.test_id, expect: bp?.expect ?? [], summary: r.summary ?? "(no output recorded)", client_facing: r.client_facing };

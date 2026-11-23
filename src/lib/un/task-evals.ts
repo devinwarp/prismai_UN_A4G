@@ -51,6 +51,9 @@ export interface TaskCase {
   seed?: { status: "complete"; late: boolean };
   payments?: (caseId: string) => Payment[];
   ask?: string;
+  /** Built from an accepted AI-generated test (generatedTaskCase). It belongs to that test's own blueprint only: the generic binding of a
+   * task's hand-written cases never picks it up, or its runs would count in the baseline. */
+  generated?: true;
   check: (r: TaskResult, s: CaseState) => string[];
 }
 

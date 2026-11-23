@@ -3,6 +3,7 @@ import { OUTSIDE, type Blueprint } from "./test-derive.ts";
 import type { PilotRun } from "./pilot.ts";
 import { checkCitizenMessage, PROMISE } from "./citizen-message.ts";
 import { figureProblems, mentionsDate, OFFICE } from "./notice-draft.ts";
+import { checkExpectation } from "./testgen.ts";
 import { ALL_DV, BAKERY, GOOD, swap, without, type CaseOutcome, type Role, type TaskCase } from "./task-evals.ts";
 import { RECORDS } from "./fixtures-uc02.ts";
 
@@ -21,6 +22,8 @@ import { RECORDS } from "./fixtures-uc02.ts";
  * boundaries, authority probes for the authority tests. This is a binding, recorded in each run's test_id. */
 export function casesFor(b: Blueprint, cases: TaskCase[], role: Role = "dv"): TaskCase[] {
   if (b.status !== "active") return [];
+  // an accepted AI-generated case runs its own input, built from the blueprint (generatedTaskCase)
+  if (b.gen) return cases.filter((c) => c.id === b.id);
   // an outside-the-SOP test runs the question it names, found by the blueprint's own id; so does a client-facing scenario
   if (b.family === "outside_sop" || b.family === "client_facing") return cases.filter((c) => c.id === b.id);
   // a control is shown by the case that puts it under strain (CONTROL_CASES)
@@ -28,7 +31,7 @@ export function casesFor(b: Blueprint, cases: TaskCase[], role: Role = "dv"): Ta
   if (!b.task) return [];
   // a T12 client-facing scenario case belongs to its own blueprint only: bound to the boundary tests as well, it would add model
   // variance to them and count the same message several times (the T10 scenario cases are bound both ways, which the DV pilot's pinned numbers rest on)
-  const mine = cases.filter((c) => c.task === b.task && !c.id.startsWith("T12.cf."));
+  const mine = cases.filter((c) => c.task === b.task && !c.id.startsWith("T12.cf.") && !c.generated);
   switch (b.family) {
     case "happy_path": return mine.filter((c) => c.split === "tune" && !c.probe);
     case "exception":
@@ -124,6 +127,8 @@ export function toPilotRun(b: Blueprint, o: CaseOutcome, rep: number, latency_ms
     disclosed: client && body !== null ? checkCitizenMessage(body, "en").checks.find((c) => c.id === "ai_disclosure")!.ok : null,
     promotion_free: client && body !== null ? !PROMISE.test(body) : null,
     fee_ok: client && body !== null && typeof notice?.amount === "number" ? figureProblems(body, notice.amount).length === 0 : null,
+    // an accepted generated case is compared with its own expectation: it agrees or it is disputed, never "failed"
+    ...(b.gen ? { generated: true as const, gen_case: b.gen.case_id, disputed: o.failures.length > 0, differences: o.failures.slice(0, 8) } : {}),
   };
 }
 
@@ -164,6 +169,11 @@ export async function executePilot(blueprints: Blueprint[], cases: TaskCase[], r
 export function generatedCases(blueprints: Blueprint[], base: TaskCase[], role: Role = "dv", withDrafter = false): TaskCase[] {
   const have = new Set(base.map((c) => c.id));
   const out: TaskCase[] = [];
+  for (const b of blueprints) {
+    if (b.status !== "active" || !b.gen || have.has(b.id)) continue;
+    const c = generatedTaskCase(b);
+    if (c) { have.add(b.id); out.push(c); }
+  }
   const refuses = (r: { ok: boolean; refused?: string }) => (r.ok === false && !!r.refused ? [] : ["must refuse"]);
   for (const b of blueprints) {
     if (b.status !== "active") continue;
@@ -285,6 +295,33 @@ export function noticeScenarioCase(id: string, kind: string): TaskCase | null {
     default:
       return null;
   }
+}
+
+/** The executable case of an accepted AI-generated test: its structured input is a TaskCase (the fields are the same), and its
+ * check is the case's own assertions. A payment reference "$CASE" stands for the case number. An authority case (the agent is
+ * asked for a task that is not its own) is a probe, like the hand-written ones. */
+export function generatedTaskCase(b: Blueprint): TaskCase | null {
+  const g = b.gen;
+  if (!g) return null;
+  const i = g.input;
+  return {
+    id: b.id, task: i.task, title: b.title, split: "holdout", generated: true, agent: i.agent, licence: i.licence as TaskCase["licence"],
+    ...(i.request ? { request: i.request } : {}), ...(i.docs ? { docs: i.docs } : {}), ...(i.prepare ? { prepare: i.prepare } : {}),
+    ...(i.seed ? { seed: i.seed } : {}), ...(i.ask ? { ask: i.ask } : {}),
+    ...(i.payments ? { payments: (caseId: string) => i.payments!.map((p) => ({ ...p, reference: p.reference === "$CASE" ? caseId : p.reference })) } : {}),
+    ...(b.family === "authority" ? { probe: true } : {}),
+    check: (r) => checkExpectation(g.expect, r),
+  };
+}
+
+/** The outcome recorded when an accepted generated case cannot be run (an input the agent refuses to start from, a fixture it does
+ * not have): the case is disputed, with the reason, and the rest of the pilot goes on. */
+export function couldNotRun(c: TaskCase, e: unknown): CaseOutcome {
+  return {
+    id: c.id, task: c.task, title: c.title, split: c.split, verdict: "wrong", probe: false, agent: c.agent ?? "dv", calls: [],
+    failures: [`the case could not run: ${e instanceof Error ? e.message.slice(0, 160) : "error"}`],
+    result: { task: c.task, ok: false, output: {}, citations: [] },
+  };
 }
 
 /** Which case puts each SOP control under strain, and what shows it held. A control's own test passes only if the
