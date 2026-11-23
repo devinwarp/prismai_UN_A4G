@@ -46,6 +46,7 @@ export const REASON_EN = {
   tests_first: "Comes after the tests and parameters are approved.",
   run_pilot: "Run the pilot on the real agent.",
   pilot_not_met: "The latest pilot is inconclusive or fails a threshold.",
+  release_blocked: "Certified, but the pilot is not met yet: see what is missing before it can be signed.",
 } as const;
 export type ReasonCode = keyof typeof REASON_EN;
 
@@ -64,6 +65,8 @@ export interface JourneyInput {
   evalMet: boolean | null;
   tuning: LogEntry[];
   watch: WatchEntry[];
+  /** The release gate's answer (release-gate.ts), when it was worked out: only for a single use case. Absent: not gated here. */
+  release?: { ready: boolean; blockers: number };
 }
 
 export interface JourneyStage { id: StageId; n: number; group: (typeof GROUPS)[number]; state: StageState; reason: ReasonCode | null }
@@ -90,7 +93,7 @@ export function journeyStatus(i: JourneyInput): Journey {
   const last = i.tuning[i.tuning.length - 1];
   const approval: R = approvalNow === "approved" ? ["done", null]
     : last?.kind === "approval" ? ["stopped", "withheld"]
-    : approvalNow === "ready" ? ["needs_you", "sign"]
+    : approvalNow === "ready" ? (i.release && !i.release.ready ? ["needs_you", "release_blocked"] : ["needs_you", "sign"])
     : ["not_yet", "needs_certification"];
   const w = replay(i.watch);
   const production: R = !w.deployed ? (approvalNow === "approved" ? ["needs_you", "deploy"] : ["not_yet", "needs_approval"])

@@ -6,6 +6,7 @@ import { permissionsFor } from "@/lib/un/permissions-server";
 import { evalSetFor } from "@/lib/un/evalset";
 import { approvalBlockers, effectiveGates, evidenceFor } from "@/lib/un/gates";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
+import { loadRelease } from "@/lib/un/release-store";
 import { loadRun } from "@/lib/un/runs";
 import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
@@ -17,6 +18,7 @@ import { realAgentEvals } from "@/lib/un/tuning-service";
 import { RuleSentence, RuleText } from "../../../_components/EvalText";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card } from "../../../_components/ui";
+import { ReleasePanel } from "../ReleasePanel";
 import { ApproveForm, TuningControls } from "./TuningControls";
 
 export const metadata: Metadata = { title: "Tuning and approval", robots: { index: false, follow: false } };
@@ -135,6 +137,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
   ]);
   const hasSet = evalSetFor(uc.ext_id).length > 0;
   const state = approvalState(log);
+  const release = await loadRelease(profile.org_id, id);
   // the same check the approve route makes (409 otherwise): say it up front instead of offering a button that fails
   let approveBlocked: string | null = null;
   if (state === "ready") {
@@ -142,6 +145,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
     const run = uc.verdict_run_id ? await loadRun(profile.org_id, uc.verdict_run_id) : null;
     const blockers = approvalBlockers(eff, evidenceFor(eff, uc.ext_id, run?.state.state?.gates ?? {}));
     if (blockers.length) approveBlocked = `Approval needs every effective gate to pass. Not yet passing: ${blockers.map((x) => `${x.label} (${x.status})`).join("; ")}.`;
+    else if (!release.ok) approveBlocked = `Approval needs a met pilot: ${release.blockers.length} thing${release.blockers.length === 1 ? "" : "s"} to fix first (see the list above).`;
   }
   const cfg = configOf(log);
   const chain = verifyChain(log);
@@ -193,6 +197,8 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
                 </p>
                 {cfg && <Config cfg={cfg} />}
               </section>
+
+              <ReleasePanel id={id} release={release} />
 
               {state === "ready" && mayApprove && (
                 <section className={`${card} mt-4`} aria-label="Decision">

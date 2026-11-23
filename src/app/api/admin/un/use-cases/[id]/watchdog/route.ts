@@ -1,3 +1,4 @@
+import { loadRelease } from "@/lib/un/release-store";
 import { NextResponse } from "next/server";
 import { bad, forbidden, notFound, requireAdmin, requirePermission } from "@/lib/api-auth";
 import { activeCases, evalSetFor } from "@/lib/un/evalset";
@@ -43,6 +44,9 @@ export async function POST(request: Request, { params }: Ctx) {
   if (b.action === "deploy") {
     if (approvalState(tuning) !== "approved" || !certified) return NextResponse.json({ error: "Only an approved agent version can go into production." }, { status: 409 });
     if (state.deployed) return NextResponse.json({ error: "Already in production. Reset to start again." }, { status: 409 });
+    // the pilot must still be met: a test set, thresholds or targets changed since the approval make the old pilot stale
+    const release = await loadRelease(who.org_id!, id);
+    if (!release.ok) return NextResponse.json({ error: `Going into production needs a met pilot. Not ready: ${release.blockers.slice(0, 6).map((x) => x.message).join(" ")}${release.blockers.length > 6 ? ` (and ${release.blockers.length - 6} more)` : ""}`, blockers: release.blockers }, { status: 409 });
     const entry = appendEntry<WatchEntry["kind"]>(null, "deployed", signer, { version: certified.version, tuning_head_hash: tuning[tuning.length - 1].hash }, now());
     const err = await appendWatch(who.org_id!, id, [entry]);
     return err ? NextResponse.json({ error: err }, { status: 500 }) : NextResponse.json({ ok: true, status: "active" });

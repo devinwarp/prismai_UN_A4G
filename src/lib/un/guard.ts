@@ -18,6 +18,8 @@ export function parseUseCasePatch(b: Record<string, unknown>): PatchResult {
   const patch: Record<string, unknown> = {};
   if ("stage" in b) {
     if (!STAGES.includes(b.stage as never)) return { ok: false, error: "Unknown stage" };
+    // approved and deployed are reached only through the approval and the go-live, which check that the pilot is met
+    if (b.stage === "approved" || b.stage === "deployed") return { ok: false, error: `The ${b.stage} stage cannot be set by hand: it is set by the ${b.stage === "approved" ? "approval" : "go-live"}, which checks the pilot report` };
     patch.stage = b.stage;
   }
   return { ok: true, patch };

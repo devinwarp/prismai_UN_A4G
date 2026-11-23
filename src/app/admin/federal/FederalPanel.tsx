@@ -297,7 +297,7 @@ export default function FederalPanel({
                       {stageLabel(lang, u.stage)}{canEdit && <span aria-hidden className="ms-1 text-ink-soft">▾</span>}
                       {canEdit && (
                         <select aria-label={fill(tr(lang, "ua.row.stagefor", "Stage for {id}"), { id: ltr(u.ext_id) })} disabled={busy} value={u.stage} onChange={(e) => patch(u.id, { stage: e.target.value })} className="absolute inset-0 w-full cursor-pointer opacity-0">
-                          {STAGES.map((s) => <option key={s} value={s}>{stageLabel(lang, s)}</option>)}
+                          {STAGES.filter((s) => (s !== "approved" && s !== "deployed") || s === u.stage).map((s) => <option key={s} value={s}>{stageLabel(lang, s)}</option>)}
                         </select>
                       )}
                     </span>
