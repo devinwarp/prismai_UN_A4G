@@ -47,7 +47,9 @@ export default async function TestsPage({ params, searchParams }: { params: Prom
       const state = replayTestSet(log);
       const plog = await loadParamLog(profile.org_id, id, current.name);
       const pstate = replayParams(plog);
-      const glog = await loadGenLog(profile.org_id, id, current.name);
+      let glog: Awaited<ReturnType<typeof loadGenLog>> = [];
+      let genError: string | null = null;
+      try { glog = await loadGenLog(profile.org_id, id, current.name); } catch (e) { genError = e instanceof Error ? e.message : "The proposal log could not be read"; }
       const approvers = (await approversForUseCase(profile.org_id, id)).map((a) => ({ title: a.title, source: a.source }));
       body = (
         <>
@@ -72,6 +74,7 @@ export default async function TestsPage({ params, searchParams }: { params: Prom
             model={testgenModel()}
             mayPropose={mayPropose}
             mayEdit={mayEdit}
+            storeError={genError}
           />
           <ParamsPanel
             useCaseId={id}

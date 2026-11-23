@@ -137,7 +137,7 @@ Assertion paths: ok, refused, escalate, needs_human, or output.<field>, with lis
 const SKILL_MAX = 9000;
 
 export function buildGeneratorPrompt(scenario: GenScenario, skill: string, risk: Risk, gates: GateInfo[], sopLines: SopLine[], fixtures?: Fixtures): { system: string; user: string } {
-  const role = ROLE_OF_PROFILE[scenario.profile] ?? "dv";
+  const role = ROLE_OF_PROFILE[scenario.profile] ?? "none";
   const user = [
     `Scenario ${scenario.id}: ${scenario.title}`,
     `Job profile: ${scenario.profile} (agent role "${role}"). Task under test: ${scenario.task}. Skill: ${scenario.skill_id ?? "NONE"}.`,
@@ -217,6 +217,8 @@ export function validateCase(raw: unknown, ctx: Ctx, seen: Set<string>): { ok: t
   const role = ROLE_OF_PROFILE[ctx.scenario.profile];
   if (inp.agent !== role) return fail(id, `input.agent must be "${role}"`);
   if (typeof inp.task !== "string" || !ctx.profileTasks.includes(inp.task)) return fail(id, "input.task is not a task of this job profile");
+  // the case id, the gates and the citations are all for the scenario's task: a case that runs another task is for another scenario
+  if (inp.task !== ctx.scenario.task) return fail(id, `input.task must be ${ctx.scenario.task}, the task under test, not ${inp.task}`);
   if (typeof inp.licence !== "string" || !ctx.fixtures.licences.some((l) => l.key === inp.licence)) return fail(id, "input.licence is not a known fixture");
   if (inp.docs !== undefined && (!strs(inp.docs) || inp.docs.some((d) => !ctx.fixtures.docs.includes(d)))) return fail(id, "input.docs names a document that does not exist");
   if (inp.prepare !== undefined && (!strs(inp.prepare) || inp.prepare.some((t) => !/^T\d{2}$/.test(t)))) return fail(id, "input.prepare must be task ids");
@@ -268,8 +270,16 @@ export function coverageGaps(s: GenScenario, cases: GenCase[]): CoverageGap[] {
 }
 
 /** The model's reply to cases, rejections and gaps. Anything unreadable is dropped and reported, never guessed. */
+/** Why nothing may be generated for this scenario, or null. No skill, or a job profile with no agent role to run its cases. */
+export function refusalFor(s: GenScenario): string | null {
+  if (!s.skill_id) return "This scenario is not linked to a skill; a scenario must always be linked to a skill, so nothing was generated.";
+  if (!ROLE_OF_PROFILE[s.profile]) return `No agent role is defined for the job profile "${s.profile}", so its cases cannot be run; nothing was generated.`;
+  return null;
+}
+
 export function parseGenerated(reply: string, ctx: Ctx): Generated {
-  if (!ctx.scenario.skill_id) return { cases: [], rejected: [], gaps: [], refused: "This scenario is not linked to a skill; a scenario must always be linked to a skill, so nothing was generated." };
+  const refused = refusalFor(ctx.scenario);
+  if (refused) return { cases: [], rejected: [], gaps: [], refused };
   let o: unknown;
   try { o = parseLlmJson(reply); } catch { return { cases: [], rejected: [{ index: -1, id: null, reason: "the model's reply is not valid JSON" }], gaps: coverageGaps(ctx.scenario, []), refused: null }; }
   const list = isObj(o) && Array.isArray(o.cases) ? o.cases : null;
@@ -286,7 +296,7 @@ export function parseGenerated(reply: string, ctx: Ctx): Generated {
 
 /** Prompt, one model call, parse. A failed call reports one rejection; it never invents cases. */
 export async function generate(chat: ChatFn, scenario: GenScenario, skill: string, sopLines: SopLine[], ctx: Ctx, fixtures?: Fixtures): Promise<Generated & { prompt_hash: string }> {
-  if (!scenario.skill_id) return { ...parseGenerated("", ctx), prompt_hash: "" };
+  if (refusalFor(scenario)) return { ...parseGenerated("", ctx), prompt_hash: "" };
   const p = buildGeneratorPrompt(scenario, skill, scenario.risk, scenario.gates, sopLines, fixtures ?? ctx.fixtures);
   const prompt_hash = createHash("sha256").update(p.system + p.user).digest("hex").slice(0, 16);
   let reply: string;
@@ -326,12 +336,30 @@ export type GenEntry = ChainEntry<GenKind>;
 export const appendGen = (prev: GenEntry | null, kind: GenKind, actor: string, payload: Record<string, unknown>, at: string): GenEntry => appendEntry<GenKind>(prev, kind, actor, payload, at);
 export const verifyGen = (entries: GenEntry[]) => verifyChain(entries);
 
+/** A database error in words a person can act on: a missing table means supabase/un-testgen.sql is not applied. */
+export function describeStoreError(message: string): string {
+  return /does not exist|schema cache|could not find the table|undefined_table/i.test(message)
+    ? "The proposal log table (un_testgen_log) does not exist. Apply supabase/un-testgen.sql to the database."
+    : message;
+}
+
+/** Generation is a slow, paid model call, so a profile cannot start one within this many ms of the last run. */
+export const GEN_COOLDOWN_MS = 15_000;
+/** Milliseconds a new run must still wait, from the last logged run (0 when it may start). Pure. */
+export function cooldownLeft(runs: { at: string }[], now: number, cooldown = GEN_COOLDOWN_MS): number {
+  const last = runs[runs.length - 1];
+  const at = last ? Date.parse(last.at) : NaN;
+  return Number.isFinite(at) ? Math.max(0, at + cooldown - now) : 0;
+}
+
 /** The two table operations, over a minimal client so tests run on the offline store and the app on Supabase (the
  * pattern of outside-queue.ts). The columns are those of supabase/un-testgen.sql, checked by un-store-columns.test.ts. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 type Db = { from: (t: string) => any };
 export async function loadGenLogFrom(db: Db, orgId: string, useCaseId: string, profile: string): Promise<GenEntry[]> {
-  const { data } = await db.from("un_testgen_log").select("*").eq("org_id", orgId).eq("use_case_id", useCaseId).eq("profile", profile);
+  const { data, error } = await db.from("un_testgen_log").select("*").eq("org_id", orgId).eq("use_case_id", useCaseId).eq("profile", profile);
+  // an unapplied migration must say so, not look like "no proposals yet"
+  if (error) throw new Error(describeStoreError(String(error.message ?? error)));
   return ((data ?? []) as Record<string, unknown>[])
     .map((r) => ({ seq: Number(r.seq), kind: r.kind, at: new Date(String(r.at)).toISOString(), actor: String(r.actor), payload: r.payload, prev_hash: String(r.prev_hash), hash: String(r.hash) }) as GenEntry)
     .sort((a, b) => a.seq - b.seq);

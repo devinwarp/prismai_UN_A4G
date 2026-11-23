@@ -50,7 +50,8 @@ export function buildScenario(sopId: string, profile: string, task: string, exis
     risk: { client_facing: t.flags.client_facing, affects_rights: t.flags.affects_rights, irreversible: t.flags.irreversible }, gates,
   };
   const ctx: Ctx = {
-    scenario, chunkIds: new Set(chunks.map((c) => c.chunk_id)),
+    // a citation must be one of the SOP lines the model was shown, not just any chunk of the SOP
+    scenario, chunkIds: new Set(lines.map((l) => l.chunk_id)),
     fixtures: { licences: Object.entries(RECORDS).map(([key, r]) => ({ key, activity_group: r.activity_group, expiry: r.expiry, holder: r.holder, activity_code: r.activity_code, registered_email: r.registered_email, language: r.language })), docs: Object.keys(DOCS), today: TODAY },
     profileTasks: p.tasks.map((x) => x.id), model: testgenModel(), existingIds,
   };

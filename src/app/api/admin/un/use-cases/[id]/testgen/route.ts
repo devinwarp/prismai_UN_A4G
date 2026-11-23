@@ -4,10 +4,12 @@ import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { appendTestLog, loadTestLog, requiredFor } from "@/lib/un/test-set-store";
 import { appendTest, plan, replayTestSet, verifyTest } from "@/lib/un/test-sets";
-import { appendGen, blueprintOf, generate, replayGen, verifyGen } from "@/lib/un/testgen";
+import { appendGen, blueprintOf, cooldownLeft, describeStoreError, generate, replayGen, verifyGen } from "@/lib/un/testgen";
 import { appendGenLog, buildScenario, defaultChat, loadGenLog } from "@/lib/un/testgen-store";
 
 type Ctx = { params: Promise<{ id: string }> };
+/** Generations in flight in this server process, by use case and profile: a second click while one runs is refused. */
+const running = new Set<string>();
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
 /** GET ?profile=<job profile> → the generated proposals of that profile, each with its status (proposed, accepted into
@@ -19,8 +21,12 @@ export async function GET(request: Request, { params }: Ctx) {
   if (who instanceof NextResponse) return who;
   const profile = text(new URL(request.url).searchParams.get("profile"), 120);
   if (!profile) return bad("profile is required");
-  const [glog, tlog] = await Promise.all([loadGenLog(who.org_id!, id, profile), loadTestLog(who.org_id!, id, profile)]);
-  return NextResponse.json({ ...replayGen(glog, replayTestSet(tlog).blueprints), chain: verifyGen(glog) });
+  try {
+    const [glog, tlog] = await Promise.all([loadGenLog(who.org_id!, id, profile), loadTestLog(who.org_id!, id, profile)]);
+    return NextResponse.json({ ...replayGen(glog, replayTestSet(tlog).blueprints), chain: verifyGen(glog) });
+  } catch (e) {
+    return NextResponse.json({ error: e instanceof Error ? e.message : "The proposal log could not be read" }, { status: 503 });
+  }
 }
 
 /** POST { profile, action, ... }
@@ -50,25 +56,39 @@ export async function POST(request: Request, { params }: Ctx) {
   const tlog = await loadTestLog(who.org_id!, id, profile);
   if (!verifyTest(tlog).ok) return NextResponse.json({ error: "The test-set log failed verification" }, { status: 409 });
   const tstate = replayTestSet(tlog);
-  const glog = await loadGenLog(who.org_id!, id, profile);
+  const unreadable = (e: unknown) => NextResponse.json({ error: e instanceof Error ? e.message : "The proposal log could not be read" }, { status: 503 });
+  let glog;
+  try { glog = await loadGenLog(who.org_id!, id, profile); } catch (e) { return unreadable(e); }
   if (!verifyGen(glog).ok) return NextResponse.json({ error: "The proposal log failed verification" }, { status: 409 });
   const gstate = replayGen(glog, tstate.blueprints);
   const actor = who.email ?? who.id;
 
+  // The log is read again at the moment of writing, so a slow model call does not leave a stale link in the chain:
+  // otherwise another writer in the meantime would clash on the sequence number and the paid generation would be lost.
   const writeGen = async (kind: "generated" | "rejected", payload: Record<string, unknown>) => {
-    const entry = appendGen(glog[glog.length - 1] ?? null, kind, actor, payload, new Date().toISOString());
+    let cur;
+    try { cur = await loadGenLog(who.org_id!, id, profile); } catch (e) { return unreadable(e); }
+    if (!verifyGen(cur).ok) return NextResponse.json({ error: "The proposal log failed verification" }, { status: 409 });
+    const entry = appendGen(cur[cur.length - 1] ?? null, kind, actor, payload, new Date().toISOString());
     const err = await appendGenLog(who.org_id!, id, profile, entry);
     if (!err) return null;
     const clash = /duplicate|unique/i.test(err);
-    return NextResponse.json({ error: clash ? "Someone else changed the proposals just now; reload and try again" : err }, { status: clash ? 409 : 500 });
+    return NextResponse.json({ error: clash ? "Someone else changed the proposals just now; reload and try again" : describeStoreError(err) }, { status: clash ? 409 : 500 });
   };
 
   if (act === "generate") {
     const task = text(b.task, 8);
     const built = buildScenario(need.sopId, profile, task, new Set(gstate.proposals.map((p) => p.case.id)));
     if (!built.ok) return NextResponse.json({ error: built.error }, { status: built.status });
-    // a scenario with no skill is refused, and the refusal is logged
-    const g = await generate(defaultChat(built.ctx.model), built.scenario, built.skill, built.lines, built.ctx);
+    // generation is a slow, paid call: one at a time per profile, and not again straight after a logged run
+    const key = `${id}:${profile}`;
+    if (running.has(key)) return NextResponse.json({ error: "A generation is already running for this job profile; wait for it to finish" }, { status: 429 });
+    const wait = cooldownLeft(gstate.runs, Date.now());
+    if (wait > 0) return NextResponse.json({ error: `A generation finished moments ago; try again in ${Math.ceil(wait / 1000)} seconds` }, { status: 429, headers: { "Retry-After": String(Math.ceil(wait / 1000)) } });
+    // a scenario with no skill (or no agent role) is refused
+    running.add(key);
+    let g;
+    try { g = await generate(defaultChat(built.ctx.model), built.scenario, built.skill, built.lines, built.ctx); } finally { running.delete(key); }
     if (g.refused) return NextResponse.json({ error: g.refused }, { status: 422 });
     const fail = await writeGen("generated", { scenario_id: built.scenario.id, model: built.ctx.model, prompt_hash: g.prompt_hash, cases: g.cases, rejected: g.rejected, gaps: g.gaps, refused: null });
     if (fail) return fail;

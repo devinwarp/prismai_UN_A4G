@@ -8,7 +8,7 @@ import { deriveTests } from "../src/lib/un/test-derive.ts";
 import { profilesOf } from "../src/lib/un/sop/data.ts";
 import { appendTest, plan, replayTestSet, verifyTest, type TestEntry } from "../src/lib/un/test-sets.ts";
 import {
-  appendGen, appendGenLogTo, blueprintOf, buildGeneratorPrompt, checkExpectation, coverageGaps, generate, loadGenLogFrom, minCases, parseGenerated, replayGen, riskClass,
+  appendGen, appendGenLogTo, blueprintOf, buildGeneratorPrompt, checkExpectation, coverageGaps, cooldownLeft, describeStoreError, generate, refusalFor, loadGenLogFrom, minCases, parseGenerated, replayGen, riskClass,
   TESTGEN_DEFAULT_MODEL, testgenModel, verifyGen, type Ctx, type GenScenario,
 } from "../src/lib/un/testgen.ts";
 
@@ -233,4 +233,40 @@ test("a case must be runnable: fee tasks need a complete file, prepare is for ve
   assert.match(why(good("r-5", { expect: { outcome: "escalate", summary: "x", assertions: [{ path: "escalate", op: "true" }] } })), /is text/);
   assert.equal(why(good("r-6", { expect: { outcome: "produce", summary: "x", assertions: [{ path: "output.received.0.amount", op: "eq", value: 2200 }] } })), "");
   assert.deepEqual(checkExpectation({ outcome: "produce", summary: "x", assertions: [{ path: "output.received.0.amount", op: "eq", value: 2200 }] }, { ok: true, output: { received: [{ amount: 2200 }] } }), []);
+});
+
+test("a case must run the task under test, not another task of the same job profile", () => {
+  const g = parseGenerated(reply(good("other-task", { input: { agent: "fp", task: "T11", licence: "bakery", prepare: ["T04", "T05", "T06", "T07", "T08", "T09"] } })), ctx());
+  assert.equal(g.cases.length, 0);
+  assert.match(g.rejected[0].reason, /input\.task must be T12/);
+});
+
+test("a citation must be one of the SOP lines the model was shown, not any chunk of the SOP", () => {
+  const shown = new Set(["SOP-LIC-014#T12"]);
+  const other = [...chunkIds].find((c) => !shown.has(c))!;
+  const g = parseGenerated(reply(good("cites-unseen", { citations: [other] }), good("cites-seen", { citations: ["SOP-LIC-014#T12"] })), ctx(scenario(), { chunkIds: shown }));
+  assert.deepEqual(g.cases.map((c) => c.id), ["t12.cites-seen"]);
+  assert.match(g.rejected[0].reason, /not in the SOP knowledge base/);
+});
+
+test("a job profile with no agent role is refused rather than generated for", () => {
+  assert.equal(refusalFor(scenario()), null);
+  assert.match(refusalFor(scenario({ profile: "Some Other Officer" }))!, /No agent role/);
+  assert.match(refusalFor(scenario({ skill_id: null }))!, /not linked to a skill/);
+});
+
+test("a run cannot start inside the cooldown after the last logged run", () => {
+  const at = "2026-11-23T10:00:00.000Z";
+  const t = Date.parse(at);
+  assert.equal(cooldownLeft([], t), 0);
+  assert.equal(cooldownLeft([{ at }], t + 5_000, 15_000), 10_000);
+  assert.equal(cooldownLeft([{ at }], t + 15_000, 15_000), 0);
+  assert.equal(cooldownLeft([{ at: "not a date" }], t), 0);
+});
+
+test("an unapplied migration is reported as such, not as an empty log", async () => {
+  assert.match(describeStoreError('relation "public.un_testgen_log" does not exist'), /Apply supabase\/un-testgen\.sql/);
+  assert.equal(describeStoreError("connection reset"), "connection reset");
+  const missing = { from: () => ({ select: () => ({ eq: () => ({ eq: () => ({ eq: () => Promise.resolve({ data: null, error: { message: "Could not find the table 'public.un_testgen_log' in the schema cache" } }) }) }) }) }) };
+  await assert.rejects(() => loadGenLogFrom(missing, "o", "u", "p"), /un-testgen\.sql/);
 });

@@ -11,8 +11,10 @@ type Chain = { ok: boolean };
 
 /** AI-generated test cases for one job profile: generate for a task, then approve or reject each proposal. A proposal
  * is not part of the test set until a person approves it; the set is then approved and locked as before. */
-export function TestgenPanel({ useCaseId, profile, state, chain, tasks, model, mayPropose, mayEdit }: {
+export function TestgenPanel({ useCaseId, profile, state, chain, tasks, model, mayPropose, mayEdit, storeError }: {
   useCaseId: string; profile: string; state: GenState; chain: Chain; tasks: { id: string; title: string }[]; model: string; mayPropose: boolean; mayEdit: boolean;
+  /** Set when the proposal log cannot be read (for example the migration is not applied). */
+  storeError?: string | null;
 }) {
   const lang = useLang();
   const router = useRouter();
@@ -38,6 +40,8 @@ export function TestgenPanel({ useCaseId, profile, state, chain, tasks, model, m
       <h2 id="tg-h" className="font-display text-xl font-medium">{tr(lang, "tg.h", "Generated test cases")}</h2>
       <p className="mt-1 max-w-[68ch] text-sm text-ink-soft">{tr(lang, "tg.lede", "A reasoning agent writes cases from the skill, the risk, the gates and the SOP lines. The expected outcome comes from the SOP, not from our own cases. Everything below is a proposal until a person approves it.")}</p>
       <p className="mt-2 font-mono text-xs text-ink-soft">{tr(lang, "tg.model", "Generator model")}: {model}</p>
+      <p className="mt-2 max-w-[68ch] text-sm font-medium">{tr(lang, "tg.notrun", "For now an approved case is not run by the pilot: it joins the test set and is listed as not executed, and it does not change the pilot's numbers.")}</p>
+      {storeError && <p role="alert" className="mt-2 text-sm" style={{ color: "var(--color-v-nogo)" }}>{storeError}</p>}
       {!chain.ok && <p role="alert" className="mt-2 text-sm">{tr(lang, "tg.chain.bad", "The proposal log chain is broken; changes are refused until it is repaired.")}</p>}
 
       {mayPropose ? (
@@ -48,7 +52,7 @@ export function TestgenPanel({ useCaseId, profile, state, chain, tasks, model, m
               {tasks.map((t) => <option key={t.id} value={t.id}>{t.id}. {t.title}</option>)}
             </select>
           </div>
-          <button type="button" className={btnPrimary} disabled={busy || !task || !chain.ok} onClick={() => send({ action: "generate", task })}>{busy ? tr(lang, "tg.working", "Working...") : tr(lang, "tg.generate", "Generate cases")}</button>
+          <button type="button" className={btnPrimary} disabled={busy || !task || !chain.ok || !!storeError} onClick={() => send({ action: "generate", task })}>{busy ? tr(lang, "tg.working", "Working...") : tr(lang, "tg.generate", "Generate cases")}</button>
         </div>
       ) : (
         <p className="mt-3 text-sm font-medium">{tr(lang, "tg.readonly", "Read only. Generating cases needs the scenario propose permission.")}</p>
