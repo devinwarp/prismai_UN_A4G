@@ -1,5 +1,5 @@
 -- AI-generated test-case proposals, as an append-only, hash-chained log. Run after supabase/un-test-sets.sql.
--- WRITTEN, NOT APPLIED to any database. The code is tested with pure functions (src/lib/un/testgen.ts) and the offline
+-- APPLIED to the hackathon database (prismai-un-hackathon) on or before 23 Nov 2026. The code is tested with pure functions (src/lib/un/testgen.ts) and the offline
 -- store. A separate table, not new kinds in un_test_set_log, because that table's `kind` check lists the kinds it
 -- accepts and this repo does not edit un-test-sets.sql.
 --
