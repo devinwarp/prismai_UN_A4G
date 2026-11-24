@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import type { UnUseCaseState } from "@/lib/un/model";
@@ -8,8 +7,7 @@ import { GOAL_ALIGNMENT_FORMULA, type EntityGoal } from "@/lib/un/goals";
 import { CRITERIA, HARD, PROFILES, type Attestation, type Profile, type SijilRun, type Thresholds } from "@/lib/un/sijil";
 import { tr } from "@/lib/un/i18n/dict";
 import { useLang } from "../../_components/Lang";
-import { quadLabel, stageLabel } from "../../_components/labels";
-import { scrollRegion, Section, VerdictBadge, btnGhost, btnPrimary, card, field } from "../../_components/ui";
+import { scrollRegion, Section, btnGhost, btnPrimary, card, field } from "../../_components/ui";
 import { MetricChart, RejectBars, RunProgress, pct } from "./SijilCharts";
 
 type Report = { id: string; runs: number; pass: boolean; content: string; sha256: string; created_at: string };
