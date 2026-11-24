@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useSearchParams, useSelectedLayoutSegment } from "next/navigation";
 import { DIR, tr } from "@/lib/un/i18n/dict";
 import { STAGE_IDS, type Journey, type StageId } from "@/lib/un/journey";
-import { COLOR, GLYPH, SEGMENT, STAGE_EN, stageHref, useStoredLang } from "../../_components/JourneyBar";
+import { COLOR, GLYPH, SEGMENT, STAGE_EN, STATE_EN, stageHref, useStoredLang } from "../../_components/JourneyBar";
 
 /** The nine stages as one thin row: a glyph each (and the state in words for a screen reader), every stage a link. The full journey
  * bar stays on the pages that still use it. */
@@ -22,7 +22,7 @@ export default function StageStrip({ base, journey }: { base: string; journey: J
         <ol className="flex flex-wrap items-center gap-1">
           {journey.stages.map((s) => {
             const name = tr(lang, `jb.stage.${s.id}`, STAGE_EN[s.id]);
-            const state = tr(lang, `jb.state.${s.state}`, s.state);
+            const state = tr(lang, `jb.state.${s.state}`, STATE_EN[s.state]);
             return (
               <li key={s.id}>
                 <Link

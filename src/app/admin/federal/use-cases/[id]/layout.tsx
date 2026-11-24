@@ -35,7 +35,7 @@ export default async function UseCaseLayout({ children, params }: { children: Re
   return (
     <div className="conduit-bg min-h-dvh">
       <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
-      <UseCaseHeader uc={{ ext_id: uc.ext_id, entity: uc.entity, title: uc.title, quadrant: uc.quadrant, client_facing: uc.client_facing, verdict: uc.verdict, stage: uc.stage, compliant: uc.compliant }} />
+      <UseCaseHeader uc={{ ext_id: uc.ext_id, entity: uc.entity, title: uc.title, quadrant: uc.quadrant, client_facing: uc.client_facing, verdict: uc.verdict, stage: uc.stage }} />
       <Suspense fallback={null}>
         <div className="mt-3"><StageStrip base={base} journey={journey} /></div>
       </Suspense>

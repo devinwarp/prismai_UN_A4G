@@ -91,6 +91,10 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
           {" · "}
           <Link href={`/admin/federal/use-cases/${id}/pilot`} className="underline underline-offset-4"><T k="ucsum.pilot.link" en="Open the pilot" /></Link>
         </p>
+        <p className="mb-4 text-sm text-ink-soft">
+          <strong><T k="ucsum.sim.att" en="Simulated attestation:" /></strong>{" "}
+          {uc.compliant ? <T k="uc.sj.compliant" en="✓ compliant and aligned" /> : <T k="uc.sj.notcompliant" en="not yet compliant" />}
+        </p>
         <SijilPanel
           uc={uc}
           runs={runs}

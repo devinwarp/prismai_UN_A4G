@@ -37,6 +37,10 @@ export default function NextStepCard({ id, step, readOnly }: { id: string; step:
             {step.groups.map((g) => <Link key={g.target} href={`${base}/${g.target}`} className={btn}>{fix(g.target, g.count)}</Link>)}
             {step.more > 0 && <span className="text-sm text-ink-soft">{sub(tr(lang, "ns.more", "+ {n} more"), { n: step.more })}</span>}
           </div>
+          <details className="mt-2 text-sm">
+            <summary className="cursor-pointer underline underline-offset-4">{sub(tr(lang, "ns.list", "Show what is blocking ({n})"), { n: step.total })}</summary>
+            <ul className="mt-1 list-disc ps-5 text-ink-soft">{step.messages.map((m, i) => <li key={i}>{m}</li>)}</ul>
+          </details>
           {step.approvedBeforeGate && <p className="mt-2 text-sm text-ink-soft">{tr(lang, "ns.before", "Approved before the current release gate; the pilot has to be met again before the next change.")}</p>}
         </>
       )}

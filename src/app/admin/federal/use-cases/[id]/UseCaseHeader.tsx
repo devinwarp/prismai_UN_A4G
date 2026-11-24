@@ -8,7 +8,7 @@ import { VERDICT_META, verdictName } from "../../_components/labels";
 import { quadLabel, stageLabel } from "../../_components/labels";
 import { useStoredLang } from "../../_components/JourneyBar";
 
-export interface HeaderUc { ext_id: string; entity: string; title: string; quadrant: string; client_facing: boolean; verdict: Verdict | null; stage: string; compliant: boolean }
+export interface HeaderUc { ext_id: string; entity: string; title: string; quadrant: string; client_facing: boolean; verdict: Verdict | null; stage: string }
 
 /** Who and where this use case is, on top of every use-case page: the back links, id and entity, verdict, stage, compliance. The title
  * is shown here on the overview only; the other pages carry their own heading. */
@@ -30,7 +30,6 @@ export default function UseCaseHeader({ uc }: { uc: HeaderUc }) {
           <span>{verdictName(lang, uc.verdict)}</span>
         </span>
         <span className="text-ink-soft">{tr(lang, "uc.sj.stage", "stage")} <span className="font-mono text-ink">{stageLabel(lang, uc.stage)}</span></span>
-        <span className="text-ink-soft">{uc.compliant ? tr(lang, "uc.sj.compliant", "✓ compliant and aligned") : tr(lang, "uc.sj.notcompliant", "not yet compliant")}</span>
       </div>
     </header>
   );

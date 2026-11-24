@@ -20,7 +20,7 @@ export interface NextStepInput { readiness: Readiness; journey: Journey; signed:
 export interface FixGroup { target: FixTarget; count: number }
 export type NextStep =
   | { kind: "stopped"; stage: StageId; reason: ReasonCode | null }
-  | { kind: "blocked"; total: number; groups: FixGroup[]; more: number; approvedBeforeGate: boolean }
+  | { kind: "blocked"; total: number; groups: FixGroup[]; more: number; approvedBeforeGate: boolean; messages: string[] }
   | { kind: "waiting"; stage: StageId; reason: ReasonCode | null }
   | { kind: "ready"; signed: Signed | null };
 
@@ -38,7 +38,7 @@ export function nextStep({ readiness, journey, signed }: NextStepInput): NextSte
       .slice(0, SHOWN);
     const total = readiness.blockers.length;
     const approvedBeforeGate = journey.stages.some((s) => (s.id === "approval" || s.id === "production") && s.state === "done");
-    return { kind: "blocked", total, groups, more: total - groups.reduce((n, g) => n + g.count, 0), approvedBeforeGate };
+    return { kind: "blocked", total, groups, more: total - groups.reduce((n, g) => n + g.count, 0), approvedBeforeGate, messages: readiness.blockers.map((b) => b.message) };
   }
 
   const waiting = journey.stages.find((s) => s.state === "needs_you");

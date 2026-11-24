@@ -31,5 +31,7 @@ export const USECASE_UI_AR: Record<string, string> = {
   "ucsum.hist.show": "عرض السجل ({n})",
   "gp.show": "عرض كل الحالات ({n})",
   "gr.show": "عرض الأحكام ({n})",
+  "ns.list": "عرض ما يعيق الإصدار ({n})",
+  "ucsum.sim.att": "الاعتماد المحاكى:",
   "ns.readonly": "صلاحيتك للقراءة فقط؛ يجري هذه التغييرات مالك العملية أو المسؤول.",
 };

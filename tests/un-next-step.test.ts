@@ -8,7 +8,7 @@ const journey = (states: Partial<Record<StageId, StageState>> = {}, reasons: Par
   stages: STAGE_IDS.map((id, i) => ({ id, n: i + 1, group: GROUP_OF[id], state: states[id] ?? "done", reason: (reasons[id] as never) ?? null })),
   done: 0, waiting: 0, next: null,
 });
-const readiness = (codes: BlockerCode[]): Readiness => ({ ok: codes.length === 0, blockers: codes.map((code) => ({ code, message: code })), reports: [] });
+const readiness = (codes: BlockerCode[]): Readiness => ({ ok: codes.length === 0, blockers: codes.map((code) => ({ code, message: `msg:${code}` })), reports: [] });
 const signed = { verdict: "GO_SUPERVISED", by: "p", at: "2026-11-21T14:24:45Z" };
 
 test("blockerTarget sends each blocker code to the page that fixes it", () => {
@@ -22,6 +22,7 @@ test("UC02 shape: six blockers, approval and production done, groups by destinat
   const r = readiness(["no_targets", "not_conclusive", "threshold_failed", "goals_unapproved", "not_conclusive", "threshold_failed"]);
   assert.deepEqual(nextStep({ readiness: r, journey: journey(), signed }), {
     kind: "blocked", total: 6, groups: [{ target: "pilot", count: 5 }, { target: "targets", count: 1 }], more: 0, approvedBeforeGate: true,
+    messages: r.blockers.map((b) => b.message),
   });
 });
 
@@ -29,6 +30,7 @@ test("more than three destinations: the three largest show and more counts the b
   const r = readiness(["no_profile", "no_targets", "stale_set", "stale_params", "not_conclusive", "threshold_failed"]);
   assert.deepEqual(nextStep({ readiness: r, journey: journey(), signed }), {
     kind: "blocked", total: 6, groups: [{ target: "tests", count: 2 }, { target: "pilot", count: 2 }, { target: "sop", count: 1 }], more: 1, approvedBeforeGate: true,
+    messages: r.blockers.map((b) => b.message),
   });
 });
 
@@ -62,4 +64,9 @@ test("a stopped stage beats a blocked gate", () => {
 test("ready passes the last signed verdict through, or null", () => {
   assert.deepEqual(nextStep({ readiness: readiness([]), journey: journey(), signed }), { kind: "ready", signed });
   assert.deepEqual(nextStep({ readiness: readiness([]), journey: journey(), signed: null }), { kind: "ready", signed: null });
+});
+
+test("blocked carries every blocker message, so the page can list what is blocking, not only count it", () => {
+  const s = nextStep({ readiness: readiness(["no_targets", "stale_set"]), journey: journey(), signed: null });
+  assert.deepEqual(s.kind === "blocked" && s.messages, ["msg:no_targets", "msg:stale_set"]);
 });

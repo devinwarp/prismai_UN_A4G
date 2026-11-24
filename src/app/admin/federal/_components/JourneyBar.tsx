@@ -12,7 +12,7 @@ import { T, TV, useLang } from "./Lang";
 // plus the "prism-un-lang" event that LangShell fires. Views are always open (every stage is a link);
 // what a person still has to do is spelled out in words under the stage. State is a glyph AND text.
 
-const STATE_EN: Record<StageState, string> = { done: "Done", needs_you: "Needs you", not_yet: "Not yet", stopped: "Stopped" };
+export const STATE_EN: Record<StageState, string> = { done: "Done", needs_you: "Needs you", not_yet: "Not yet", stopped: "Stopped" };
 export const GLYPH: Record<StageState, string> = { done: "✓", needs_you: "!", not_yet: "–", stopped: "✕" };
 export const COLOR: Record<StageState, string> = { done: "var(--color-v-auto)", needs_you: "var(--color-v-esc)", not_yet: "var(--color-ink-soft)", stopped: "var(--color-v-nogo)" };
 export const STAGE_EN: Record<StageId, string> = { sop: "SOP intake", gates: "Risk and gates", verdict: "Verdict", tests: "Tests and parameters", pilot: "Pilot and verdict", evals: "Pilot evals", tuning: "Tuning", approval: "Approval", production: "Production" };
