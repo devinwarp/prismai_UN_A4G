@@ -13,8 +13,8 @@ import { T, TV, useLang } from "./Lang";
 // what a person still has to do is spelled out in words under the stage. State is a glyph AND text.
 
 const STATE_EN: Record<StageState, string> = { done: "Done", needs_you: "Needs you", not_yet: "Not yet", stopped: "Stopped" };
-const GLYPH: Record<StageState, string> = { done: "✓", needs_you: "!", not_yet: "–", stopped: "✕" };
-const COLOR: Record<StageState, string> = { done: "var(--color-v-auto)", needs_you: "var(--color-v-esc)", not_yet: "var(--color-ink-soft)", stopped: "var(--color-v-nogo)" };
+export const GLYPH: Record<StageState, string> = { done: "✓", needs_you: "!", not_yet: "–", stopped: "✕" };
+export const COLOR: Record<StageState, string> = { done: "var(--color-v-auto)", needs_you: "var(--color-v-esc)", not_yet: "var(--color-ink-soft)", stopped: "var(--color-v-nogo)" };
 export const STAGE_EN: Record<StageId, string> = { sop: "SOP intake", gates: "Risk and gates", verdict: "Verdict", tests: "Tests and parameters", pilot: "Pilot and verdict", evals: "Pilot evals", tuning: "Tuning", approval: "Approval", production: "Production" };
 const GROUP_EN = { define: "Define", assess: "Assess", pilot: "Pilot", approve: "Approve", run: "Run" } as const;
 const GIVE_EN: Record<StageId, string> = {
@@ -28,7 +28,7 @@ const GIVE_EN: Record<StageId, string> = {
   approval: "A person's signature on an agent version that meets the approval bar.",
   production: "Monitoring with the same evals, and the agent taken down if Sijil rejects a call.",
 };
-const SEGMENT: Record<string, StageId> = { sop: "sop", tests: "tests", pilot: "pilot", evals: "evals", tuning: "tuning", production: "production" };
+export const SEGMENT: Record<string, StageId> = { sop: "sop", tests: "tests", pilot: "pilot", evals: "evals", tuning: "tuning", production: "production" };
 
 const PATH: Record<StageId, string> = { sop: "/sop", gates: "/sop?stage=gates#risk", verdict: "", tests: "/tests", pilot: "/pilot", evals: "/evals", tuning: "/tuning", approval: "/tuning?stage=approval", production: "/production" };
 export const stageHref = (base: string, id: StageId): string => base + PATH[id];
