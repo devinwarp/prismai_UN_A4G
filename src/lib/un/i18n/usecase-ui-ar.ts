@@ -17,5 +17,11 @@ export const USECASE_UI_AR: Record<string, string> = {
   "ns.stopped": "متوقف: {reason}",
   "ns.ready": "جاهز: التجربة مستوفاة",
   "ns.ready.signed": "آخر حكم موقَّع: {verdict}، {by}، {at}",
+  "tabs.label": "أقسام حالة الاستخدام",
+  "tabs.overview": "نظرة عامة",
+  "tabs.setup": "الإعداد",
+  "tabs.pilot": "التجربة",
+  "tabs.tuning": "الضبط",
+  "tabs.production": "الإنتاج",
   "ns.readonly": "صلاحيتك للقراءة فقط؛ يجري هذه التغييرات مالك العملية أو المسؤول.",
 };
