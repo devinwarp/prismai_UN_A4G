@@ -7,7 +7,7 @@ import { evalSetFor } from "@/lib/un/evalset";
 import { approvalBlockers, effectiveGates, evidenceFor } from "@/lib/un/gates";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { loadLedger } from "@/lib/un/cost-ledger-store";
-import { loadRelease } from "@/lib/un/release-store";
+import { loadReleaseCached } from "@/lib/un/release-cached";
 import { loadRun } from "@/lib/un/runs";
 import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
@@ -139,7 +139,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
   ]);
   const hasSet = evalSetFor(uc.ext_id).length > 0;
   const state = approvalState(log);
-  const release = await loadRelease(profile.org_id, id);
+  const release = await loadReleaseCached(profile.org_id, id);
   const ledger = await loadLedger(profile.org_id, id, release.profiles);
   // the same check the approve route makes (409 otherwise): say it up front instead of offering a button that fails
   let approveBlocked: string | null = null;

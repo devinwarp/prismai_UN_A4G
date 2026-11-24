@@ -1,5 +1,5 @@
 // The five tabs of a use-case page and which route segment belongs to which. Pure: no I/O.
-// The stage query (?stage=gates on /sop, ?stage=approval on /tuning) never changes the tab: a stage link stays on its page's tab.
+// The route segment alone decides the tab: a stage link (?stage=gates on /sop, ?stage=approval on /tuning) stays on its page's tab.
 
 export type TabId = "overview" | "setup" | "pilot" | "tuning" | "production";
 export const TABS: { id: TabId; href: string; segments: string[] }[] = [
@@ -10,6 +10,6 @@ export const TABS: { id: TabId; href: string; segments: string[] }[] = [
   { id: "production", href: "/production", segments: ["production"] },
 ];
 
-export function tabFor(segment: string | null, _stage?: string | null): TabId {
+export function tabFor(segment: string | null): TabId {
   return TABS.find((t) => segment !== null && t.segments.includes(segment))?.id ?? "overview";
 }

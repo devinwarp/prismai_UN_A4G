@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams, useSelectedLayoutSegment } from "next/navigation";
+import { useSelectedLayoutSegment } from "next/navigation";
 import { DIR, tr } from "@/lib/un/i18n/dict";
 import { TABS, tabFor, type TabId } from "@/lib/un/use-case-tabs";
 import { useStoredLang } from "../../_components/JourneyBar";
@@ -11,7 +11,7 @@ const EN: Record<TabId, string> = { overview: "Overview", setup: "Setup", pilot:
 /** Five tabs over the use case's existing pages. The active tab follows the route segment; every tab is a plain link. */
 export default function UseCaseTabs({ base }: { base: string }) {
   const lang = useStoredLang();
-  const active = tabFor(useSelectedLayoutSegment(), useSearchParams().get("stage"));
+  const active = tabFor(useSelectedLayoutSegment());
   return (
     <nav dir={DIR[lang]} lang={lang} aria-label={tr(lang, "tabs.label", "Use case sections")} className="mx-auto mt-3 max-w-6xl overflow-x-auto px-4 sm:px-6">
       <ul className="flex min-w-max gap-5 border-b border-line text-sm">

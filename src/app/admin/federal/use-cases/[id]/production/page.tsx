@@ -16,7 +16,7 @@ import AgentRuntimePanel from "../../../_components/AgentRuntimePanel";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card } from "../../../_components/ui";
 import { loadLedger } from "@/lib/un/cost-ledger-store";
-import { loadRelease } from "@/lib/un/release-store";
+import { loadReleaseCached } from "@/lib/un/release-cached";
 import { CostPanel } from "../CostPanel";
 import { ReleasePanel } from "../ReleasePanel";
 import { ProductionControls, ReinstateForm } from "./ProductionControls";
@@ -97,7 +97,7 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
   const s = replay(watch);
   const certified = configOf(tuning);
   const approved = approvalState(tuning) === "approved";
-  const release = await loadRelease(profile.org_id, id);
+  const release = await loadReleaseCached(profile.org_id, id);
   const ledger = await loadLedger(profile.org_id, id, release.profiles);
   const chain = verifyChain(watch);
   const perms = await permissionsFor(profile, user.id);

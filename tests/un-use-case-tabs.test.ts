@@ -7,16 +7,16 @@ test("every route segment of a use case belongs to one tab", () => {
     [null, "overview"], ["sop", "setup"], ["targets", "setup"], ["tests", "setup"],
     ["pilot", "pilot"], ["evals", "pilot"], ["tuning", "tuning"], ["improve", "tuning"], ["production", "production"],
   ];
-  for (const [seg, tab] of cases) assert.equal(tabFor(seg, null), tab, String(seg));
+  for (const [seg, tab] of cases) assert.equal(tabFor(seg), tab, String(seg));
 });
 
-test("the stage query keeps a link on the tab of its page", () => {
-  assert.equal(tabFor("sop", "gates"), "setup");
-  assert.equal(tabFor("tuning", "approval"), "tuning");
+test("a stage link (?stage=) stays on the tab of its page: only the segment decides", () => {
+  assert.equal(tabFor("sop"), "setup");
+  assert.equal(tabFor("tuning"), "tuning");
 });
 
 test("an unknown segment falls back to overview", () => {
-  assert.equal(tabFor("unknown", null), "overview");
+  assert.equal(tabFor("unknown"), "overview");
 });
 
 test("the tab list is the five tabs with hrefs relative to the use case", () => {
