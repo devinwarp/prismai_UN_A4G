@@ -1,0 +1,21 @@
+// Arabic strings for the use-case page header: the "Next step" card, the stage strip, the tabs and the overview summary.
+// DRAFT translations for review by a native speaker, like the rest of dict.ts. Spread into AR there.
+export const USECASE_UI_AR: Record<string, string> = {
+  "ns.h": "الخطوة التالية",
+  "ns.blocked": "الإصدار متوقف: يلزم إصلاح {n} أمور",
+  "ns.blocked.1": "الإصدار متوقف: يلزم إصلاح أمر واحد",
+  "ns.blocked.2": "الإصدار متوقف: يلزم إصلاح أمرين",
+  "ns.blocked.many": "الإصدار متوقف: يلزم إصلاح {n} أمرًا",
+  "ns.fix.sop": "أصلح في استقبال الإجراء ({n})",
+  "ns.fix.targets": "أصلح في أهداف العملية ({n})",
+  "ns.fix.tests": "أصلح في الاختبارات والمعايير ({n})",
+  "ns.fix.pilot": "أصلح في التجربة ({n})",
+  "ns.more": "+ {n} أخرى",
+  "ns.before": "اعتُمد قبل بوابة الإصدار الحالية؛ يجب استيفاء التجربة من جديد قبل التغيير التالي.",
+  "ns.waiting": "في الانتظار: {stage}",
+  "ns.open": "افتح",
+  "ns.stopped": "متوقف: {reason}",
+  "ns.ready": "جاهز: التجربة مستوفاة",
+  "ns.ready.signed": "آخر حكم موقَّع: {verdict}، {by}، {at}",
+  "ns.readonly": "صلاحيتك للقراءة فقط؛ يجري هذه التغييرات مالك العملية أو المسؤول.",
+};

@@ -15,7 +15,7 @@ import { T, TV, useLang } from "./Lang";
 const STATE_EN: Record<StageState, string> = { done: "Done", needs_you: "Needs you", not_yet: "Not yet", stopped: "Stopped" };
 const GLYPH: Record<StageState, string> = { done: "✓", needs_you: "!", not_yet: "–", stopped: "✕" };
 const COLOR: Record<StageState, string> = { done: "var(--color-v-auto)", needs_you: "var(--color-v-esc)", not_yet: "var(--color-ink-soft)", stopped: "var(--color-v-nogo)" };
-const STAGE_EN: Record<StageId, string> = { sop: "SOP intake", gates: "Risk and gates", verdict: "Verdict", tests: "Tests and parameters", pilot: "Pilot and verdict", evals: "Pilot evals", tuning: "Tuning", approval: "Approval", production: "Production" };
+export const STAGE_EN: Record<StageId, string> = { sop: "SOP intake", gates: "Risk and gates", verdict: "Verdict", tests: "Tests and parameters", pilot: "Pilot and verdict", evals: "Pilot evals", tuning: "Tuning", approval: "Approval", production: "Production" };
 const GROUP_EN = { define: "Define", assess: "Assess", pilot: "Pilot", approve: "Approve", run: "Run" } as const;
 const GIVE_EN: Record<StageId, string> = {
   sop: "The SOP's steps become job profiles, you choose which to automate, and each agent gets its skill file.",
