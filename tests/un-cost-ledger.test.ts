@@ -36,3 +36,11 @@ test("an empty record set gives an empty ledger with no cost", () => {
   assert.equal(l.entries.length, 0);
   assert.equal(l.summary.usd, null);
 });
+
+test("a meter records the time it was open, snapshots add their times, and the ledger totals it per stage", async () => {
+  const slow = (await metered(async () => { await new Promise((r) => setTimeout(r, 30)); recordModelCall("m.a", 1, 1); })).usage;
+  assert.ok((slow.elapsed_ms ?? 0) >= 25);
+  const l = buildLedger({ generation: [], pilots: [], reviews: [], tuning: [{ at: "2026-01-01T00:00:00Z", kind: "finished", payload: { record: { usage: { ...slow, elapsed_ms: 1500 } } } }, { at: "2026-01-02T00:00:00Z", kind: "finished", payload: { record: { usage: { ...slow, elapsed_ms: 500 } } } }], watch: [] }, prices);
+  assert.equal(l.summary.by_stage.tuning.elapsed_ms, 2000);
+  assert.equal(l.summary.usage.elapsed_ms, 2000);
+});

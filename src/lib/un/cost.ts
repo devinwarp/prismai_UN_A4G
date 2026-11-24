@@ -15,11 +15,14 @@ export const emptyUsage = (): Usage => ({ calls: 0, prompt_tokens: 0, completion
 
 /** Usage per model id, plus a cost the provider reported itself (USD), when it did. */
 export interface ModelUsage extends Usage { provider_usd: number | null }
-export interface UsageSnapshot { total: Usage; by_model: Record<string, ModelUsage> }
+/** `elapsed_ms` is the wall-clock time the meter was open. Absent on records written before time was recorded. Summed snapshots add their
+ * times, so for work done concurrently (judged tests) the sum is working time, not elapsed time. */
+export interface UsageSnapshot { total: Usage; by_model: Record<string, ModelUsage>; elapsed_ms?: number }
 export const emptySnapshot = (): UsageSnapshot => ({ total: emptyUsage(), by_model: {} });
 
 export class Meter {
   private total = emptyUsage();
+  private started = Date.now();
   private byModel = new Map<string, ModelUsage>();
   /** One model call: the model, the tokens it used (0 when unknown, e.g. the call failed), and the cost the provider reported, if any. */
   model(model: string, prompt = 0, completion = 0, providerUsd: number | null = null): void {
@@ -30,7 +33,7 @@ export class Meter {
     this.total.calls++; this.total.prompt_tokens += prompt; this.total.completion_tokens += completion;
   }
   tools(n = 1): void { this.total.tool_calls += n; }
-  snapshot(): UsageSnapshot { return { total: { ...this.total }, by_model: Object.fromEntries([...this.byModel].map(([k, v]) => [k, { ...v }])) }; }
+  snapshot(): UsageSnapshot { return { elapsed_ms: Date.now() - this.started, total: { ...this.total }, by_model: Object.fromEntries([...this.byModel].map(([k, v]) => [k, { ...v }])) }; }
 }
 
 const scope = new AsyncLocalStorage<Meter[]>();
@@ -53,6 +56,7 @@ export function recordToolCalls(n: number): void {
 
 export function addSnapshots(a: UsageSnapshot, b: UsageSnapshot): UsageSnapshot {
   const out = emptySnapshot();
+  out.elapsed_ms = (a.elapsed_ms ?? 0) + (b.elapsed_ms ?? 0);
   for (const s of [a, b]) {
     for (const k of Object.keys(out.total) as (keyof Usage)[]) out.total[k] += s.total[k];
     for (const [model, u] of Object.entries(s.by_model)) {
@@ -134,17 +138,17 @@ export interface CostSummary {
   unpriced: string[];
   /** model calls + tool calls, the "gross" count of what was used */
   gross_calls: number;
-  by_stage: Record<CostStage, { entries: number; calls: number; tool_calls: number; prompt_tokens: number; completion_tokens: number; usd: number | null; unpriced: string[] }>;
+  by_stage: Record<CostStage, { entries: number; elapsed_ms: number; calls: number; tool_calls: number; prompt_tokens: number; completion_tokens: number; usd: number | null; unpriced: string[] }>;
 }
 
 /** The gross total of a ledger, and its breakdown by stage. The total in USD is the sum of the priced entries; `unpriced` lists every model whose cost is missing from it. */
 export function summarise(entries: CostEntry[]): CostSummary {
-  const by_stage = Object.fromEntries(STAGES.map((s) => [s, { entries: 0, calls: 0, tool_calls: 0, prompt_tokens: 0, completion_tokens: 0, usd: null as number | null, unpriced: [] as string[] }])) as CostSummary["by_stage"];
+  const by_stage = Object.fromEntries(STAGES.map((s) => [s, { entries: 0, elapsed_ms: 0, calls: 0, tool_calls: 0, prompt_tokens: 0, completion_tokens: 0, usd: null as number | null, unpriced: [] as string[] }])) as CostSummary["by_stage"];
   let usd: number | null = null;
   const unpriced = new Set<string>();
   for (const e of entries) {
     const s = by_stage[e.stage];
-    s.entries++; s.calls += e.usage.total.calls; s.tool_calls += e.usage.total.tool_calls; s.prompt_tokens += e.usage.total.prompt_tokens; s.completion_tokens += e.usage.total.completion_tokens;
+    s.entries++; s.elapsed_ms += e.usage.elapsed_ms ?? 0; s.calls += e.usage.total.calls; s.tool_calls += e.usage.total.tool_calls; s.prompt_tokens += e.usage.total.prompt_tokens; s.completion_tokens += e.usage.total.completion_tokens;
     if (e.usd !== null) { s.usd = (s.usd ?? 0) + e.usd; usd = (usd ?? 0) + e.usd; }
     for (const m of e.unpriced) { unpriced.add(m); if (!s.unpriced.includes(m)) s.unpriced.push(m); }
   }

@@ -15,3 +15,5 @@ Every model call and tool call made to test, evaluate, tune and monitor a use ca
 **What is shown.** `buildLedger` (`cost-ledger.ts`) gathers those records; `loadLedger` reads them. The tuning and production pages show a cost panel; `GET .../release` returns it under `cost`; the approval entry records the gross total at the time of signing.
 
 **Prices.** Tokens are always exact. Dollars come from `data/model-prices.json` (USD per million tokens, filled from the provider's pricing; Bedrock returns tokens only), overridden by `MODEL_PRICES_JSON`. A model with no price is listed under `unpriced` and the total is marked partial. Nothing is estimated; a cost the provider reports itself (OpenRouter) is used as is. Records written before metering carry no usage and add nothing.
+
+**Time.** Each meter also records the wall-clock time it was open (`elapsed_ms`). A pilot's time is the whole pilot; judging and tuning add their per-test or per-cycle times, so for work done concurrently the figure is working time, not elapsed time. Records written before time was recorded show 0s.

@@ -19,5 +19,5 @@ export async function GET(_request: Request, { params }: Ctx) {
   const r = await loadRelease(who.org_id!, id);
   // the approver sees what the whole process cost: every model call and tool call recorded for generation, pilots, judging, tuning and production
   const ledger = await loadLedger(who.org_id!, id, r.profiles);
-  return NextResponse.json({ ok: r.ok, blockers: r.blockers, reports: r.reports, profiles: r.profiles, targets_hash: r.targets ? targetsHash(r.targets) : null, cost: { summary: ledger.summary, entries: ledger.entries.map(({ usage: _u, ...e }) => e) } });
+  return NextResponse.json({ ok: r.ok, blockers: r.blockers, reports: r.reports, profiles: r.profiles, targets_hash: r.targets ? targetsHash(r.targets) : null, cost: { summary: ledger.summary, entries: ledger.entries.map(({ usage: u, ...e }) => ({ ...e, elapsed_ms: u.elapsed_ms ?? null, calls: u.total.calls, tool_calls: u.total.tool_calls })) } });
 }
