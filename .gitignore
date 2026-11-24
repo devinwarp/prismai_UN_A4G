@@ -66,3 +66,19 @@ __pycache__/
 # screenshots and scratch output from QA runs
 docs/final/*/
 var/
+
+# local model-check script (reads .env.local)
+/scripts/check-models.sh
+/scripts/check-claude.sh
+/scripts/live-claude.mts
+/scripts/inspect-db.mts
+/scripts/compare-goals.mts
+/scripts/probe-notice.mts
+/scripts/ab-react.mts
+/scripts/e2e-setup.sh
+/scripts/judge-compare.ps1
+/scripts/gate-demo.sh
+
+# Supabase CLI link/temp files (project ref); local only
+supabase/supabase/.temp/
+supabase/.temp/

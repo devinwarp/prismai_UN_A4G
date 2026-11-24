@@ -1,3 +1,6 @@
+import { createAdminClient } from "@/lib/supabase/admin";
+import { metered, recordToolCalls } from "@/lib/un/cost";
+import { loadRelease } from "@/lib/un/release-store";
 import { NextResponse } from "next/server";
 import { bad, forbidden, notFound, requireAdmin, requirePermission } from "@/lib/api-auth";
 import { activeCases, evalSetFor } from "@/lib/un/evalset";
@@ -43,9 +46,15 @@ export async function POST(request: Request, { params }: Ctx) {
   if (b.action === "deploy") {
     if (approvalState(tuning) !== "approved" || !certified) return NextResponse.json({ error: "Only an approved agent version can go into production." }, { status: 409 });
     if (state.deployed) return NextResponse.json({ error: "Already in production. Reset to start again." }, { status: 409 });
+    // the pilot must still be met: a test set, thresholds or targets changed since the approval make the old pilot stale
+    const release = await loadRelease(who.org_id!, id);
+    if (!release.ok) return NextResponse.json({ error: `Going into production needs a met pilot. Not ready: ${release.blockers.slice(0, 6).map((x) => x.message).join(" ")}${release.blockers.length > 6 ? ` (and ${release.blockers.length - 6} more)` : ""}`, blockers: release.blockers }, { status: 409 });
     const entry = appendEntry<WatchEntry["kind"]>(null, "deployed", signer, { version: certified.version, tuning_head_hash: tuning[tuning.length - 1].hash }, now());
     const err = await appendWatch(who.org_id!, id, [entry]);
-    return err ? NextResponse.json({ error: err }, { status: 500 }) : NextResponse.json({ ok: true, status: "active" });
+    if (err) return NextResponse.json({ error: err }, { status: 500 });
+    // the stage label says "deployed" only once the agent really is in production
+    await createAdminClient().from("un_use_cases").update({ stage: "deployed", updated_at: now() }).eq("id", id).eq("org_id", who.org_id!);
+    return NextResponse.json({ ok: true, status: "active" });
   }
 
   if (!state.deployed || !certified) return NextResponse.json({ error: "The agent is not in production yet." }, { status: 409 });
@@ -57,7 +66,11 @@ export async function POST(request: Request, { params }: Ctx) {
       if (typeof b.drift !== "string" || !(b.drift in SUBJECT_RULES) || !certified.rules.includes(b.drift as SubjectRule)) return bad("drift must be one of the agent's rules");
       drift = b.drift as SubjectRule;
     }
-    const w = runWindow(certified, all, designationOf(tuning), drift);
+    // what the window used is recorded with it: the model calls and tokens, and the tool calls the agent made. (This window is simulated, so it
+    // makes no model calls; real production traffic served by the model-driven agent records the same way.)
+    const win = await metered(async () => { const r = runWindow(certified, all, designationOf(tuning), drift); recordToolCalls(r.run.summary.sijil.calls); return r; });
+    const w = win.result;
+    w.payload.usage = win.usage;
     const entries = appendWindow(watch, w, "watchdog (simulated)", now);
     const err = await appendWatch(who.org_id!, id, entries);
     if (err) return NextResponse.json({ error: err }, { status: 500 });

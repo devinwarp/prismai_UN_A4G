@@ -41,7 +41,7 @@ test("judge: calls run a few at a time (a pilot has hundreds of tests) and resul
 test("tests to judge: one per distinct test, with the first run's output and the blueprint's wording", () => {
   const t = testsToJudge([run("bp1#c1", 1), run("bp1#c1", 2), run("bp2#c2", 1)], { bp1: { title: "Normal case", expect: ["Produces X"] } });
   assert.equal(t.length, 2);
-  assert.deepEqual(t[0], { test_id: "bp1#c1", title: "Normal case", expect: ["Produces X"], summary: '{"ok":true,"id":"bp1#c1"}' });
+  assert.deepEqual(t[0], { test_id: "bp1#c1", title: "Normal case", expect: ["Produces X"], summary: '{"ok":true,"id":"bp1#c1"}', client_facing: false });
   assert.equal(t[1].title, "bp2#c2");
 });
 
@@ -156,4 +156,67 @@ test("the same chain passes through a database round trip (jsonb reorders keys) 
   const chained = [old, appendReview(old, "judged", "u", p.payload, "2026-11-22T10:00:00.000Z")];
   const reordered = JSON.parse(JSON.stringify(chained, (_, v) => (v && typeof v === "object" && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).reverse()) : v))) as ReviewEntry[];
   assert.equal(verifyReviews(reordered).ok, true);
+});
+
+test("a check scoped to client-facing tests is asked only of those, and a test with no applicable check is not judged", async () => {
+  const checks = [{ id: "C1", text: "fee only from the table", criterion: "hallucination" as const, scope: "all" as const }, { id: "C2", text: "officer releases", criterion: "human_final_approval" as const, scope: "client_facing" as const }];
+  const asked: string[][] = [];
+  const chat = async ({ user }: { system: string; user: string }) => { const ids = [...user.matchAll(/- (C\d):/g)].map((m) => m[1]); asked.push(ids); return JSON.stringify({ goals: ids.map((id) => ({ id, met: true, reason: "ok" })), reason: "ok" }); };
+  const tests = [{ test_id: "internal", title: "a", expect: [], summary: "{}", client_facing: false }, { test_id: "cf", title: "b", expect: [], summary: "{}", client_facing: true }];
+  const out = await judgeTests(chat, checks, tests);
+  assert.deepEqual(out.map((j) => [j.test_id, j.goals.map((g) => g.id)]), [["internal", ["C1"]], ["cf", ["C1", "C2"]]]);
+  const only = await judgeTests(chat, [checks[1]], tests);
+  assert.deepEqual(only.map((j) => j.test_id), ["cf"]);
+});
+
+test("the judge is shown the SOP passages a run cited, at most three, so it can check a figure against the source", async () => {
+  const { citedPassages, userPrompt, MAX_EVIDENCE } = await import("../src/lib/un/goal-judge.ts");
+  const passages = new Map([["SOP-LIC-014#S6", "| Group | Base |\n| Food | 2,000 |"], ["SOP-LIC-014#T12", "Send the fee notice."], ["SOP-LIC-014#D1", "d1"], ["SOP-LIC-014#D2", "d2"]]);
+  const summary = JSON.stringify({ ok: true, citations: ["SOP-LIC-014#S6", "SOP-LIC-014#NOPE", "SOP-LIC-014#T12", "SOP-LIC-014#S6", "SOP-LIC-014#D1", "SOP-LIC-014#D2"], output: { total: 2200 } });
+  const ev = citedPassages(summary, passages);
+  assert.deepEqual(ev.map((e) => e.chunk_id), ["SOP-LIC-014#S6", "SOP-LIC-014#T12", "SOP-LIC-014#D1"], "known ids only, once each, at most three");
+  assert.equal(MAX_EVIDENCE, 3);
+  assert.deepEqual(citedPassages("not json but cites SOP-LIC-014#S6 here", passages).map((e) => e.chunk_id), ["SOP-LIC-014#S6"]);
+  assert.deepEqual(citedPassages(undefined, passages), []);
+  const p = userPrompt([{ id: "C1", text: "fee only from the table", criterion: "hallucination" }], { test_id: "t", title: "T", expect: [], summary, evidence: ev });
+  assert.match(p, /The SOP passages the agent cited, word for word/);
+  assert.match(p, /\[SOP-LIC-014#S6\] \| Group \| Base \| \| Food \| 2,000 \|/);
+  assert.doesNotMatch(userPrompt([{ id: "C1", text: "x", criterion: "hallucination" }], { test_id: "t", title: "T", expect: [], summary }), /cited, word for word/);
+});
+
+test("testsToJudge attaches the cited passages only when it is given the SOP's passages", () => {
+  const run = { test_id: "a#a", family: "happy_path", task: "T11", rep: 1, passed: true, answer: "a", summary: JSON.stringify({ citations: ["SOP-LIC-014#S6"] }), latency_ms: 1, cost: null, hallucinated: null, controls_ok: true, goals_ok: null, refusal_expected: false, refused: null, logged: true, rejected_calls: 0, client_facing: false, compliance_ok: null, disclosed: null, promotion_free: null, fee_ok: null } as never;
+  assert.equal(testsToJudge([run], {})[0].evidence, undefined);
+  assert.deepEqual(testsToJudge([run], {}, new Map([["SOP-LIC-014#S6", "table"]]))[0].evidence, [{ chunk_id: "SOP-LIC-014#S6", text: "table" }]);
+});
+
+test("an unreadable judge reply is asked for once more; one that stays unreadable is unjudged, never met", async () => {
+  const checks = [{ id: "C1", text: "x", criterion: "hallucination" as const, scope: "all" as const }];
+  const test1 = { test_id: "a", title: "A", expect: [], summary: "{}" };
+  let n = 0;
+  const flaky: ChatFn = async () => (n++ === 0 ? '{"goals":[{"id":"C1","met":tr' : JSON.stringify({ goals: [{ id: "C1", met: true, reason: "ok" }], reason: "ok" }));
+  const [fixed] = await judgeTests(flaky, checks, [test1]);
+  assert.equal(fixed.met, true);
+  assert.equal(n, 2);
+  let m = 0;
+  const never: ChatFn = async () => { m++; return "I cannot say"; };
+  const [still] = await judgeTests(never, checks, [test1]);
+  assert.equal(still.met, null);
+  assert.equal(m, 2, "asked twice, no more");
+  let k = 0;
+  const fine: ChatFn = async () => { k++; return JSON.stringify({ goals: [{ id: "C1", met: false, reason: "no" }], reason: "no" }); };
+  const [bad] = await judgeTests(fine, checks, [test1]);
+  assert.deepEqual([bad.met, k], [false, 1], "a readable reply is not asked for twice");
+});
+
+test("the judge prompt: only the listed checks, the test's expectation is background, a prohibition is met when it is not broken, no 'when in doubt not met'", async () => {
+  const { GOAL_SYSTEM } = await import("../src/lib/un/goal-judge.ts");
+  assert.match(GOAL_SYSTEM, /Judge ONLY the checks listed/);
+  assert.match(GOAL_SYSTEM, /never fail a check because the output differs from the test's expected text/);
+  assert.match(GOAL_SYSTEM, /forbids something .* is met whenever the output does not do it/);
+  assert.match(GOAL_SYSTEM, /quotes no fee meets a check about the fees it quotes/);
+  assert.match(GOAL_SYSTEM, /applies only to an output that contains a message/);
+  assert.match(GOAL_SYSTEM, /base fee plus the late fee the table states\) follows from it/);
+  assert.doesNotMatch(GOAL_SYSTEM, /when in doubt/i);
+  assert.match(GOAL_SYSTEM, /Reply with one JSON object only/);
 });

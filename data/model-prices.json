@@ -1,0 +1,11 @@
+{
+  "_note": "USD per MILLION tokens, for each model id the app uses. Fill these from your provider's pricing page (for Amazon Bedrock, the price of the model in your region). null means 'not priced': the cost ledger still counts the model's calls and tokens, and shows the total as partial until the model is priced. Nothing here is a real price. tool_call is the cost of one tool call in USD, or null to count tool calls without pricing them. MODEL_PRICES_JSON in the environment, with the same shape, overrides this file.",
+  "currency": "USD",
+  "tool_call": null,
+  "models": {
+    "eu.anthropic.claude-opus-5-5": { "input": null, "output": null },
+    "eu.anthropic.claude-sonnet-5-5": { "input": null, "output": null },
+    "openai.gpt-oss-120b-1:0": { "input": null, "output": null },
+    "qwen.qwen3-235b-a22b-2507-v1:0": { "input": null, "output": null }
+  }
+}

@@ -1,46 +1,54 @@
 import { CRITERIA, type Criterion, type SijilRun } from "./sijil.ts";
 
-// Entity goals feed Sijil "goal alignment" (C2-10). Deterministic, no random
-// number. Each entity has 3-5 goals; every goal is tagged to one Prism
-// criterion that the pilot's acceptance criteria already measure.
+// Entity goals are the OUTCOMES an authority wants from its services, for example citizen satisfaction or how fast a
+// first substantive reply arrives. They are set once for the entity and are the same for every use case it runs.
+// They are NOT agent or workflow rules: "quote only published fees", "an officer releases every message" and "tell the
+// citizen it is an AI" belong at the process level, as the process targets and acceptance checks of one use case
+// (targets.ts), where the pilot can test them. A single test output cannot show satisfaction or turnaround, so an
+// outcome goal has no criterion: it is measured after go-live (or by a use case's own target), not by Sijil.
 //
-// FORMULA. For one run of N evaluated actions, a goal g tagged to criterion c
+// A goal MAY carry a Prism criterion. The Sijil goal-alignment figure (C2-10) is computed only from goals that do, and
+// is deterministic, with no random number. FORMULA. For one run of N evaluated actions, a goal g tagged to criterion c
 // is met by every action that did not fail c, i.e. its score is
 //     met(g) = 1 - rejects[c] / N
-// and the run's goal alignment is the mean of met(g) over the entity's goals:
+// and the run's goal alignment is the mean of met(g) over the goals that carry a criterion:
 //     alignment = (1 / |G|) * sum over g in G of (1 - rejects[c(g)] / N)
-// that is, the share of run actions that meet the acceptance criteria tagged
-// to an entity goal, with every goal weighted equally. Goals are never tagged
-// to goal_alignment itself (that would be circular). With no goals on record
-// the figure cannot be computed and the run keeps its simulated value.
+// Goals are never tagged to goal_alignment itself (that would be circular). With no criterion-tagged goals the figure
+// cannot be computed and the run keeps its simulated value.
 
 export type GoalCriterion = Exclude<Criterion, "goal_alignment">;
+/** Where a per-test check is asked: of every test, or only of tests in which the agent writes to a citizen. */
+export type CheckScope = "all" | "client_facing";
 export interface EntityGoal {
   id: string;
   text: string;
-  criterion: GoalCriterion;
+  /** The Prism criterion this goal is measured by, or null for an outcome measured after go-live. */
+  criterion: GoalCriterion | null;
+  /** Only on a process-level check (targets.ts): which tests it is asked of. Entity goals have none. */
+  scope?: CheckScope;
 }
 
 export const GOAL_ALIGNMENT_FORMULA =
-  "goal alignment = mean over the entity's goals of (1 - rejects on the goal's criterion / actions in the run)";
+  "goal alignment = mean over the entity's criterion-tagged goals of (1 - rejects on the goal's criterion / actions in the run)";
 
 const isGoalCriterion = (c: unknown): c is GoalCriterion => (CRITERIA as readonly string[]).includes(c as string) && c !== "goal_alignment";
 
-/** Validate goals read from the database; anything malformed is dropped. */
+/** Validate goals read from the database; anything malformed is dropped. A goal with no criterion is an outcome goal. */
 export const parseGoals = (raw: unknown): EntityGoal[] =>
-  (Array.isArray(raw) ? raw : []).flatMap((g) =>
-    g && typeof g === "object" && typeof g.id === "string" && typeof g.text === "string" && isGoalCriterion(g.criterion)
-      ? [{ id: g.id, text: g.text, criterion: g.criterion }]
-      : [],
-  );
+  (Array.isArray(raw) ? raw : []).flatMap((g) => {
+    if (!g || typeof g !== "object" || typeof g.id !== "string" || typeof g.text !== "string") return [];
+    if (g.criterion != null && !isGoalCriterion(g.criterion)) return [];
+    return [{ id: g.id, text: g.text, criterion: g.criterion ?? null, ...(g.scope === "all" || g.scope === "client_facing" ? { scope: g.scope as CheckScope } : {}) }];
+  });
 
 const r4 = (x: number) => Math.round(x * 10000) / 10000;
 
 /** Alignment of one run against the goals, or null when there are no goals. */
 export function goalAlignment(run: Pick<SijilRun, "actions" | "rejects">, goals: EntityGoal[]): number | null {
-  if (!goals.length || run.actions <= 0) return null;
-  const sum = goals.reduce((s, g) => s + (1 - Math.min(1, run.rejects[g.criterion] / run.actions)), 0);
-  return r4(sum / goals.length);
+  const tagged = goals.filter((g): g is EntityGoal & { criterion: GoalCriterion } => g.criterion !== null);
+  if (!tagged.length || run.actions <= 0) return null;
+  const sum = tagged.reduce((s, g) => s + (1 - Math.min(1, run.rejects[g.criterion] / run.actions)), 0);
+  return r4(sum / tagged.length);
 }
 
 /** Replace the simulated goal-alignment figure of each run with the goal-based
@@ -54,13 +62,16 @@ export function withEntityGoals(runs: SijilRun[], goals: EntityGoal[]): SijilRun
   });
 }
 
-/** Seed data: five fictitious entities (data/un-use-cases.csv), 3-5 goals each. */
+/** Seed data: five fictitious entities (data/un-use-cases.csv).
+ * Marsa carries OUTCOME goals (no criterion), set at the entity level: the wording and the figures are PLACEHOLDERS for
+ * the entity to set, not a recommendation. What used to be Marsa's four goals (correct first time, only published fees,
+ * an officer releases every message, tell the citizen it is an AI) now live at the process level, as the targets and
+ * acceptance checks of the use case (targets.ts).
+ * The other four entities still carry their earlier 3-5 criterion-tagged goals, to be reworked the same way later. */
 export const ENTITY_GOALS: Record<string, EntityGoal[]> = {
   "Marsa Public Services Authority": [
-    { id: "MARSA-G1", text: "Answer licence and permit questions correctly the first time", criterion: "accuracy" },
-    { id: "MARSA-G2", text: "Never quote a fee that is not in the published fee table", criterion: "hallucination" },
-    { id: "MARSA-G3", text: "An officer releases every message that reaches a citizen", criterion: "human_final_approval" },
-    { id: "MARSA-G4", text: "Tell every citizen they are dealing with an AI assistant", criterion: "ai_disclosure" },
+    { id: "MARSA-G1", text: "Achieve 99% citizen satisfaction across in-scope digital services, measured through post-service surveys", criterion: null },
+    { id: "MARSA-G2", text: "Deliver 95% of first substantive responses within four business hours across in-scope digital services", criterion: null },
   ],
   "Qanat Transport and Mobility Agency": [
     { id: "QANAT-G1", text: "Route and permit answers match the current timetable and rules", criterion: "accuracy" },

@@ -8,7 +8,9 @@ const run = (actions: number, rej: Partial<Record<(typeof CRITERIA)[number], num
   run_no: 1, source: "t", actions, accuracy: 0.97, hallucination_rate: 0.004, goal_alignment: 0.5,
   rejects: { accuracy: 0, hallucination: 0, goal_alignment: 0, human_final_approval: 0, ai_disclosure: 0, ...rej },
 });
-const goals = ENTITY_GOALS["Marsa Public Services Authority"]; // accuracy, hallucination, human approval, disclosure
+// criterion-tagged goals, as the other entities still have them (Marsa's are outcome goals with no criterion)
+const goals = ENTITY_GOALS["Qanat Transport and Mobility Agency"].concat(ENTITY_GOALS["Raya Education and Skills Council"].slice(3)); // accuracy, hallucination, human approval, disclosure
+const marsa = ENTITY_GOALS["Marsa Public Services Authority"];
 
 test("C2-10: goal alignment is the mean share of actions meeting each goal's criterion", () => {
   assert.equal(goalAlignment(run(40, {}), goals), 1);
@@ -16,6 +18,8 @@ test("C2-10: goal alignment is the mean share of actions meeting each goal's cri
   assert.equal(goalAlignment(run(40, { accuracy: 4 }), goals), 0.975);
   // bypassing the human on 8/40 drags only the human-approval goal: (1+1+0.8+1)/4
   assert.equal(goalAlignment(run(40, { human_final_approval: 8 }), goals), 0.95);
+  // outcome goals carry no criterion: they cannot be computed from rejects, so the figure stays as it was
+  assert.equal(goalAlignment(run(40, { accuracy: 4 }), marsa), null);
 });
 
 test("C2-10: no goals means no computed figure; the run is left as it was", () => {
@@ -40,10 +44,15 @@ test("C2-10: it is deterministic, and a bypassing profile lowers alignment again
   assert.equal(attest(a).pass, true);
 });
 
-test("C2-10: five entities with 3-5 goals each; the seed file matches the data; bad goal rows are dropped", () => {
+test("Marsa's entity goals are outcomes: no criterion, and none of the old workflow rules", () => {
+  assert.ok(marsa.length >= 2 && marsa.every((g) => g.criterion === null));
+  assert.ok(marsa.every((g) => !/fee table|officer releases|AI assistant/i.test(g.text)));
+});
+
+test("C2-10: five entities with 2-5 goals each; the seed file matches the data; bad goal rows are dropped", () => {
   const e = Object.values(ENTITY_GOALS);
   assert.equal(e.length, 5);
-  assert.ok(e.every((g) => g.length >= 3 && g.length <= 5));
+  assert.ok(e.every((g) => g.length >= 2 && g.length <= 5));
   assert.equal(readFileSync("supabase/seed-entities.sql", "utf8").replace(/\r\n/g, "\n"), seedEntitiesSql());
-  assert.deepEqual(parseGoals([{ id: "x", text: "t", criterion: "goal_alignment" }, { id: "y", text: "t", criterion: "accuracy" }, null]), [{ id: "y", text: "t", criterion: "accuracy" }]);
+  assert.deepEqual(parseGoals([{ id: "x", text: "t", criterion: "goal_alignment" }, { id: "y", text: "t", criterion: "accuracy" }, { id: "o", text: "outcome" }, null]), [{ id: "y", text: "t", criterion: "accuracy" }, { id: "o", text: "outcome", criterion: null }]);
 });

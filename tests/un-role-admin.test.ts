@@ -37,3 +37,48 @@ test("revoke: a live assignment of someone else; not a missing or an already rev
   assert.match(err(planGrant({ type: "revoke", assignment_id: "zz" }, ctx([row({})]))), /does not exist/);
   assert.match(err(planGrant({ type: "revoke", assignment_id: "a1" }, ctx([row({ revoked_at: "2026-11-21T11:00:00Z" })]))), /already revoked/);
 });
+
+const BOB = "u-bob", CAL = "u-cal";
+const owner = (o: Partial<AssignmentRow> = {}) => row({ id: "po1", user_id: ANA, role: "process_owner", use_case_id: UC, ...o });
+const ctx3 = (rows: AssignmentRow[]) => ({ rows, knownUsers: [ME, ANA, BOB, CAL], knownUseCases: [UC], by: ME });
+
+test("the process owner is never just removed: a bare revoke is refused, whoever asks", () => {
+  assert.match(err(planGrant({ type: "revoke", assignment_id: "po1" }, ctx3([owner()]))), /process owner cannot be removed on their own: replace them/);
+  assert.match(err(planGrant({ type: "revoke", assignment_id: "po1" }, ctx3([owner({ use_case_id: null })]))), /cannot be removed on their own/, "for the whole organisation too");
+  // the other roles are removed as before
+  assert.equal(planGrant({ type: "revoke", assignment_id: "op1" }, ctx3([row({ id: "op1", role: "operator" })])).ok, true);
+  assert.equal(planGrant({ type: "revoke", assignment_id: "t1" }, ctx3([row({ id: "t1", role: "test_author" })])).ok, true);
+});
+
+test("replacing the process owner gives the role to the new person for the same scope and takes it from the old, in one plan", () => {
+  const p = planGrant({ type: "replace_process_owner", assignment_id: "po1", user_id: BOB }, ctx3([owner()]));
+  assert.deepEqual(p, { ok: true, type: "replace", grant: { user_id: BOB, role: "process_owner", use_case_id: UC, granted_by: ME }, revoke: { assignment_id: "po1", revoked_by: ME } });
+  const org = planGrant({ type: "replace_process_owner", assignment_id: "po1", user_id: BOB }, ctx3([owner({ use_case_id: null })]));
+  assert.ok(org.ok && org.type === "replace" && org.grant.use_case_id === null);
+});
+
+test("replacing is refused for a missing, revoked or non-owner assignment, the same person, someone already an owner there, an unknown person, or oneself", () => {
+  const r = (a: { assignment_id?: string; user_id?: string }, rows = [owner()]) => err(planGrant({ type: "replace_process_owner", assignment_id: "po1", user_id: BOB, ...a }, ctx3(rows)));
+  assert.match(r({ assignment_id: "zz" }), /does not exist/);
+  assert.match(r({}, [owner({ revoked_at: "2026-11-21T11:00:00Z" })]), /already revoked/);
+  assert.match(r({}, [owner({ role: "operator" })]), /Only a process owner is replaced this way/);
+  assert.match(r({ user_id: ANA }), /different person/);
+  assert.match(r({ user_id: "nobody" }), /not in this organisation/);
+  assert.match(r({ user_id: ME }), /own roles/);
+  assert.match(r({}, [owner({ user_id: ME })]), /own roles/, "an administrator who is the owner cannot remove themselves");
+  assert.match(r({}, [owner(), row({ id: "po2", user_id: BOB, role: "process_owner", use_case_id: UC })]), /already a process owner for this scope/);
+  assert.equal(r({}, [owner(), row({ id: "po3", user_id: BOB, role: "process_owner", use_case_id: "uc-other" })]), "", "an owner of another process may take this one");
+});
+
+test("who may switch the tuning agent's automatic changes: only the process owner, for the use case; operators and the owner run cycles", async () => {
+  const { can } = await import("../src/lib/un/authz.ts");
+  const as = (role: "process_owner" | "operator" | "test_author" | "viewer" | "platform_admin" | "governance_admin", use_case_id = UC) => ({ legacyRole: null, assignments: [{ role, scope: { kind: "use_case" as const, use_case_id } }] });
+  assert.equal(can(as("process_owner"), "autotune.switch", { use_case_id: UC }).ok, true);
+  for (const role of ["operator", "test_author", "viewer"] as const) assert.equal(can(as(role), "autotune.switch", { use_case_id: UC }).ok, false, role);
+  assert.equal(can(as("process_owner", "uc-other"), "autotune.switch", { use_case_id: UC }).ok, false, "the owner of another process cannot");
+  assert.equal(can(as("operator"), "tuning.run", { use_case_id: UC }).ok, true);
+  assert.equal(can(as("process_owner"), "tuning.run", { use_case_id: UC }).ok, true);
+  assert.equal(can(as("test_author"), "tuning.run", { use_case_id: UC }).ok, false);
+  assert.equal(can(as("process_owner"), "tuning.decide", { use_case_id: UC }).ok, true);
+  assert.equal(can(as("operator"), "tuning.decide", { use_case_id: UC }).ok, false);
+});

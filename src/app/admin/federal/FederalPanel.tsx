@@ -36,6 +36,7 @@ const GO = [
   { href: "/admin/federal/gates", k: "go.gates", en: "Gates and rule sets", hint: "The checks every verdict rests on, per rule set and per use case." },
   { href: "/admin/federal/country", k: "go.country", en: "Country and knowledge base", hint: "Switch country, add a policy, add a company and its SOP." },
   { href: "/admin/federal/outside", k: "go.outside", en: "Answer outside requests", hint: "Questions the SOP cannot answer wait here for a person." },
+  { href: "/admin/federal/goals", k: "go.goals", en: "Entity goals and targets", hint: "What each entity wants, and what each use case commits to deliver." },
   { href: "/admin/federal/people", k: "go.people", en: "People and roles", hint: "Who holds which role, for the organisation or for one use case." },
   { href: "/admin/federal/gaps", k: "go.gaps", en: "Read the gaps", hint: "Where today's rules fall short of agentic AI." },
 ];
@@ -296,7 +297,7 @@ export default function FederalPanel({
                       {stageLabel(lang, u.stage)}{canEdit && <span aria-hidden className="ms-1 text-ink-soft">▾</span>}
                       {canEdit && (
                         <select aria-label={fill(tr(lang, "ua.row.stagefor", "Stage for {id}"), { id: ltr(u.ext_id) })} disabled={busy} value={u.stage} onChange={(e) => patch(u.id, { stage: e.target.value })} className="absolute inset-0 w-full cursor-pointer opacity-0">
-                          {STAGES.map((s) => <option key={s} value={s}>{stageLabel(lang, s)}</option>)}
+                          {STAGES.filter((s) => (s !== "approved" && s !== "deployed") || s === u.stage).map((s) => <option key={s} value={s}>{stageLabel(lang, s)}</option>)}
                         </select>
                       )}
                     </span>

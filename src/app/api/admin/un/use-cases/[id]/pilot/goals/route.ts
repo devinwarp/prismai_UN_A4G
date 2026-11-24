@@ -4,7 +4,10 @@ import { resolveApprover } from "@/lib/un/approvers";
 import { approversForUseCase } from "@/lib/un/approvers-store";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { appendReview, applyGoals, judgeTests, planReview, replayReviews, testsToJudge, verifyReviews, type Override, type ReviewAction } from "@/lib/un/goal-judge";
-import { ENTITY_GOALS } from "@/lib/un/goals";
+import { loadAttachedSop } from "@/lib/un/profiles-store";
+import { loadSop } from "@/lib/un/sop-kb";
+import { loadTargetLog } from "@/lib/un/target-store";
+import { checksOf, replayTargets } from "@/lib/un/targets";
 import { isUuid } from "@/lib/un/model";
 import { buildReport } from "@/lib/un/pilot";
 import { appendReviewLog, loadPilots, loadReviewLog, savePilot } from "@/lib/un/pilot-store";
@@ -69,14 +72,20 @@ export async function POST(request: Request, { params }: Ctx) {
 
   let action: ReviewAction;
   if (act === "judge") {
-    const goals = ENTITY_GOALS[uc.entity] ?? [];
-    if (!goals.length) return NextResponse.json({ error: `No goals are on record for ${uc.entity}` }, { status: 409 });
+    // the checks are the process-level acceptance checks of this use case (its approved targets), not the entity's outcome goals
+    let tlog;
+    try { tlog = await loadTargetLog(who.org_id!, id); } catch (e) { return NextResponse.json({ error: e instanceof Error ? e.message : "The target log could not be read" }, { status: 503 }); }
+    const goals = checksOf(replayTargets(tlog).approved?.targets ?? []);
+    if (!goals.length) return NextResponse.json({ error: "No approved process checks for this use case. Set and approve its process targets, marking the ones to check on every test, before judging." }, { status: 409 });
     if (!modelConfigured()) return NextResponse.json({ error: "No model is configured for the judge (set OPENROUTER_API_KEY or LLM_API_KEY). Goal alignment stays not measured until a model has judged and a person has approved." }, { status: 409 });
     if (state.reviews[pilotId]?.approved) return bad("These judgments are already approved; withdraw the approval before judging again");
     const tset = replayTestSet(await loadTestLog(who.org_id!, id, profile));
     const titles = Object.fromEntries(tset.blueprints.map((x) => [x.id, { title: x.title, expect: x.expect.map((c) => c.text) }]));
     const model = JUDGE_MODEL();
-    const judgments = await judgeTests(({ system, user }) => chatCompletion({ system, messages: [{ role: "user", content: user }], maxTokens: 600, timeoutMs: 60_000, seed: 7, model }), goals, testsToJudge(pilot.run_records, titles));
+    // the judge is shown the SOP passages each run cited, so it can check a figure against the source instead of guessing
+    const sopId = await loadAttachedSop(who.org_id!, id);
+    const passages = new Map((sopId ? loadSop(sopId).chunks : []).map((c) => [c.chunk_id, c.text.split("\n").slice(1).join("\n")] as const));
+    const judgments = await judgeTests(({ system, user }) => chatCompletion({ system, messages: [{ role: "user", content: user }], maxTokens: 1500, timeoutMs: 60_000, seed: 7, model }), goals, testsToJudge(pilot.run_records, titles, passages));
     action = { type: "judge", pilot_id: pilotId, model, judgments, goals };
   } else if (act === "approve") {
     const a = resolveApprover(b.approver, await approversForUseCase(who.org_id!, id));

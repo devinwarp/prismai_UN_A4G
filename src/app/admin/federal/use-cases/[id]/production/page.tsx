@@ -15,6 +15,10 @@ import { RuleSentence } from "../../../_components/EvalText";
 import AgentRuntimePanel from "../../../_components/AgentRuntimePanel";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card } from "../../../_components/ui";
+import { loadLedger } from "@/lib/un/cost-ledger-store";
+import { loadRelease } from "@/lib/un/release-store";
+import { CostPanel } from "../CostPanel";
+import { ReleasePanel } from "../ReleasePanel";
 import { ProductionControls, ReinstateForm } from "./ProductionControls";
 
 export const metadata: Metadata = { title: "Production monitoring", robots: { index: false, follow: false } };
@@ -93,6 +97,8 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
   const s = replay(watch);
   const certified = configOf(tuning);
   const approved = approvalState(tuning) === "approved";
+  const release = await loadRelease(profile.org_id, id);
+  const ledger = await loadLedger(profile.org_id, id, release.profiles);
   const chain = verifyChain(watch);
   const perms = await permissionsFor(profile, user.id);
   const mayOperate = perms.can("deploy", id) || perms.can("watchdog.window", id);
@@ -122,9 +128,11 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
             <p className="mt-8 text-sm text-ink-soft"><TV k="ev.nocases" en="No eval set exists for {uc} yet. Eval sets are defined for UC01 and UC02." v={{ uc: uc.ext_id }} /></p>
           ) : (
             <>
+              {!s.deployed && <ReleasePanel id={id} release={release} />}
+              <CostPanel ledger={ledger} />
               {mayOperate && (
                 <div className="mt-6">
-                  <ProductionControls canReset={profile.role === "admin"} useCaseId={id} deployed={s.deployed} serving={s.serving} canDeploy={approved} rules={certified?.rules ?? []} />
+                  <ProductionControls canReset={profile.role === "admin"} useCaseId={id} deployed={s.deployed} serving={s.serving} canDeploy={approved && release.ok} rules={certified?.rules ?? []} />
                 </div>
               )}
 

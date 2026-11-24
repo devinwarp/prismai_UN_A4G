@@ -23,6 +23,8 @@ export function PeopleRoles({ people, rows, useCases, what, may, me }: {
   const [user, setUser] = useState(people.find((p) => p.id !== me)?.id ?? "");
   const [role, setRole] = useState<string>("process_owner");
   const [scope, setScope] = useState("");
+  const [replacing, setReplacing] = useState<string | null>(null);
+  const [successor, setSuccessor] = useState("");
 
   const send = async (body: object) => {
     setBusy(true); setError(null);
@@ -53,7 +55,19 @@ export function PeopleRoles({ people, rows, useCases, what, may, me }: {
                     {live.map((r) => (
                       <li key={r.id} className="inline-flex items-center gap-2 rounded-full border border-line px-3 py-1 text-xs">
                         <span className="font-medium">{r.role}</span><span className="text-ink-soft">{ucName(r.use_case_id)}</span>
-                        {may && p.id !== me && <button type="button" className="underline" disabled={busy} aria-label={`${tr(lang, "pe.revoke", "Revoke")} ${r.role} ${p.email ?? ""}`} onClick={() => send({ action: "revoke", assignment_id: r.id })}>{tr(lang, "pe.revoke", "Revoke")}</button>}
+                        {may && p.id !== me && r.role === "process_owner" && (
+                          replacing === r.id ? (
+                            <span className="inline-flex items-center gap-1">
+                              <label className="sr-only" htmlFor={`pe-succ-${r.id}`}>{tr(lang, "pe.successor", "New process owner")}</label>
+                              <select id={`pe-succ-${r.id}`} className={field} value={successor} onChange={(e) => setSuccessor(e.target.value)}>
+                                <option value="">{tr(lang, "pe.choose", "Choose a person")}</option>
+                                {people.filter((x) => x.id !== p.id && x.id !== me).map((x) => <option key={x.id} value={x.id}>{x.email ?? x.id}</option>)}
+                              </select>
+                              <button type="button" className="underline" disabled={busy || !successor} onClick={() => send({ action: "replace_process_owner", assignment_id: r.id, user_id: successor }).then(() => { setReplacing(null); setSuccessor(""); })}>{tr(lang, "pe.replace.go", "Replace")}</button>
+                            </span>
+                          ) : <button type="button" className="underline" disabled={busy} aria-label={`${tr(lang, "pe.replace", "Replace")} ${p.email ?? ""}`} onClick={() => { setReplacing(r.id); setSuccessor(""); }}>{tr(lang, "pe.replace", "Replace")}</button>
+                        )}
+                        {may && p.id !== me && r.role !== "process_owner" && <button type="button" className="underline" disabled={busy} aria-label={`${tr(lang, "pe.revoke", "Revoke")} ${r.role} ${p.email ?? ""}`} onClick={() => send({ action: "revoke", assignment_id: r.id })}>{tr(lang, "pe.revoke", "Revoke")}</button>}
                       </li>
                     ))}
                   </ul>

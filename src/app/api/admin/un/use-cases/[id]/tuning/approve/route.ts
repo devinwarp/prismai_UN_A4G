@@ -4,8 +4,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { isUuid } from "@/lib/un/model";
 import { approvalBlockers, effectiveGates, evidenceFor } from "@/lib/un/gates";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
+import { loadLedger } from "@/lib/un/cost-ledger-store";
+import { loadRelease } from "@/lib/un/release-store";
 import { loadRun } from "@/lib/un/runs";
 import { loadUseCase } from "@/lib/un/sijil-store";
+import { targetsHash } from "@/lib/un/targets";
 import { appendEntry, approvalState, configOf, verifyChain } from "@/lib/un/tuning";
 import { appendLog, loadLog } from "@/lib/un/tuning-store";
 
@@ -36,8 +39,16 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     const blockers = approvalBlockers(eff, evidenceFor(eff, uc.ext_id, run?.state.state?.gates ?? {}));
     if (blockers.length) return NextResponse.json({ error: `Approval needs every effective gate to pass. Not yet passing: ${blockers.map((x) => `${x.label} (${x.status})`).join("; ")}.` }, { status: 409 });
   }
+  // and a met pilot: the final report is what the person signs, and the entry records exactly which reports and targets that was
+  let release: Awaited<ReturnType<typeof loadRelease>> | null = null;
+  if (b.decision === "SIGN") {
+    release = await loadRelease(who.org_id!, id);
+    if (!release.ok) return NextResponse.json({ error: `Approval needs a met pilot. Not ready: ${release.blockers.slice(0, 6).map((x) => x.message).join(" ")}${release.blockers.length > 6 ? ` (and ${release.blockers.length - 6} more)` : ""}`, blockers: release.blockers }, { status: 409 });
+  }
   const signer = who.email ?? who.id;
-  const entry = appendEntry(log[log.length - 1], "approval", signer, { version: configOf(log)?.version ?? null, decision: b.decision, signer, comment }, new Date().toISOString());
+  // the gross cost of everything recorded so far goes into the approval, so the signed record shows what getting here cost
+  const spent = release ? (await loadLedger(who.org_id!, id, release.profiles)).summary : null;
+  const entry = appendEntry(log[log.length - 1], "approval", signer, { version: configOf(log)?.version ?? null, decision: b.decision, signer, comment, ...(release ? { release: { reports: release.reports, targets_hash: release.targets ? targetsHash(release.targets) : null }, cost: spent ? { usd: spent.usd, partial: spent.unpriced.length > 0, unpriced: spent.unpriced, gross_calls: spent.gross_calls, elapsed_ms: spent.usage.elapsed_ms ?? 0, model_calls: spent.usage.total.calls, tool_calls: spent.usage.total.tool_calls, by_stage: spent.by_stage } : null } : {}) }, new Date().toISOString());
   const err = await appendLog(who.org_id!, id, [entry]);
   if (err) return NextResponse.json({ error: err }, { status: 500 });
   if (b.decision === "SIGN") await createAdminClient().from("un_use_cases").update({ stage: "approved", updated_at: new Date().toISOString() }).eq("id", id).eq("org_id", who.org_id!);

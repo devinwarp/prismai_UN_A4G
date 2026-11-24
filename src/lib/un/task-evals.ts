@@ -1,3 +1,5 @@
+import type { UsageSnapshot } from "./cost.ts";
+import { OFFICE, type Drafter } from "./notice-draft.ts";
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { openAgent, type Agent, type CaseRequest, type TaskResult, type Tools } from "./analyst-agent.ts";
@@ -6,7 +8,7 @@ import { cachedOcr, type OcrEngine, type OcrResult } from "./doc-ocr.ts";
 import { DOC_DIR, DOCS, NO_REGISTRY, RECORDS, REGISTRY, REPRESENTATIVE, TODAY, TRANSLATORS, type Payment } from "./fixtures-uc02.ts";
 import type { ReactConfig } from "./react-config.ts";
 import type { CallDecision } from "./sijil-calls.ts";
-import type { Reasoner, Retrieve } from "./react-sop.ts";
+import type { Reasoner, Reflector, Retrieve } from "./react-sop.ts";
 import { loadSop } from "./sop-kb.ts";
 
 // Per-task evals for the two automated job profiles of SOP-LIC-014 (T04 to T10 for the Document
@@ -50,6 +52,9 @@ export interface TaskCase {
   seed?: { status: "complete"; late: boolean };
   payments?: (caseId: string) => Payment[];
   ask?: string;
+  /** Built from an accepted AI-generated test (generatedTaskCase). It belongs to that test's own blueprint only: the generic binding of a
+   * task's hand-written cases never picks it up, or its runs would count in the baseline. */
+  generated?: true;
   check: (r: TaskResult, s: CaseState) => string[];
 }
 
@@ -59,7 +64,7 @@ const has = (arr: unknown, s: string) => Array.isArray(arr) && arr.some((x) => S
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
 const out = (r: TaskResult) => r.output as Record<string, any>;
 export const GOOD = ["noor-d1", "noor-d2", "noor-d3", "noor-d4"];
-const BAKERY = ["bakery-d1", "bakery-d2", "bakery-d3", "bakery-d4"];
+export const BAKERY = ["bakery-d1", "bakery-d2", "bakery-d3", "bakery-d4"];
 export const without = (k: string) => GOOD.filter((x) => x !== k);
 export const swap = (k: string, to: string) => GOOD.map((x) => (x === k ? to : x));
 export const ALL_DV = ["T04", "T05", "T06", "T07", "T08", "T09"];
@@ -242,6 +247,10 @@ export interface EvalEnv {
   ocr: OcrEngine;
   /** reasoner for ReAct questions; default is the rule-based one */
   reasoner?: Reasoner;
+  /** writes the message of the T12 fee notice (a model); without it the notice carries no message body */
+  drafter?: Drafter;
+  /** reflection on a proposed finish of a ReAct question; without it a supported citation is enough */
+  reflect?: Reflector;
   /** reads a synthetic document image by DOCS key */
   image?: (key: string) => Buffer;
   /** approved ReAct glossary, routing and thresholds (defaults when absent) */
@@ -261,6 +270,9 @@ export interface CaseOutcome {
   calls: CallDecision[];
   probe: boolean;
   agent: Role;
+  /** What running the case used (model calls, tokens, tool calls) and what that cost in USD at the prices in force, when the pilot measured it. */
+  usage?: UsageSnapshot;
+  cost_usd?: number | null;
 }
 
 function toolsFor(c: TaskCase, env: EvalEnv, caseId: string): Tools {
@@ -272,6 +284,7 @@ function toolsFor(c: TaskCase, env: EvalEnv, caseId: string): Tools {
     ocr: env.ocr,
     translatorRegistered: (r) => TRANSLATORS.has(r),
     reasoner: env.reasoner,
+    reflect: env.reflect,
     retrieve: env.retrieve,
     requestOutside: () => `queued for a person (${caseId})`,
     react: env.react,
@@ -306,6 +319,13 @@ export async function runCase(c: TaskCase, env: EvalEnv): Promise<CaseOutcome> {
     result = { task: "ASK", ok: r.status === "answered", output: { status: r.status, quotes: r.answer, steps: r.steps.length }, citations: r.citations };
   } else {
     result = await (await agentFor(role)).run(c.task);
+    // T12: the agent worked out the notice; the drafter (a model) only writes the message that carries it, as a draft for
+    // an officer. The address is the notice's own, never the draft's. A failed draft leaves no email, and the case fails.
+    const notice = (result.output as { notice?: { to: string; amount: number; due: string; pay_by: string[]; case: string } | null }).notice;
+    if (c.task === "T12" && env.drafter && result.ok && notice) {
+      try { result = { ...result, output: { ...result.output, email: { to: notice.to, body: await env.drafter({ ...OFFICE, to: notice.to, amount: notice.amount, due: notice.due, pay_by: notice.pay_by, case: notice.case, note: c.request?.note }), drafted: true } } }; }
+      catch (e) { result = { ...result, output: { ...result.output, email: null, draft_error: e instanceof Error ? e.message.slice(0, 160) : "error" } }; }
+    }
   }
   const state = dv.state();
   const known = new Set(loadSop(SOP_ID).chunks.map((k) => k.chunk_id));

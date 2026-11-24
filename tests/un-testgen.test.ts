@@ -216,9 +216,9 @@ test("viewers get 403; a test author may propose but not accept; a process owner
 test("the route checks permission before reading any state, and never weakens it", () => {
   const src = readFileSync("src/app/api/admin/un/use-cases/[id]/testgen/route.ts", "utf8");
   const post = src.slice(src.indexOf("export async function POST"));
-  assert.match(post, /requirePermission\(\["scenario\.propose", "scenario\.edit"\]/);
+  assert.match(post, /requirePermission\(\["scenario\.propose", "scenario\.edit", "goals\.approve"\]/);
   assert.ok(post.indexOf("who.decide(") < post.indexOf("loadUseCase"), "permission before state");
-  assert.match(post, /act === "generate" \? "scenario\.propose" : "scenario\.edit"/);
+  assert.match(post, /act === "generate" \? "scenario\.propose" : act === "rule" \? "goals\.approve" : "scenario\.edit"/);
   assert.match(src, /requirePermission\("view"\)/);
 });
 
@@ -389,10 +389,10 @@ test("repair: the log keeps calls, repair and repaired; old entries without them
 
 test("repair: the route logs the calls and the repair and keeps the cooldown and the running lock", () => {
   const src = readFileSync("src/app/api/admin/un/use-cases/[id]/testgen/route.ts", "utf8");
-  assert.match(src, /calls: g\.calls, repair: g\.repair/);
+  assert.match(src, /calls: g\.calls, usage, repair: g\.repair/);
   assert.match(src, /cooldownLeft\(gstate\.runs/);
   assert.match(src, /running\.has\(key\)/);
-  assert.equal((src.match(/await generate\(/g) ?? []).length, 1, "one generate() per run; the repair is inside it");
+  assert.equal((src.match(/metered\(\(\) => generate\(/g) ?? []).length, 1, "one generate() per run; the repair is inside it");
 });
 
 test("the generate route sets maxDuration, like the pilot routes (a repaired run makes two model calls)", () => {

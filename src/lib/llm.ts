@@ -1,3 +1,5 @@
+import { recordModelCall } from "./un/cost.ts";
+
 // Any OpenAI-compatible endpoint works — set LLM_BASE_URL (e.g. a DDA or
 // in-country gateway) to move every model call off OpenRouter.
 const OPENROUTER_URL = `${(process.env.LLM_BASE_URL ?? "https://openrouter.ai/api/v1").replace(/\/+$/, "")}/chat/completions`;
@@ -65,7 +67,61 @@ function requestBody(opts: ChatRequestOpts): Record<string, unknown> {
   };
 }
 
+// Amazon Bedrock's native Converse API. Claude is not served on Bedrock's OpenAI-compatible endpoints, only here,
+// with the same Bedrock API key as a Bearer token. Selected when LLM_BASE_URL is a bedrock-runtime host without the
+// /openai path (for example https://bedrock-runtime.eu-central-1.amazonaws.com) or LLM_PROVIDER=bedrock. The model
+// is then a Bedrock id or inference profile (eu.anthropic.claude-sonnet-5-5).
+const isBedrock = () => process.env.LLM_PROVIDER === "bedrock" || (/^https:\/\/bedrock-runtime\./.test(process.env.LLM_BASE_URL ?? "") && !/\/openai(\/|$)/.test(process.env.LLM_BASE_URL ?? ""));
+
+/** The Converse request for an OpenAI-style chat request. System messages move to `system`; consecutive turns of one
+ * role are merged, because Converse needs strictly alternating turns that start with the user. */
+export function converseBody(body: Record<string, unknown>): Record<string, unknown> {
+  const msgs = (body.messages as ChatMessage[]) ?? [];
+  const system = msgs.filter((m) => m.role === "system").map((m) => ({ text: m.content }));
+  if (body.response_format) system.push({ text: "Reply with one valid JSON object and nothing else: no prose, no code fence." });
+  const turns: { role: "user" | "assistant"; content: { text: string }[] }[] = [];
+  for (const m of msgs) {
+    if (m.role === "system") continue;
+    const last = turns[turns.length - 1];
+    if (last && last.role === m.role) last.content.push({ text: m.content });
+    else turns.push({ role: m.role, content: [{ text: m.content }] });
+  }
+  return {
+    ...(system.length ? { system } : {}),
+    messages: turns,
+    inferenceConfig: { maxTokens: body.max_tokens, ...(body.temperature !== undefined ? { temperature: body.temperature } : {}) },
+  };
+}
+
+/** The reply in the OpenAI shape the rest of this file reads: the text blocks joined, and the token counts. */
+export function converseReply(data: { output?: { message?: { content?: { text?: string }[] } }; usage?: { inputTokens?: number; outputTokens?: number } }) {
+  const text = (data.output?.message?.content ?? []).map((b) => b.text ?? "").join("");
+  return { choices: [{ message: { content: text } }], usage: { prompt_tokens: data.usage?.inputTokens, completion_tokens: data.usage?.outputTokens } };
+}
+
 async function postChat(body: Record<string, unknown>, timeoutMs?: number) {
+  if (isBedrock()) {
+    if (body.tools) throw new Error("The web-search tool is not available on Bedrock");
+    const base = (process.env.LLM_BASE_URL ?? "").replace(/\/+$/, "");
+    const call = (b: Record<string, unknown>) => fetch(`${base}/model/${encodeURIComponent(String(b.model))}/converse`, {
+      method: "POST",
+      signal: AbortSignal.timeout(timeoutMs ?? 45_000),
+      headers: { Authorization: `Bearer ${process.env.LLM_API_KEY ?? process.env.OPENROUTER_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify(converseBody(b)),
+    });
+    let res = await call(body);
+    // some newer models (Claude Opus 5.5) refuse a temperature: say so with a 400. Repeatable sampling is best effort
+    // anyway (see `seed`), so ask again without it rather than fail the whole call.
+    if (res.status === 400 && body.temperature !== undefined) {
+      const text = await res.text();
+      if (!/temperature/i.test(text)) throw new LlmHttpError(400, text);
+      const { temperature: _t, ...rest } = body;
+      void _t;
+      res = await call(rest);
+    }
+    if (!res.ok) throw new LlmHttpError(res.status, await res.text());
+    return converseReply(await res.json());
+  }
   const res = await fetch(OPENROUTER_URL, {
     method: "POST",
     signal: AbortSignal.timeout(timeoutMs ?? 45_000),
@@ -94,8 +150,17 @@ export class LlmHttpError extends Error {
   }
 }
 
+/** Count one model call for the cost ledger (un/cost.ts): the tokens the provider reported (0 when it did not, or the call failed), and a
+ * cost the provider reported itself, if it did. A failed call is counted too: it was attempted, and may have been billed. */
+function meter(model: string, usage: { prompt_tokens?: number; completion_tokens?: number; cost?: number } | undefined) {
+  recordModelCall(model, usage?.prompt_tokens ?? 0, usage?.completion_tokens ?? 0, typeof usage?.cost === "number" ? usage.cost : null);
+}
+
 export async function chatCompletion(opts: ChatRequestOpts): Promise<string> {
-  const data = await postChat(requestBody(opts), opts.timeoutMs);
+  const model = opts.model ?? CHAT_MODEL;
+  let data;
+  try { data = await postChat(requestBody(opts), opts.timeoutMs); } catch (e) { meter(model, undefined); throw e; }
+  meter(model, data.usage);
   opts.onUsage?.(data.usage);
   return data.choices?.[0]?.message?.content ?? "";
 }
@@ -138,7 +203,10 @@ export async function chatCompletionWithCitations(opts: {
       },
     ];
   }
-  const data = await postChat(body, opts.timeoutMs);
+  const model = opts.model ?? CHAT_MODEL;
+  let data;
+  try { data = await postChat(body, opts.timeoutMs); } catch (e) { meter(model, undefined); throw e; }
+  meter(model, data.usage);
   const message = data.choices?.[0]?.message;
   const content = message?.content;
   return {

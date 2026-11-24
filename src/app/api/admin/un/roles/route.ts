@@ -13,7 +13,9 @@ export async function GET() {
   return NextResponse.json({ people, assignments: rows, use_cases });
 }
 
-/** POST { action: "grant", user_id, role, use_case_id? } or { action: "revoke", assignment_id } → needs users.manage.
+/** POST { action: "grant", user_id, role, use_case_id? }, { action: "revoke", assignment_id } or { action: "replace_process_owner", assignment_id, user_id } → needs users.manage.
+ * The process owner is never just removed: "replace_process_owner" gives the role to a new person for the same scope and then takes it from
+ * the old one, so the process is never without one.
  * A role is held for the whole organisation (no use_case_id) or for one use case. Nobody changes their own roles. A
  * revoked assignment stays in the history. */
 export async function POST(request: Request) {
@@ -22,13 +24,23 @@ export async function POST(request: Request) {
   const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const may = who.decide("users.manage");
   if (!may.ok) return forbidden(may.reason);
-  if (b.action !== "grant" && b.action !== "revoke") return bad("Unknown action");
+  if (b.action !== "grant" && b.action !== "revoke" && b.action !== "replace_process_owner") return bad("Unknown action");
   const action: GrantAction = b.action === "grant"
     ? { type: "grant", user_id: text(b.user_id, 80), role: text(b.role, 40), use_case_id: text(b.use_case_id, 80) || null }
-    : { type: "revoke", assignment_id: text(b.assignment_id, 80) };
+    : b.action === "replace_process_owner"
+      ? { type: "replace_process_owner", assignment_id: text(b.assignment_id, 80), user_id: text(b.user_id, 80) }
+      : { type: "revoke", assignment_id: text(b.assignment_id, 80) };
   const [people, rows, ucs] = await Promise.all([loadPeople(who.org_id!), loadAssignmentRows(who.org_id!), loadUseCaseChoices(who.org_id!)]);
   const p = planGrant(action, { rows, knownUsers: people.map((x) => x.id), knownUseCases: ucs.map((x) => x.id), by: who.id });
   if (!p.ok) return bad(p.error);
+  if (p.type === "replace") {
+    // the new owner first, then the old one: if the second step failed there would be two owners, never none
+    const granted = await insertAssignment(who.org_id!, p.grant);
+    if (granted) return NextResponse.json({ error: granted }, { status: 500 });
+    const revoked = await revokeAssignment(who.org_id!, p.revoke.assignment_id, p.revoke.revoked_by);
+    if (revoked) return NextResponse.json({ error: `The new process owner was given the role, but the previous one could not be removed: ${revoked}` }, { status: 500 });
+    return NextResponse.json({ ok: true, type: "replace" });
+  }
   const err = p.type === "grant" ? await insertAssignment(who.org_id!, p.row) : await revokeAssignment(who.org_id!, p.assignment_id, p.revoked_by);
   if (err) return NextResponse.json({ error: err }, { status: 500 });
   return NextResponse.json({ ok: true, type: p.type });

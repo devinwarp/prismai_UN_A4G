@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { executePilot, planPilot, toPilotRun } from "../src/lib/un/pilot-run.ts";
+import { executePilot, planPilot, spreadSample, toPilotRun } from "../src/lib/un/pilot-run.ts";
 import type { Blueprint } from "../src/lib/un/test-derive.ts";
 import type { CaseOutcome, TaskCase } from "../src/lib/un/task-evals.ts";
 
@@ -145,4 +145,18 @@ test("control evidence: each control's evidence fails when the control is broken
   assert.equal(CONTROL_CASES["control.4"].evidence(o({}, [{ call: { tool: "export_applicant_file", args: {} }, decision: "allow" }])).length, 1);
   assert.equal(CONTROL_CASES["control.4"].evidence(o({}, [{ call: { tool: "export_applicant_file", args: {} }, decision: "reject" }])).length, 0);
   assert.equal(CONTROL_CASES["control.7"].evidence(o({ output: { email: { to: "x@elsewhere.example" } } })).length, 1);
+});
+
+test("a sample spreads over the bound tests; a sampled pilot runs only those", async () => {
+  assert.deepEqual(spreadSample(["a", "b", "c", "d", "e", "f"], 3), ["a", "c", "e"]);
+  assert.deepEqual(spreadSample(["a", "b"], 5), ["a", "b"]);
+  assert.deepEqual(spreadSample(["a", "b"], 0), []);
+  const bps = [bp("T1.happy", "happy_path", "T1"), bp("T1.exc", "exception", "T1"), bp("T2.happy", "happy_path", "T2")];
+  const cases = [tc("c1", "T1", "tune"), tc("c1h", "T1", "holdout"), tc("c2", "T2", "tune")];
+  const ran: string[] = [];
+  const { runs, plan } = await executePilot(bps, cases, async (c) => { ran.push(c.id); return outcome(c); }, 2, Date.now, "dv", new Set(["T2.happy"]));
+  assert.deepEqual(ran, ["c2", "c2"]);
+  assert.equal(runs.length, 2);
+  assert.deepEqual(Object.keys(plan.bound), ["T2.happy"]);
+  assert.equal(plan.unexecuted.length, 0);
 });

@@ -4,7 +4,9 @@ import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { appendTestLog, loadTestLog, requiredFor } from "@/lib/un/test-set-store";
 import { appendTest, plan, replayTestSet, verifyTest } from "@/lib/un/test-sets";
-import { appendGen, blueprintOf, cooldownLeft, describeStoreError, generate, replayGen, verifyGen } from "@/lib/un/testgen";
+import { metered } from "@/lib/un/cost";
+import { loadPilots } from "@/lib/un/pilot-store";
+import { appendGen, blueprintOf, cooldownLeft, describeStoreError, generate, planRuling, replayGen, verifyGen } from "@/lib/un/testgen";
 import { appendGenLog, buildScenario, defaultChat, loadGenLog } from "@/lib/un/testgen-store";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -43,15 +45,15 @@ export async function GET(request: Request, { params }: Ctx) {
 export async function POST(request: Request, { params }: Ctx) {
   const { id } = await params;
   if (!isUuid(id)) return notFound();
-  const who = await requirePermission(["scenario.propose", "scenario.edit"], { useCaseId: id });
+  const who = await requirePermission(["scenario.propose", "scenario.edit", "goals.approve"], { useCaseId: id });
   if (who instanceof NextResponse) return who;
   const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const act = b.action;
   const profile = text(b.profile, 120);
-  const may = who.decide(act === "generate" ? "scenario.propose" : "scenario.edit");
+  const may = who.decide(act === "generate" ? "scenario.propose" : act === "rule" ? "goals.approve" : "scenario.edit");
   if (!may.ok) return forbidden(may.reason);
   if (!profile) return bad("profile is required");
-  if (!["generate", "accept", "reject"].includes(String(act))) return bad("Unknown action");
+  if (!["generate", "accept", "reject", "rule"].includes(String(act))) return bad("Unknown action");
   if (!(await loadUseCase(who.org_id!, id))) return notFound();
   const need = await requiredFor(who.org_id!, id, profile);
   if (!need.ok) return NextResponse.json({ error: need.error }, { status: need.status });
@@ -68,7 +70,7 @@ export async function POST(request: Request, { params }: Ctx) {
 
   // The log is read again at the moment of writing, so a slow model call does not leave a stale link in the chain:
   // otherwise another writer in the meantime would clash on the sequence number and the paid generation would be lost.
-  const writeGen = async (kind: "generated" | "rejected", payload: Record<string, unknown>) => {
+  const writeGen = async (kind: "generated" | "rejected" | "ruled", payload: Record<string, unknown>) => {
     let cur;
     try { cur = await loadGenLog(who.org_id!, id, profile); } catch (e) { return unreadable(e); }
     if (!verifyGen(cur).ok) return NextResponse.json({ error: "The proposal log failed verification" }, { status: 409 });
@@ -90,12 +92,41 @@ export async function POST(request: Request, { params }: Ctx) {
     if (wait > 0) return NextResponse.json({ error: `A generation finished moments ago; try again in ${Math.ceil(wait / 1000)} seconds` }, { status: 429, headers: { "Retry-After": String(Math.ceil(wait / 1000)) } });
     // a scenario with no skill (or no agent role) is refused
     running.add(key);
-    let g;
-    try { g = await generate(defaultChat(built.ctx.model), built.scenario, built.skill, built.lines, built.ctx); } finally { running.delete(key); }
+    let g, usage;
+    // what the generation used (the model calls and tokens, repair call included) is kept with the run, for the cost ledger
+    try { const m = await metered(() => generate(defaultChat(built.ctx.model), built.scenario, built.skill, built.lines, built.ctx)); g = m.result; usage = m.usage; } finally { running.delete(key); }
     if (g.refused) return NextResponse.json({ error: g.refused }, { status: 422 });
-    const fail = await writeGen("generated", { scenario_id: built.scenario.id, model: built.ctx.model, prompt_hash: g.prompt_hash, calls: g.calls, repair: g.repair, cases: g.cases, rejected: g.rejected, gaps: g.gaps, refused: null });
+    const fail = await writeGen("generated", { scenario_id: built.scenario.id, model: built.ctx.model, prompt_hash: g.prompt_hash, calls: g.calls, usage, repair: g.repair, cases: g.cases, rejected: g.rejected, gaps: g.gaps, refused: null });
     if (fail) return fail;
     return NextResponse.json({ ok: true, model: built.ctx.model, cases: g.cases.length, calls: g.calls, repair: g.repair, rejected: g.rejected, gaps: g.gaps });
+  }
+
+  if (act === "rule") {
+    // a person (goals.approve: the process owner) rules on a generated case that a pilot disputed
+    const caseId = text(b.case_id, 120);
+    const pilotId = text(b.pilot_id, 80);
+    const pilot = (await loadPilots(who.org_id!, id, profile, true)).find((x) => x.id === pilotId);
+    if (!pilot) return notFound();
+    const disputed = [...new Set(pilot.run_records.filter((r) => r.generated && r.disputed && r.gen_case).map((r) => r.gen_case as string))];
+    const rl = planRuling(gstate, { case_id: caseId, pilot_id: pilotId, ruling: String(b.ruling), reason: text(b.reason, 500) }, disputed, who.id);
+    if (!rl.ok) return bad(rl.error);
+    const fail = await writeGen("ruled", rl.payload);
+    if (fail) return fail;
+    // the expectation was wrong: the generated test is retired, so it no longer counts. That changes the test set, which then needs
+    // approving again before the next pilot.
+    let retired = false;
+    if (b.ruling === "expectation_wrong") {
+      const bp = tstate.blueprints.find((x) => x.gen?.case_id === caseId && x.status === "active");
+      if (bp) {
+        const rp = plan(tstate, need.required, { type: "retire", id: bp.id, reason: `Ruled: the expectation was wrong (${text(b.reason, 300)})` }, who.id);
+        if (!rp.ok) return NextResponse.json({ ok: true, ruled: true, retired: false, error: `The ruling is recorded, but the test could not be retired: ${rp.error}` }, { status: 409 });
+        const re = appendTest(tlog[tlog.length - 1] ?? null, rp.kind, actor, rp.payload, new Date().toISOString());
+        const rerr = await appendTestLog(who.org_id!, id, profile, re);
+        if (rerr) return NextResponse.json({ ok: true, ruled: true, retired: false, error: `The ruling is recorded, but the test could not be retired: ${rerr}` }, { status: 500 });
+        retired = true;
+      }
+    }
+    return NextResponse.json({ ok: true, ruled: true, retired, needs_reapproval: retired });
   }
 
   const caseId = text(b.case_id, 120);

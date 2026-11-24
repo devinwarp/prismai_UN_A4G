@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import { parseLlmJson } from "../llm.ts";
-import type { Blueprint, Family } from "./test-derive.ts";
+import type { Blueprint, Family, GenSpec } from "./test-derive.ts";
 import { appendEntry, verifyChain, type ChainEntry } from "./tuning.ts";
 
 // AI test-case generator, first slice. Pure: no I/O. The model call is injected (a ChatFn, as in goal-judge.ts).
@@ -377,9 +377,9 @@ export function checkExpectation(e: Expectation, r: { ok: boolean; output: Recor
 // ---- the proposal log (hash-chained, append-only; supabase/un-testgen.sql) --------------------------------
 
 /** "generated": one generator run (cases, rejections, gaps, model, prompt hash). "rejected": a person turned one case
- * down. "ruled" is reserved for the pilot comparison (docs/un-testgen-design.md); nothing writes it yet. A case is
- * accepted by adding it to the test set (test-sets.ts), which names the person there; acceptance is read from the
- * test set, so the two logs cannot disagree. */
+ * down. "ruled": a person ruled on a generated case the pilot disputed (planRuling). A case is accepted by adding it to
+ * the test set (test-sets.ts), which names the person there; acceptance is read from the test set, so the two logs
+ * cannot disagree. */
 export type GenKind = "generated" | "rejected" | "ruled";
 export type GenEntry = ChainEntry<GenKind>;
 export const appendGen = (prev: GenEntry | null, kind: GenKind, actor: string, payload: Record<string, unknown>, at: string): GenEntry => appendEntry<GenKind>(prev, kind, actor, payload, at);
@@ -422,14 +422,35 @@ export async function appendGenLogTo(db: Db, orgId: string, useCaseId: string, p
 export const slotOf = (caseId: string) => `gen:${caseId}`;
 
 export interface Proposal { case: GenCase; status: "proposed" | "accepted" | "rejected"; reject_reason?: string; by?: string; at: string }
-export interface GenState { proposals: Proposal[]; runs: { at: string; by: string; model: string; cases: number; rejected: Rejection[]; gaps: CoverageGap[]; refused: string | null; prompt_hash: string; scenario_id: string; /** model calls of the run; absent on old entries */ calls?: number; /** the repair pass; absent on old entries and when no repair was needed */ repair?: RepairInfo | null }[] }
+/** A person's ruling on a generated case that a pilot disputed: the expectation was wrong (the test is retired and does not count
+ * against the agent) or the agent was wrong (a confirmed failure). */
+export const RULINGS = ["expectation_wrong", "agent_wrong"] as const;
+export type RulingKind = (typeof RULINGS)[number];
+export interface Ruling { case_id: string; pilot_id: string; ruling: RulingKind; reason: string; by: string; at: string }
+
+export interface GenState { rulings: Ruling[]; proposals: Proposal[]; runs: { at: string; by: string; model: string; cases: number; rejected: Rejection[]; gaps: CoverageGap[]; refused: string | null; prompt_hash: string; scenario_id: string; /** model calls of the run; absent on old entries */ calls?: number; /** the repair pass; absent on old entries and when no repair was needed */ repair?: RepairInfo | null }[] }
+
+/** Is a ruling allowed, and what is logged? `disputed` are the generated cases (their ids in the proposal log) that the named pilot
+ * disputed. A case is ruled once per pilot, with a reason. Pure. */
+export function planRuling(state: GenState, a: { case_id: string; pilot_id: string; ruling: string; reason: string }, disputed: string[], by: string): { ok: true; payload: Record<string, unknown> } | { ok: false; error: string } {
+  const bad = (error: string) => ({ ok: false as const, error });
+  if (!(RULINGS as readonly string[]).includes(a.ruling)) return bad("A ruling is expectation_wrong or agent_wrong");
+  if (!disputed.includes(a.case_id)) return bad("That pilot did not dispute this case");
+  if (state.rulings.some((r) => r.case_id === a.case_id && r.pilot_id === a.pilot_id)) return bad("This case is already ruled for this pilot");
+  if (a.reason.trim().length < 3) return bad("A ruling needs a reason");
+  return { ok: true, payload: { case_id: a.case_id, pilot_id: a.pilot_id, ruling: a.ruling, reason: a.reason.trim().slice(0, 500), by } };
+}
 
 /** Replays the log; `blueprints` (the current test set) says which proposals were accepted. */
 export function replayGen(entries: GenEntry[], blueprints: Blueprint[]): GenState {
-  const s: GenState = { proposals: [], runs: [] };
+  const s: GenState = { proposals: [], runs: [], rulings: [] };
   for (const e of entries) {
     const p = e.payload;
-    if (e.kind === "generated") {
+    if (e.kind === "ruled") {
+      if (typeof p.case_id === "string" && typeof p.pilot_id === "string" && (RULINGS as readonly string[]).includes(String(p.ruling))) {
+        s.rulings.push({ case_id: p.case_id, pilot_id: p.pilot_id, ruling: p.ruling as RulingKind, reason: typeof p.reason === "string" ? p.reason : "", by: e.actor, at: e.at });
+      }
+    } else if (e.kind === "generated") {
       const cases = Array.isArray(p.cases) ? (p.cases as GenCase[]) : [];
       for (const c of cases) if (!s.proposals.some((x) => x.case.id === c.id)) s.proposals.push({ case: c, status: "proposed", by: e.actor, at: e.at });
       s.runs.push({ at: e.at, by: e.actor, model: String(p.model ?? ""), cases: cases.length, rejected: (p.rejected as Rejection[]) ?? [], gaps: (p.gaps as CoverageGap[]) ?? [], refused: typeof p.refused === "string" ? p.refused : null, prompt_hash: String(p.prompt_hash ?? ""), scenario_id: String(p.scenario_id ?? ""), ...(typeof p.calls === "number" ? { calls: p.calls } : {}), repair: isObj(p.repair) ? (p.repair as unknown as RepairInfo) : null });
@@ -443,9 +464,10 @@ export function replayGen(entries: GenEntry[], blueprints: Blueprint[]): GenStat
 }
 
 /** The test-set blueprint an accepted case becomes. Its task is null on purpose: the pilot binds a task's tests to the
- * hand-written cases of that task, so a task here would add duplicate runs of the old cases and inflate the sample.
- * With no task the pilot lists it as "not executed" until the comparison is built (docs/un-testgen-design.md). */
-export function blueprintOf(c: GenCase): { title: string; family: Family; task: null; slot: string; expect: { kind: "rubric" | "exact"; text: string }[]; gates: string[]; source: string[] } {
+ * hand-written cases of that task, so a task here would add duplicate runs of the old cases and inflate the sample. The
+ * pilot runs it through `gen` (its own input), not through its task, and compares the result with the case's own
+ * assertions (docs/un-testgen-design.md). A blueprint accepted before `gen` existed has none and is listed as not executed. */
+export function blueprintOf(c: GenCase): { title: string; family: Family; task: null; slot: string; expect: { kind: "rubric" | "exact"; text: string }[]; gates: string[]; source: string[]; gen: GenSpec } {
   return {
     title: `[generated ${c.model}] ${c.title}`.slice(0, 200),
     family: c.family,
@@ -454,5 +476,6 @@ export function blueprintOf(c: GenCase): { title: string; family: Family; task: 
     expect: [{ kind: "rubric", text: c.expect.summary.slice(0, 600) }, ...c.expect.assertions.map((a) => ({ kind: "exact" as const, text: `${a.path} ${a.op}${a.value === undefined ? "" : ` ${JSON.stringify(a.value)}`}`.slice(0, 600) }))],
     gates: c.gates,
     source: c.citations,
+    gen: { case_id: c.id, model: c.model, input: c.input, expect: c.expect },
   };
 }

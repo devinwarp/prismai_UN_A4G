@@ -10,23 +10,19 @@ A reasoning agent writes test cases for one task of a job profile from the scena
 - Storage: `supabase/un-testgen.sql` (`un_testgen_log`, append-only, hash-chained). The existing `un_test_set_log` could not take the proposals because its `kind` check lists the kinds it accepts and `un-test-sets.sql` is not edited. A proposal is accepted by adding it to the test set through the existing `add` path (the set becomes a draft; the approval is the existing approve-and-lock, which names the approver and applies the self-approval rule). Acceptance is read from the test set, so the two logs cannot disagree.
 - Route `POST/GET /api/admin/un/use-cases/[id]/testgen`; panel on the tests screen.
 
-An accepted case becomes a test-set entry with `task: null` on purpose. The pilot binds a task's tests to the hand-written cases of that task, so giving it the task would add duplicate runs of the old cases and make the sample look bigger. With no task, the pilot lists it under "not executed" until the comparison below exists.
+An accepted case becomes a test-set entry with `task: null` on purpose (the pilot binds a task's tests to the hand-written cases of that task, so a task here would add duplicate runs of the old cases and inflate the sample) and with a `gen` field: its id in the proposal log, the model, the structured input and the assertions. The pilot runs it through `gen`, not through its task.
 
-## Why the comparison is not built yet
+## The pilot comparison (built)
 
-Running a generated case is feasible: its input maps one to one onto a `TaskCase` (agent, task, licence, request, docs, prepare, seed, payments, ask), `runCase` takes any `TaskCase`, and `checkExpectation(expect, result)` already turns the expectation into a list of differences. What is not small is everything around it, and it sits in files other work is changing:
+1. **The approval covers the case.** `gen` is part of the blueprint, so the approved set's hash covers the input and the assertions: an approved case cannot be changed without breaking the approval (`Blueprint.gen`, `genSpecProblem` in test-sets.ts re-checks its shape on `add`). A blueprint accepted before `gen` existed has none and is listed as not executed; accept the case again to run it.
+2. **Binding.** `generatedTaskCase(blueprint)` (pilot-run.ts) turns the input into a `TaskCase` (agent, task, licence, request, docs, prepare, seed, payments with `$CASE` replaced by the case number, ask; an authority case is a probe) whose check is `checkExpectation(gen.expect, result)`. Only the approved set runs, so only approved generated cases do. A case that cannot run (an input the agent refuses, a fixture it lacks) is recorded as disputed with the reason; the pilot goes on.
+3. **Result of one run.** `generated: true`, `gen_case`, `disputed` (the result did not meet the expectation) and the `differences`. Never "failed": the expectation may be the wrong one.
+4. **Baseline untouched.** `measure()` leaves generated runs out of every baseline measure, so passed/failed, thresholds, the verdict and the baseline numbers are the same with or without generated cases (a test runs the same set both ways and compares). The goal judge is not asked about generated runs.
+5. **Report.** A separate "Generated cases" block (`generatedBlock`, shown on the pilot page): per case the repetitions disputed and what differed; how many agree and how many are disputed. It is in the report only when the pilot ran some, so reports without them keep their hashes. No threshold applies to it.
+6. **Ruling.** A person with `goals.approve` (the process owner) opens a disputed case and rules `expectation_wrong` or `agent_wrong`, with a reason: one `ruled` entry in `un_testgen_log`, naming the person, once per case and pilot (`planRuling`, route action `rule`). `expectation_wrong` also retires the generated test (a `retired` entry in the test set), so the set must be approved again before the next pilot; the case no longer counts. `agent_wrong` is a confirmed failure.
+7. **Release.** A disputed case with no ruling, and one ruled `agent_wrong`, block the release gate (release-gate.ts): see `docs/un-release-gate.md`.
 
-1. The set hash must cover the input and the assertions, or an approved case could be changed without breaking the approval. A blueprint has no field for them (only title, expect text, gates, source), so the comparison needs `Blueprint.gen?: { case_id, input, expect, model }` (test-derive.ts, test-sets.ts `add`). The `expect` text of an accepted case already carries the summary and assertions, but the input is not in the hash today.
-2. `PilotRun` needs `generated?: true` and `disputed?: boolean`, and `measure()` must leave generated runs out of the baseline measures, so passed/failed, thresholds and the verdict for the old cases do not move. That is a change to pilot.ts, the pilot route and the pilot page.
-3. A ruling log and screen.
-
-## Design of the comparison (the next step)
-
-1. Binding. `casesFor` returns, for a blueprint with `gen`, the case built by `generatedTaskCase(gen)`: `check: (r) => checkExpectation(gen.expect, r)`; payments with `reference: "$CASE"` get the case number. The route passes the approved set only, so only approved generated cases run.
-2. Result of one run. `agrees` (actual meets the expectation) or `disputed` (it does not). Never `failed`: the expectation may be the wrong one. The run records the list of differences from `checkExpectation`.
-3. Report. The existing block (passed, failed, thresholds, verdict) is computed from the old cases only and is labelled "baseline: hand-written cases". A second block, "Generated cases", shows agrees, disputed and not executed, separately. No threshold applies to it until the owners choose one.
-4. Ruling. A reviewer with `goals.approve` (process owner) opens a disputed case and rules `expectation_wrong` or `agent_wrong`, with a reason. It is one `ruled` entry in `un_testgen_log` (kind already allowed by the SQL): `{case_id, pilot_id, ruling, reason}`, naming the person. `expectation_wrong` retires the generated test (a `retired` entry in the test set) and the case is not counted against the agent. `agent_wrong` counts as a real failure in a labelled "generated, confirmed" count and feeds tuning.
-5. Order of work: the `gen` field and its hash; `generatedTaskCase`; the `generated`/`disputed` fields and the measure filter; the route; the report block; the ruling route and screen. Each step keeps the old pilot's numbers identical, which a test can check by running the same set with and without generated cases.
+Not built: a confirmed `agent_wrong` does not yet feed the tuning cycle.
 
 ## Known limits of the first slice
 

@@ -82,7 +82,7 @@ export async function writeSignedVerdict(orgId: string, runRowId: string, state:
   const ext = state.state?.ext_id;
   if (!ext) return "this run has no use case to write a verdict to";
   const admin = createAdminClient();
-  const { data: uc } = await admin.from("un_use_cases").select("id, client_facing").eq("org_id", orgId).eq("ext_id", ext).maybeSingle();
+  const { data: uc } = await admin.from("un_use_cases").select("id, client_facing, stage").eq("org_id", orgId).eq("ext_id", ext).maybeSingle();
   if (!uc) return `use case ${ext} is not imported; import the use cases on the Federal page first`;
   let patch: Record<string, unknown> | null;
   try {
@@ -91,6 +91,8 @@ export async function writeSignedVerdict(orgId: string, runRowId: string, state:
     return e instanceof Error ? e.message : "verdict not allowed";
   }
   if (!patch) return null;
+  // a verdict never moves a use case backwards: one already approved or deployed keeps its stage
+  if (uc.stage === "approved" || uc.stage === "deployed") delete patch.stage;
   const { error } = await admin.from("un_use_cases").update({ ...patch, updated_at: new Date().toISOString() }).eq("id", uc.id).eq("org_id", orgId);
   return error?.message ?? null;
 }

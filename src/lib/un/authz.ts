@@ -31,7 +31,9 @@ export const ACTIONS = {
   // approval and the pilot
   "tuning.approve": def("Sign or withhold approval of a certified agent version", true, ["process_owner"], true),
   "run.sign": def("Sign a scenario run's verdict", true, ["process_owner"]),
-  "tuning.run": def("Run pilot evals and tuning cycles", true, ["operator"], true),
+  "tuning.run": def("Run pilot evals and tuning cycles", true, ["operator", "process_owner"], true),
+  "autotune.switch": def("Switch the tuning agent's automatic changes on or off, and set the limit above which every change waits for a person", true, ["process_owner"], true),
+  "tuning.decide": def("Approve or reject a change the tuning agent proposes", true, ["process_owner"], true),
   "tuning.propose": def("Propose a change to rules, glossary, settings or questions", true, ["test_author", "operator"]),
   "pilot.run": def("Run the approved pilot tests and have the model judge goal alignment", true, ["operator"], true),
   "goals.approve": def("Approve, override or withdraw the model's goal-alignment judgments of a pilot", true, ["process_owner"], true),

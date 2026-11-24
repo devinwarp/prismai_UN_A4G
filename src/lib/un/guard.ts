@@ -18,6 +18,8 @@ export function parseUseCasePatch(b: Record<string, unknown>): PatchResult {
   const patch: Record<string, unknown> = {};
   if ("stage" in b) {
     if (!STAGES.includes(b.stage as never)) return { ok: false, error: "Unknown stage" };
+    // approved and deployed are reached only through the approval and the go-live, which check that the pilot is met
+    if (b.stage === "approved" || b.stage === "deployed") return { ok: false, error: `The ${b.stage} stage cannot be set by hand: it is set by the ${b.stage === "approved" ? "approval" : "go-live"}, which checks the pilot report` };
     patch.stage = b.stage;
   }
   return { ok: true, patch };
@@ -33,7 +35,8 @@ export function engineValues<T extends UnUseCaseState>(u: T): T {
   return { ...u, verdict: verdictOk ? u.verdict : null, compliant: compliantOk ? u.compliant : false };
 }
 
-/** `run.id` is the un_runs row id (uuid), not RunState.run_id. Columns to write when a completed run sets a use case's verdict (including the lifecycle stage). */
+/** `run.id` is the un_runs row id (uuid), not RunState.run_id. Columns to write when a completed run sets a use case's verdict (including the lifecycle stage:
+ * a verdict puts the case in the pilot stage and no further; "approved" is set by the approval and "deployed" by the go-live, which check the pilot report). */
 export function verdictPatch(
   run: { id: string; head_hash: string; done: boolean },
   verdict: Verdict,
@@ -43,9 +46,9 @@ export function verdictPatch(
   if (!run.done) throw new Error("verdict can only be written from a completed scenario run");
   if (!signed?.signer_id) throw new Error("verdict needs a human signature");
   if (clientFacing && verdict === "GO_AUTONOMOUS") throw new Error("client-facing use cases are capped at GO_SUPERVISED");
-  // A signed GO verdict (autonomous, or supervised = with a human in the loop) counts as deployed;
-  // any other signed verdict leaves the case in the pilot stage.
-  const stage = verdict === "GO_AUTONOMOUS" || verdict === "GO_SUPERVISED" ? "deployed" : "pilot";
+  // A verdict, whatever it is, is an assessment: it does not approve or deploy anything. (It used to mark a GO verdict "deployed", before the
+  // pilot, the release gate and the go-live existed; the stage label then said "deployed" for an agent that was not in production.)
+  const stage = "pilot";
   return { verdict, stage, verdict_run_id: run.id, verdict_head_hash: run.head_hash, verdict_signed_by: signed.signer_id, verdict_signed_at: signed.signed_at };
 }
 

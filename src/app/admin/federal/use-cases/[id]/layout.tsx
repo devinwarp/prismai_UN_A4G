@@ -7,6 +7,7 @@ import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import AdminHeader from "../../../AdminHeader";
 import JourneyBar from "../../_components/JourneyBar";
+import { AutoTuneBanner } from "./AutoTuneBanner";
 
 /** Header and the journey bar for every use-case page. The bar is derived from the stored records on each request. */
 export default async function UseCaseLayout({ children, params }: { children: React.ReactNode; params: Promise<{ id: string }> }) {
@@ -27,6 +28,7 @@ export default async function UseCaseLayout({ children, params }: { children: Re
       <Suspense fallback={null}>
         <JourneyBar base={`/admin/federal/use-cases/${id}`} journey={journeys.get(id)!} />
       </Suspense>
+      <AutoTuneBanner orgId={profile.org_id} id={id} />
       {children}
     </div>
   );
