@@ -6,7 +6,6 @@ import { permissionsFor } from "@/lib/un/permissions-server";
 import { evalSetFor } from "@/lib/un/evalset";
 import { approvalBlockers, effectiveGates, evidenceFor } from "@/lib/un/gates";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
-import { loadLedger } from "@/lib/un/cost-ledger-store";
 import { loadReleaseCached } from "@/lib/un/release-cached";
 import { loadRun } from "@/lib/un/runs";
 import { isUuid } from "@/lib/un/model";
@@ -19,8 +18,6 @@ import { realAgentEvals } from "@/lib/un/tuning-service";
 import { RuleSentence, RuleText } from "../../../_components/EvalText";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card } from "../../../_components/ui";
-import { CostPanel } from "../CostPanel";
-import { ReleasePanel } from "../ReleasePanel";
 import { ApproveForm, TuningControls } from "./TuningControls";
 
 export const metadata: Metadata = { title: "Tuning and approval", robots: { index: false, follow: false } };
@@ -140,7 +137,6 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
   const hasSet = evalSetFor(uc.ext_id).length > 0;
   const state = approvalState(log);
   const release = await loadReleaseCached(profile.org_id, id);
-  const ledger = await loadLedger(profile.org_id, id, release.profiles);
   // the same check the approve route makes (409 otherwise): say it up front instead of offering a button that fails
   let approveBlocked: string | null = null;
   if (state === "ready") {
@@ -148,7 +144,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
     const run = uc.verdict_run_id ? await loadRun(profile.org_id, uc.verdict_run_id) : null;
     const blockers = approvalBlockers(eff, evidenceFor(eff, uc.ext_id, run?.state.state?.gates ?? {}));
     if (blockers.length) approveBlocked = `Approval needs every effective gate to pass. Not yet passing: ${blockers.map((x) => `${x.label} (${x.status})`).join("; ")}.`;
-    else if (!release.ok) approveBlocked = `Approval needs a met pilot: ${release.blockers.length} thing${release.blockers.length === 1 ? "" : "s"} to fix first (see the list above).`;
+    else if (!release.ok) approveBlocked = `Approval needs a met pilot: ${release.blockers.length} thing${release.blockers.length === 1 ? "" : "s"} to fix first (they are listed in the Next step card above).`;
   }
   const cfg = configOf(log);
   const chain = verifyChain(log);
@@ -200,9 +196,6 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
                 </p>
                 {cfg && <Config cfg={cfg} />}
               </section>
-
-              <ReleasePanel id={id} release={release} />
-              <CostPanel ledger={ledger} />
 
               {state === "ready" && mayApprove && (
                 <section className={`${card} mt-4`} aria-label="Decision">
