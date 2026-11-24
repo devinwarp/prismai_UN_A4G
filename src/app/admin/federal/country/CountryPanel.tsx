@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
@@ -11,14 +11,15 @@ interface Stage { stage: string; ms: number; detail: string }
 interface Props {
   canEdit: boolean;
   active: string;
-  countries: { id: string; name: string; ready: boolean; onDemand: boolean }[];
+  countries: { id: string; name: string; ready: boolean; onDemand: boolean; custom: boolean }[];
+  rulesets: { id: string; name: string }[];
   staged: { id: string; title: string; words: number }[];
   euBuilt: boolean;
   companyCount: number;
 }
 
 /** The actions of the country screen. Admin only: without canEdit nothing here is rendered as a control, and the API refuses anyone else. */
-export function CountryPanel({ canEdit, active, countries, staged, euBuilt, companyCount }: Props) {
+export function CountryPanel({ canEdit, active, countries, rulesets, staged, euBuilt, companyCount }: Props) {
   const lang = useLang();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -29,6 +30,10 @@ export function CountryPanel({ canEdit, active, countries, staged, euBuilt, comp
   const [elapsed, setElapsed] = useState(0);
   const [sample, setSample] = useState(true);
   const [sop, setSop] = useState("");
+  const [nc, setNc] = useState({ id: "", name: "", ruleset: rulesets[0]?.id ?? "" });
+  const [docs, setDocs] = useState<Record<string, { title: string; text: string }[]>>({});
+  const docsOf = (id: string) => docs[id] ?? [{ title: "", text: "" }];
+  const setDoc = (id: string, i: number, patch: Partial<{ title: string; text: string }>) => setDocs((m) => ({ ...m, [id]: docsOf(id).map((x, j) => (j === i ? { ...x, ...patch } : x)) }));
   const [name, setName] = useState("Marina Bay Licensing Authority (synthetic)");
   const t0 = useRef(0);
   useEffect(() => {
@@ -62,8 +67,9 @@ export function CountryPanel({ canEdit, active, countries, staged, euBuilt, comp
       if (!res.ok || !out || out.ok === false) setError(String(out?.error ?? tr(lang, "gt.failed", "The request failed.")));
       else {
         const ms = Math.round(performance.now() - t0.current);
-        if (out.noop === true) setNote(tr(lang, "cn.reset.noop", "Already at the starting state. Nothing to reset, nothing logged."));
-        else setNote(`${tr(lang, "cn.elapsed", "Elapsed")}: ${(ms / 1000).toFixed(2)} ${tr(lang, "ub.cn.sec", "s")}` + (out.matchesStored === true ? ` · ${tr(lang, "cn.sameHash", "Identical to the stored result (same head hash)")}` : ""));
+        if (action === "switch" && out.reran === false) setNote(tr(lang, "hdr.reused", "Rules unchanged: stored result shown"));
+        else if (out.noop === true) setNote(tr(lang, "cn.reset.noop", "Already at the starting state. Nothing to reset, nothing logged."));
+        else setNote(`${tr(lang, "cn.elapsed", "Elapsed")}: ${(ms / 1000).toFixed(2)} ${tr(lang, "ub.cn.sec", "s")}` + (out.matchesStored === true ? ` Â· ${tr(lang, "cn.sameHash", "Identical to the stored result (same head hash)")}` : ""));
         router.refresh();
       }
     } catch { setError(tr(lang, "gt.failed", "The request failed.")); }
@@ -80,16 +86,57 @@ export function CountryPanel({ canEdit, active, countries, staged, euBuilt, comp
         <div className="mt-2 flex flex-wrap gap-2">
           {countries.filter((c) => c.ready).map((c) => (
             <button key={c.id} type="button" disabled={!!busy || c.id === active} className={c.id === active ? btnPrimary : btnGhost} aria-pressed={c.id === active} onClick={() => void call("switch", { country: c.id })}>
-              <Ct id={c.id} en={c.name} />{c.id === active ? " ✓" : ""}
+              <Ct id={c.id} en={c.name} />{c.id === active ? " âœ“" : ""}
             </button>
           ))}
+          <button type="button" disabled={!!busy} className={btnGhost} onClick={() => void call("run", { company: "marsa", country: active })}>{tr(lang, "cn.rerun", "Run again now")}</button>
         </div>
+        <p className="mt-1 text-xs text-ink-soft">{tr(lang, "cn.rerun.h", "Runs the process again under the active country's rules and logs it. An admin can do this whenever it is wanted; a switch alone does not.")}</p>
       </div>
 
-      <div className="rounded-xl border border-line p-4">
+      <div className="rounded-xl border border-line p-4" data-testid="new-country">
+        <h3 className="font-medium">{tr(lang, "cn.new.h", "Create a country profile")}</h3>
+        <p className="mt-1 text-sm text-ink-soft">{tr(lang, "cn.new.h2", "Add a country the app does not have yet. It appears in the country switch at once and needs its policy documents before the process can be run under it.")}</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-3">
+          <div>
+            <label className="block text-sm font-medium" htmlFor="nc-id">{tr(lang, "cn.new.code", "Country code (2 to 6 letters)")}</label>
+            <input id="nc-id" className={field} value={nc.id} maxLength={6} onChange={(e) => setNc({ ...nc, id: e.target.value.toUpperCase() })} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium" htmlFor="nc-name">{tr(lang, "cn.new.name", "Country name")}</label>
+            <input id="nc-name" className={field} value={nc.name} maxLength={80} onChange={(e) => setNc({ ...nc, name: e.target.value })} />
+          </div>
+          <div>
+            <label className="block text-sm font-medium" htmlFor="nc-rs">{tr(lang, "cn.new.ruleset", "Rule set that judges its verdicts")}</label>
+            <select id="nc-rs" className={field} value={nc.ruleset} onChange={(e) => setNc({ ...nc, ruleset: e.target.value })}>{rulesets.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}</select>
+          </div>
+        </div>
+        <button type="button" className={`${btnPrimary} mt-3`} disabled={!!busy || !nc.id || !nc.name} onClick={() => void call("add_country", nc)}>{tr(lang, "cn.new.btn", "Create the country")}</button>
+      </div>
+
+      {countries.filter((c) => c.custom && !c.ready).map((c) => (
+        <div key={c.id} id={`docs-${c.id}`} className="rounded-xl border border-line p-4">
+          <h3 className="font-medium">{tr(lang, "cn.docs.h", "Policy documents for {c}").replace("{c}", c.name)}</h3>
+          <p className="mt-1 text-sm text-ink-soft">{tr(lang, "cn.docs.h2", "Paste the policy text. The app builds the knowledge base from it (parse, chunk, index), then runs the process under the country's rule set. After that the country can be switched to.")}</p>
+          {docsOf(c.id).map((x, i) => (
+            <div key={i} className="mt-3 grid gap-2">
+              <label className="block text-sm font-medium" htmlFor={`d-${c.id}-t-${i}`}>{tr(lang, "cn.docs.title", "Document title")} {i + 1}</label>
+              <input id={`d-${c.id}-t-${i}`} className={field} value={x.title} maxLength={200} onChange={(e) => setDoc(c.id, i, { title: e.target.value })} />
+              <label className="block text-sm font-medium" htmlFor={`d-${c.id}-x-${i}`}>{tr(lang, "cn.docs.text", "Policy text")}</label>
+              <textarea id={`d-${c.id}-x-${i}`} className={`${field} h-36 text-xs`} value={x.text} onChange={(e) => setDoc(c.id, i, { text: e.target.value })} />
+            </div>
+          ))}
+          <div className="mt-3 flex flex-wrap gap-2">
+            {docsOf(c.id).length < 10 && <button type="button" className={btnGhost} disabled={!!busy} onClick={() => setDocs((m) => ({ ...m, [c.id]: [...docsOf(c.id), { title: "", text: "" }] }))}>{tr(lang, "cn.docs.add", "Add another document")}</button>}
+            <button type="button" className={btnPrimary} disabled={!!busy} onClick={() => void call("add_policy_docs", { country: c.id, docs: docsOf(c.id) }, true)}>{tr(lang, "cn.docs.build", "Build the knowledge base and run the process")}</button>
+          </div>
+        </div>
+      ))}
+
+      <div id="step-a" className="rounded-xl border border-line p-4">
         <h3 className="font-medium">{tr(lang, "cn.stepA", "Step A (live): add a policy")}</h3>
         <p className="mt-1 text-sm text-ink-soft">{tr(lang, "cn.stepA.h", "An administrator adds the EU policy as a new knowledge source and the app builds the index on the spot: parse, chunk, index (BM25 and vectors), then registers the scope and its rule set.")}</p>
-        <ul className="mt-2 text-xs text-ink-soft">{staged.map((s) => <li key={s.id}><bdi dir="ltr" className="font-mono">{s.id}</bdi> · <Ltr>{s.words}</Ltr> {tr(lang, "ub.cn.words", "words")}</li>)}</ul>
+        <ul className="mt-2 text-xs text-ink-soft">{staged.map((s) => <li key={s.id}><bdi dir="ltr" className="font-mono">{s.id}</bdi> Â· <Ltr>{s.words}</Ltr> {tr(lang, "ub.cn.words", "words")}</li>)}</ul>
         <button type="button" className={`${btnPrimary} mt-3`} disabled={!!busy || euBuilt} onClick={() => void call("add_policy", { country: "EU" }, true)}>
           {euBuilt ? tr(lang, "cn.built", "EU policy added") : tr(lang, "cn.addpolicy", "Add the EU policy")}
         </button>
@@ -119,9 +166,9 @@ export function CountryPanel({ canEdit, active, countries, staged, euBuilt, comp
 
       {(busy || stages.length > 0) && (
         <div role="status" aria-live="polite" className="rounded-xl border border-line bg-paper-deep p-4 text-sm">
-          <p className="font-medium">{tr(lang, "cn.elapsed", "Elapsed")}: <bdi dir="ltr" className="font-mono">{(elapsed / 1000).toFixed(1)} {tr(lang, "ub.cn.sec", "s")}</bdi>{busy ? " …" : ""}</p>
+          <p className="font-medium">{tr(lang, "cn.elapsed", "Elapsed")}: <bdi dir="ltr" className="font-mono">{(elapsed / 1000).toFixed(1)} {tr(lang, "ub.cn.sec", "s")}</bdi>{busy ? " â€¦" : ""}</p>
           <ol className="mt-2 space-y-1">
-            {stages.map((s, i) => <li key={i}><bdi dir="ltr" className="font-mono text-xs">{s.ms} {tr(lang, "ub.cn.ms", "ms")}</bdi> · <En><b>{s.stage}</b>: {s.detail}</En></li>)}
+            {stages.map((s, i) => <li key={i}><bdi dir="ltr" className="font-mono text-xs">{s.ms} {tr(lang, "ub.cn.ms", "ms")}</bdi> Â· <En><b>{s.stage}</b>: {s.detail}</En></li>)}
           </ol>
         </div>
       )}

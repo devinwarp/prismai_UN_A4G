@@ -5,7 +5,8 @@ import { getUserAndProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { baselineRun, companyView, indexOfCountry, loadState, scopeOf } from "@/lib/un/country-actions";
 import { appCountryDeps } from "@/lib/un/country-app";
-import { COUNTRIES, countryOf, diffProfiles, diffRuns, diffSops, rulesetOf, sourceCounts, type RunResult } from "@/lib/un/country";
+import { RULESETS } from "@/lib/un/rulesets";
+import { allCountries, countryIn, countryOf, diffProfiles, diffRuns, diffSops, rulesetOf, sourceCounts, type RunResult } from "@/lib/un/country";
 import AdminHeader from "../../AdminHeader";
 import LangShell, { T } from "../_components/Lang";
 import { card, scrollRegion, Section } from "../_components/ui";
@@ -28,9 +29,11 @@ export default async function CountryPage({ searchParams }: { searchParams: Prom
   const d = appCountryDeps(orgId);
   const { entries, state, verified } = await loadState(d);
   const canEdit = profile.role === "admin";
-  const active = countryOf(state.active.country)!;
+  const active = countryIn(state, state.active.country)!;
 
-  const infos = await Promise.all(COUNTRIES.map(async (c) => ({ c, info: await indexOfCountry(d, state, c.id) })));
+  const infos = await Promise.all(allCountries(state).map(async (c) => ({ c, info: await indexOfCountry(d, state, c.id) })));
+  // what is required before the process can be run under a country: its policy, for every country that has no knowledge base yet
+  const needs = infos.filter(({ info }) => !info).map(({ c }) => c);
   const scope = (await scopeOf(d, state, active.id)) ?? [];
 
   // every run: the logged ones, plus the two precomputed baselines of the built-in company when they are not logged yet
@@ -58,9 +61,23 @@ export default async function CountryPage({ searchParams }: { searchParams: Prom
           <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase">{canEdit ? <T k="gt.eyebrow" en="Governance" /> : <T k="gt.readonly" en="Read-only" />}</p>
           <h1 className="font-display mt-2 text-3xl font-medium tracking-tight sm:text-4xl"><T k="cn.title" en="Country and knowledge base" /></h1>
           <p className="mt-3 max-w-[68ch] text-base text-ink-soft">
-            <T k="cn.lede" en="A country is data: the scope of its sources (its own plus international standards) and the rule set that judges its verdicts. Switching the country re-runs the whole process for the licence-renewal use case under that country's rule set and sources." />{" "}
+            <T k="cn.lede" en="A country is data: the scope of its sources (its own plus international standards) and the rule set that judges its verdicts. Switching the country shows its stored result: the process is run again only the first time a country's rules are used, when its rules, sources or the company's SOP have changed, or when a new company is added. An admin can also run it again at any time." />{" "}
             <Link href="/admin/federal" className="underline"><T k="sop.back" en="Back to the dashboard" /></Link>
           </p>
+          {canEdit && needs.length > 0 && (
+            <section aria-labelledby="req-h" data-testid="required-actions" className={`${card} mt-4`}>
+              <h2 id="req-h" className="text-lg font-semibold"><T k="cn.req.h" en="Required actions" /></h2>
+              <ul className="mt-2 space-y-1 text-sm">
+                {needs.map((c) => (
+                  <li key={c.id} className={sp.setup === c.id ? "font-medium" : ""}>
+                    <a className="underline" href={c.custom ? `#docs-${c.id}` : "#step-a"}>
+                      <TX k={c.custom ? "cn.req.custom" : "cn.req.eu"} en={c.custom ? "{c}: add its policy documents so the process can be run under its rules." : "{c}: add its policy (Step A) so the process can be run under its rules."} v={{ c: c.name }} />
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
           <p role="note" className="mt-3 max-w-[68ch] rounded-lg border border-line bg-paper-deep p-3 text-sm">
             <T k="cn.limits" en="Honest limits: the rule sets are simplified demo encodings, not legal advice. Retrieval is lexical (BM25) plus vectors where they were built. The sample SOPs are synthetic and differ in a few details. All data is synthetic." />
           </p>
@@ -75,7 +92,7 @@ export default async function CountryPage({ searchParams }: { searchParams: Prom
                   <div><dt className="text-ink-soft"><T k="ub.cn.logdt" en="Log" /></dt><dd><Ltr>{entries.length}</Ltr> · {verified.ok ? <T k="ub.cn.verified" en="chain verified" /> : <TX k="ub.cn.broken" en="BROKEN at {n}" v={{ n: String(verified.broken_seq) }} />}</dd></div>
                 </dl>
                 <div className="mt-6">
-                  <CountryPanel canEdit={canEdit} active={active.id} countries={infos.map(({ c, info }) => ({ id: c.id, name: c.name, ready: !!info, onDemand: c.built === "on_demand" }))} staged={euStaged} euBuilt={!!state.policies.EU} companyCount={Object.keys(state.companies).length} />
+                  <CountryPanel canEdit={canEdit} active={active.id} countries={infos.map(({ c, info }) => ({ id: c.id, name: c.name, ready: !!info, onDemand: c.built === "on_demand", custom: !!c.custom }))} rulesets={RULESETS.map((r) => ({ id: r.id, name: r.name }))} staged={euStaged} euBuilt={!!state.policies.EU} companyCount={Object.keys(state.companies).length} />
                 </div>
               </div>
             </Section>

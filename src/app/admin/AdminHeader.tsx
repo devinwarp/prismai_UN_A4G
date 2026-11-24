@@ -2,6 +2,7 @@ import Link from "next/link";
 import DevDbBanner from "@/components/DevDbBanner";
 import PrismMark from "@/components/PrismMark";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
+import HeaderTools from "./HeaderTools";
 import SignOut from "./SignOut";
 import { FederalLabel, HeaderRow } from "./HeaderLang";
 
@@ -9,11 +10,14 @@ export default function AdminHeader({
   active,
   orgName,
   viewer,
+  country,
 }: {
   active: "federal";
   orgName?: string | null;
   /** Read-only member — hide admin nav;. */
   viewer?: boolean;
+  /** Show the country switch in the top right: the admin dashboard only. */
+  country?: boolean;
 }) {
   // The switcher sits outside <header>: backdrop-blur makes the header the
   // containing block for fixed children, which pinned it over "Sign out".
@@ -56,6 +60,7 @@ export default function AdminHeader({
                 </Link>
               </>
             )}
+            <HeaderTools country={country} />
             <form action="/auth/signout" method="post">
               <SignOut />
             </form>

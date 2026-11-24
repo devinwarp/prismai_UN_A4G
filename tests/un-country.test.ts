@@ -7,7 +7,7 @@ import * as A from "../src/lib/un/country-actions.ts";
 import { fileDeps, memoryStore, noGov } from "../src/lib/un/country-deps.ts";
 import { chunkWords, readStaged } from "../src/lib/un/country-build.ts";
 import { countryStore, type CountryStore } from "../src/lib/un/country-store.ts";
-import { COUNTRIES, diffRuns, replayCountry, scopeChunks, countryOf, appendCountry, verifyCountry } from "../src/lib/un/country.ts";
+import { COUNTRIES, diffRuns, entityCountryOf, replayCountry, scopeChunks, countryOf, appendCountry, entityUseCases, verifyCountry } from "../src/lib/un/country.ts";
 import type { SupabaseLike } from "../src/lib/un/kb-store-supabase.ts";
 import { loadChunks, type Chunk } from "../src/lib/un/kb.ts";
 import { parseVectors } from "../src/lib/un/vector.ts";
@@ -90,7 +90,8 @@ async function fullFlow(store: CountryStore) {
   const sw = await A.switchCountry(d, "admin@x", "SG");
   assert.ok(sw.ok && sw.run.country === "SG" && sw.before === "UAE");
   const back = await A.switchCountry(d, "admin@x", "UAE");
-  assert.ok(back.ok && back.matchesStored === true, "switching back must reproduce the stored UAE result exactly");
+  assert.ok(back.ok && back.reran === false && back.why === "unchanged", "switching back to a country whose rules and inputs are unchanged re-runs nothing");
+  assert.equal(back.run.head_hash, (await A.loadState(d)).state.runs["marsa:UAE"].head_hash, "and shows the stored UAE result exactly");
   assert.equal((await A.switchCountry(d, "admin@x", "EU")).ok, false, "an EU switch before the policy exists is refused");
   const pol = await A.addPolicy(d, "admin@x", "EU", () => {});
   assert.ok(pol.ok && pol.chunks > 20 && pol.vectors && pol.timings.map((t) => t.stage).join().includes("index (BM25)"));
@@ -117,6 +118,8 @@ async function fullFlow(store: CountryStore) {
   assert.match(added, /goods-and-services tax/); // fee check
   assert.match(added, /corporate profile extract \(D7\)/); // extra document
   assert.ok((await A.recordRun(d, "admin@x", "marsa", "SG")).ok && (await A.recordRun(d, "admin@x", on.company.id, "SG")).ok);
+  // a switch no longer logs a run of its own when nothing changed, so log a few explicit ones: the log must pass entry 9 for the sort check below
+  for (let i = 0; i < 3; i++) assert.ok((await A.recordRun(d, "admin@x", "marsa", "UAE")).ok);
   const l = await A.loadState(d);
   assert.ok(l.verified.ok);
   assert.deepEqual(l.entries.map((e) => e.seq), l.entries.map((_, i) => i + 1));
@@ -268,4 +271,83 @@ test("the country demo ignores use-case gates and waivers added on the lifecycle
 test("the compare dropdowns are re-created when the default pair changes (a stale pair made Compare swap the diff after onboarding)", () => {
   const page = readFileSync("src/app/admin/federal/country/page.tsx", "utf8");
   assert.match(page, /<select key=\{`\$\{k\}:\$\{A\?\.key\}:\$\{B\?\.key\}`\} name=\{k\}/);
+});
+
+
+test("switching re-runs only when there is no stored result yet or what the result depended on changed", async () => {
+  const store = memoryStore();
+  const { d } = mk(store);
+  const runs = async () => (await store.log()).filter((e) => e.kind === "run").length;
+  const first = await A.switchCountry(d, "a", "SG");
+  assert.ok(first.ok && first.reran && first.why === "first_run", "rules used for the first time are run");
+  const n = await runs();
+  const back = await A.switchCountry(d, "a", "UAE");
+  const again = await A.switchCountry(d, "a", "SG");
+  assert.ok(back.ok && !back.reran && again.ok && !again.reran && again.why === "unchanged");
+  assert.equal(await runs(), n, "switching between countries with unchanged inputs logs no run");
+  assert.equal((await store.log()).filter((e) => e.kind === "switch").length, 3, "but every switch is logged");
+  // the gate state is one of the inputs: when it changes, the next switch re-runs
+  const changed: A.Deps = { ...d, gov: async () => ({ ...(await noGov()), rule_sets: { changed: true } }) as never };
+  const re = await A.switchCountry(changed, "a", "UAE");
+  assert.ok(re.ok && re.reran && re.why === "inputs_changed");
+  assert.equal(await runs(), n + 1);
+});
+
+const POLICY = (n: string) => `${n} governs how public bodies may use automated systems that advise citizens. A body must tell citizens when a response was drafted by software, keep a record of every decision for five years, and let a named officer approve any message before it is sent. Fees may only be quoted from the published schedule, and a citizen may always ask for a human review of a decision that affects their rights.`;
+
+test("an admin creates a country: it exists at once but needs its policy, then the knowledge base is built from the pasted documents and it can be switched to", async () => {
+  const store = memoryStore();
+  const { d } = mk(store);
+  for (const bad of [{ id: "n", name: "Norland", ruleset: "eu-ai-act" }, { id: "UAE", name: "Dup", ruleset: "eu-ai-act" }, { id: "NL", name: "Norland", ruleset: "no-such" }, { id: "NL", name: "singapore", ruleset: "eu-ai-act" }]) {
+    assert.equal((await A.addCountry(d, "a", bad)).ok, false, JSON.stringify(bad));
+  }
+  const made = await A.addCountry(d, "a", { id: "nl", name: "Norland", ruleset: "eu-ai-act" });
+  assert.ok(made.ok && made.country.id === "NL" && made.country.custom && made.country.built === "on_demand");
+  assert.equal((await A.addCountry(d, "a", { id: "NL", name: "Another", ruleset: "eu-ai-act" })).ok, false, "the code is unique");
+  let st = (await A.loadState(d)).state;
+  assert.ok(st.countries.NL);
+  assert.equal(await A.indexOfCountry(d, st, "NL"), null, "no knowledge base yet");
+  const early = await A.switchCountry(d, "a", "NL");
+  assert.ok(!early.ok && /no knowledge-base index/.test(early.error), "it cannot be switched to before its policy is added");
+
+  assert.equal((await A.addPolicyDocs(d, "a", "NL", [{ title: "Short", text: "too short" }])).ok, false);
+  assert.equal((await A.addPolicyDocs(d, "a", "UAE", [{ title: "x", text: POLICY("x") }])).ok, false, "built-in countries have their own sources");
+  const built = await A.addPolicyDocs(d, "a", "NL", [{ title: "Norland Public Services Act", text: POLICY("The Act") }, { title: "Norland AI Guidance", text: POLICY("The Guidance") }]);
+  assert.ok(built.ok && built.chunks >= 2 && built.run.country === "NL" && built.run.ruleset === "eu-ai-act");
+  st = (await A.loadState(d)).state;
+  const scope = (await A.scopeOf(d, st, "NL"))!;
+  assert.ok(scope.some((c) => c.jurisdiction === "NL") && scope.every((c) => c.jurisdiction === "NL" || c.jurisdiction === "international"), "its own documents plus international standards, nothing from another country");
+  assert.ok(await A.indexOfCountry(d, st, "NL"));
+  const sw = await A.switchCountry(d, "a", "NL");
+  assert.ok(sw.ok && sw.run.country === "NL" && sw.reran === false, "the build already ran it, so switching shows the stored result");
+  assert.equal((await A.addPolicyDocs(d, "a", "NL", [{ title: "x", text: POLICY("x") }])).ok, false, "built once");
+
+  // the log carries it, and a reset removes the created country and its stored documents
+  assert.ok(verifyCountry(await store.log()).ok);
+  assert.ok(await store.getBlob("policydocs:NL"));
+  const r = await A.resetDemo(d, "a");
+  assert.ok(r.ok && !("noop" in r && r.noop));
+  assert.equal(Object.keys((await A.loadState(d)).state.countries).length, 0);
+  assert.equal(await store.getBlob("policydocs:NL"), null);
+});
+
+test("each entity is linked to a country (UAE unless an admin changes it) and a country's dashboard counts only its own entities", async () => {
+  const store = memoryStore();
+  const { d } = mk(store);
+  const ucs = [{ entity: "Marsa Public Services Authority", id: 1 }, { entity: "Qanat Transport and Mobility Agency", id: 2 }, { entity: "Sahel Federal Workforce Agency", id: 3 }];
+  let st = (await A.loadState(d)).state;
+  assert.equal(entityCountryOf(st, "Raya Education and Skills Council"), "UAE");
+  assert.equal(entityUseCases(st, ucs, "UAE").length, 3, "every entity is UAE by default");
+  assert.equal(entityUseCases(st, ucs, "SG").length, 0, "Singapore has no entities until one is linked");
+  assert.equal((await A.linkEntity(d, "a", "Sahel Federal Workforce Agency", "XX")).ok, false, "an unknown country is refused");
+  assert.equal((await A.linkEntity(d, "a", "Sahel Federal Workforce Agency", "UAE")).ok, false, "linking to the country it is already in changes nothing");
+  assert.equal((await A.linkEntity(d, "a", "", "SG")).ok, false);
+  assert.ok((await A.linkEntity(d, "a", "Sahel Federal Workforce Agency", "SG")).ok);
+  st = (await A.loadState(d)).state;
+  assert.deepEqual(entityUseCases(st, ucs, "SG").map((u) => u.id), [3]);
+  assert.deepEqual(entityUseCases(st, ucs, "UAE").map((u) => u.id), [1, 2], "and it is no longer counted under the UAE");
+  assert.ok(verifyCountry(await store.log()).ok);
+  const r = await A.resetDemo(d, "a");
+  assert.ok(r.ok && !("noop" in r && r.noop), "a link is something a reset undoes");
+  assert.equal(entityUseCases((await A.loadState(d)).state, ucs, "UAE").length, 3);
 });
