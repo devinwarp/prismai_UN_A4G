@@ -1,4 +1,6 @@
 import Link from "next/link";
+import { blockerTarget } from "@/lib/un/next-step";
+import type { BlockerCode } from "@/lib/un/release-gate";
 import type { Release } from "@/lib/un/release-store";
 import { T, TV } from "../../_components/Lang";
 import { card } from "../../_components/ui";
@@ -6,10 +8,7 @@ import { card } from "../../_components/ui";
 /** Whether the use case is ready to be approved and put into production, and if not what is missing. The same answer the approval
  * and the go-live make (they refuse with these reasons): said up front, with where to fix each. */
 export function ReleasePanel({ id, release }: { id: string; release: Release }) {
-  const where = (code: string) =>
-    code === "no_targets" || code === "target_unmeasurable" ? `/admin/federal/use-cases/${id}/targets`
-    : code === "stale_set" || code === "stale_params" || code === "params_looser" ? `/admin/federal/use-cases/${id}/tests`
-    : `/admin/federal/use-cases/${id}/pilot`;
+  const where = (code: BlockerCode) => `/admin/federal/use-cases/${id}/${blockerTarget(code)}`;
   return (
     <section className={`${card} mt-4`} aria-labelledby="rr-h" data-testid="release-panel">
       <h2 id="rr-h" className="text-lg font-semibold"><T k="rr.h" en="Is the pilot met?" /></h2>
