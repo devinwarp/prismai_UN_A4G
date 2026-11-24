@@ -39,7 +39,6 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-supabase/**/.temp
 
 # step dry-run output (scripts/dryrun-*.ts)
 /scratchpad/
@@ -79,6 +78,3 @@ var/
 /scripts/judge-compare.ps1
 /scripts/gate-demo.sh
 
-# Supabase CLI link/temp files (project ref); local only
-supabase/supabase/.temp/
-supabase/.temp/
