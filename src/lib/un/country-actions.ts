@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { buildPolicy, type Embed, type StagedFile } from "./country-build.ts";
 import type { CountryStore } from "./country-store.ts";
 import {
-  appendCountry, BUILTIN_COMPANIES, countryOf, indexInfo, replayCountry, rulesetOf, runProcess, scopeChunks, verifyCountry,
+  allCountries, appendCountry, BUILTIN_COMPANIES, countryIn, entityCountryOf, indexInfo, replayCountry, rulesetOf, runProcess, scopeChunks, verifyCountry,
   type CompanyRec, type Country, type CountryEntry, type CountryKind, type CountryState, type IndexInfo, type RunResult, type Timing,
 } from "./country.ts";
 import type { GovState } from "./gates.ts";
@@ -11,6 +11,7 @@ import type { Chunk } from "./kb.ts";
 import { chunkSop, retrievablePart, sopMetaFrom, type SopChunk, type SopMeta } from "./sop-kb.ts";
 import { deriveProfiles } from "./sop/profiles.ts";
 import { sopLines, START_STATE } from "./country.ts";
+import { RULESETS } from "./rulesets.ts";
 import { slug, toUseCase } from "./sop/promote.ts";
 import { ruleAnalyzer } from "./sop/reference.ts";
 import type { SyntheticBaseline } from "./sop/types.ts";
@@ -69,7 +70,7 @@ async function commit(d: Deps, entries: CountryEntry[], drafts: { kind: CountryK
 const policyCache = new Map<string, Chunk[]>();
 /** Chunks of a live-built scope: rebuilt from the staged files (deterministic), so any instance can serve it. */
 async function stagedChunks(d: Deps, c: Country): Promise<Chunk[]> {
-  const files = d.staged(c.stage!);
+  const files = c.custom ? (((await d.store.getBlob(`policydocs:${c.id}`)) as { files?: StagedFile[] } | null)?.files ?? []) : d.staged(c.stage!);
   const key = `${c.id}:${files.map((f) => f.source_sha256).join(",")}`;
   const hit = policyCache.get(key);
   if (hit) return hit;
@@ -80,7 +81,7 @@ async function stagedChunks(d: Deps, c: Country): Promise<Chunk[]> {
 const scopeCache = new Map<string, Chunk[]>();
 /** The country's scoped knowledge base, or null if it has not been built (an on-demand scope before the admin adds it). */
 export async function scopeOf(d: Deps, state: CountryState, id: string): Promise<Chunk[] | null> {
-  const c = countryOf(id);
+  const c = countryIn(state, id);
   if (!c) return null;
   if (c.built === "on_demand" && !state.policies[id]) return null;
   const extra = c.built === "on_demand" ? await stagedChunks(d, c) : [];
@@ -106,7 +107,7 @@ const fingerprint = (c: Country, policy: Chunk[], co: CompanyCtx, gov: GovState)
 
 /** Everything one run needs, or why it cannot run. */
 async function inputsFor(d: Deps, state: CountryState, companyId: string, countryId: string) {
-  const c = countryOf(countryId);
+  const c = countryIn(state, countryId);
   if (!c) return fail(400, "Unknown country");
   const policy = await scopeOf(d, state, countryId);
   if (!policy) return fail(409, `${c.name} has no knowledge-base index yet: add its policy first`);
@@ -146,7 +147,7 @@ export async function indexOfCountry(d: Deps, state: CountryState, id: string): 
   // a live-built scope: the staged chunks carry their own vectors (stored when built), the corpus chunks use kb/vectors.json
   // Count each chunk once: a staged chunk may also be in kb/vectors.json, so adding the live count to the file count double-counts.
   if (pol && info.vectors) {
-    const c = countryOf(id);
+    const c = countryIn(state, id);
     const live = pol.vectors && c ? new Set((await stagedChunks(d, c)).map((x) => x.chunk_id)) : new Set<string>();
     const inFile = new Set(d.vectors?.ids ?? []);
     info.vectors = { ...info.vectors, have: s.filter((x) => inFile.has(x.chunk_id) || live.has(x.chunk_id)).length, built: pol.vectors ? pol.at.slice(0, 10) : info.vectors.built };
@@ -165,7 +166,7 @@ export type Ok<T> = { ok: true } & T;
 export async function switchCountry(d: Deps, actor: string, to: string, company = "marsa"): Promise<Ok<{ run: RunResult; before: string; matchesStored: boolean | null; ms: number; reran: boolean; why: "unchanged" | "first_run" | "inputs_changed" | "no_fingerprint" }> | Fail> {
   const t0 = d.clock();
   const { entries, state } = await loadState(d);
-  const c = countryOf(to);
+  const c = countryIn(state, to);
   if (!c) return fail(400, "Unknown country");
   const before = state.active.country;
   if (!(await companyCtx(d, state, company))) return fail(404, "Unknown company");
@@ -190,8 +191,9 @@ export async function switchCountry(d: Deps, actor: string, to: string, company 
 /** Step A: build the EU scope live from the staged policy files, register it with its rule set, and run the process under it. */
 export async function addPolicy(d: Deps, actor: string, id: string, onStage?: (t: Timing) => void): Promise<Ok<{ timings: Timing[]; total_ms: number; run: RunResult; chunks: number; vectors: boolean }> | Fail> {
   const { entries, state } = await loadState(d);
-  const c = countryOf(id);
+  const c = countryIn(state, id);
   if (!c || c.built !== "on_demand") return fail(400, "That country's index is precomputed; there is nothing to add");
+  if (c.custom) return fail(400, `${c.name} was created on the screen: add its policy documents instead`);
   if (state.policies[id]) return fail(409, `${c.name} is already built. Reset the demo to build it again.`);
   let files: StagedFile[];
   try { files = d.staged(c.stage!); } catch { return fail(500, `The staged files for ${c.name} are missing (${c.stage})`); }
@@ -211,6 +213,71 @@ export async function addPolicy(d: Deps, actor: string, id: string, onStage?: (t
   return { ok: true, timings: rec.timings, total_ms: rec.total_ms, run, chunks: rec.chunks, vectors: !!built.vectors };
 }
 
+// ---- countries an admin creates ---------------------------------------------------------------------------------------------------
+
+export interface PolicyDocIn { title?: unknown; text?: unknown; url?: unknown }
+const MAX_DOCS = 10, MAX_DOC_CHARS = 120_000, MIN_DOC_CHARS = 200;
+
+/** Creates a country profile: an id, a name and the rule set that judges its verdicts. It exists (and shows in the country switch) from this
+ * point, marked as needing its policy documents until `addPolicyDocs` builds its knowledge base. Admin only (the route checks); logged. */
+export async function addCountry(d: Deps, actor: string, b: { id?: unknown; name?: unknown; ruleset?: unknown }): Promise<Ok<{ country: Country }> | Fail> {
+  const id = typeof b.id === "string" ? b.id.trim().toUpperCase() : "";
+  const name = typeof b.name === "string" ? b.name.trim() : "";
+  const ruleset = typeof b.ruleset === "string" ? b.ruleset : "";
+  if (!/^[A-Z]{2,6}$/.test(id)) return fail(400, "The country code is 2 to 6 letters, for example NZ.");
+  if (name.length < 2 || name.length > 80) return fail(400, "The country name is 2 to 80 characters.");
+  if (!RULESETS.some((r) => r.id === ruleset)) return fail(400, "Choose one of the available rule sets.");
+  const { entries, state } = await loadState(d);
+  if (countryIn(state, id)) return fail(409, `A country with the code ${id} already exists.`);
+  if (allCountries(state).some((c) => c.name.toLowerCase() === name.toLowerCase())) return fail(409, `A country named ${name} already exists.`);
+  const country: Country = { id, name, ruleset, home: [id], international: ["international"], built: "on_demand", custom: true };
+  const w = await commit(d, entries, [{ kind: "country_added", payload: { country } }], actor);
+  if (isFail(w)) return w;
+  return { ok: true, country };
+}
+
+/** Builds the knowledge base of a country an admin created, from policy documents pasted in, and runs the process under its rule set. */
+export async function addPolicyDocs(d: Deps, actor: string, id: string, docs: PolicyDocIn[], onStage?: (t: Timing) => void): Promise<Ok<{ timings: Timing[]; total_ms: number; run: RunResult; chunks: number; vectors: boolean }> | Fail> {
+  const { entries, state } = await loadState(d);
+  const c = countryIn(state, id);
+  if (!c || !c.custom) return fail(400, "Policy documents can be added to a country created on the screen. The built-in countries have their own sources.");
+  if (state.policies[id]) return fail(409, `${c.name} already has its policy. Reset the demo to build it again.`);
+  if (!Array.isArray(docs) || docs.length < 1 || docs.length > MAX_DOCS) return fail(400, `Add 1 to ${MAX_DOCS} policy documents.`);
+  const files: StagedFile[] = [];
+  for (const [i, x] of docs.entries()) {
+    const title = typeof x?.title === "string" ? x.title.trim() : "";
+    const text = typeof x?.text === "string" ? x.text.trim() : "";
+    const url = typeof x?.url === "string" ? x.url.trim().slice(0, 300) : "";
+    if (!title || title.length > 200) return fail(400, `Document ${i + 1}: a title of up to 200 characters is needed.`);
+    if (text.length < MIN_DOC_CHARS) return fail(400, `Document ${i + 1}: the text is too short to be a policy (at least ${MIN_DOC_CHARS} characters).`);
+    if (text.length > MAX_DOC_CHARS) return fail(400, `Document ${i + 1}: the text is too long (${MAX_DOC_CHARS / 1000} KB limit).`);
+    files.push({ id: `${id.toLowerCase()}-doc${i + 1}`, title, url, issuer: c.name, jurisdiction: id, instrument_type: "policy", binding: false, date: d.now().slice(0, 10), topics: [], source_sha256: createHash("sha256").update(text).digest("hex"), text });
+  }
+  await d.store.putBlob(`policydocs:${id}`, { files });
+  const built = await buildPolicy(files, { embed: d.embed, clock: d.clock, onStage });
+  const rec = { ...built.rec, country: id, ruleset: c.ruleset, at: d.now(), by: actor };
+  if (built.vectors) await d.store.putBlob(`vectors:${id}`, built.vectors);
+  const next = { ...state, policies: { ...state.policies, [id]: rec } };
+  const run = await runFor(d, next, "marsa", id);
+  if (isFail(run)) { await d.store.delBlob(`policydocs:${id}`); await d.store.delBlob(`vectors:${id}`); return run; }
+  const w = await commit(d, entries, [{ kind: "policy_added", payload: { policy: rec } }, { kind: "run", payload: { result: run } }], actor);
+  if (isFail(w)) return w;
+  return { ok: true, timings: rec.timings, total_ms: rec.total_ms, run, chunks: rec.chunks, vectors: !!built.vectors };
+}
+
+/** Links an entity to a country: from then on the entity's use cases are counted on that country's dashboard (and on no other). Admin only; logged. */
+export async function linkEntity(d: Deps, actor: string, entityIn: unknown, countryIn_: unknown): Promise<Ok<{ entity: string; country: string }> | Fail> {
+  const entity = typeof entityIn === "string" ? entityIn.trim() : "";
+  const country = typeof countryIn_ === "string" ? countryIn_ : "";
+  if (!entity || entity.length > 120) return fail(400, "An entity name is needed.");
+  const { entries, state } = await loadState(d);
+  if (!countryIn(state, country)) return fail(400, "Unknown country");
+  if (entityCountryOf(state, entity) === country) return fail(409, `${entity} is already linked to that country.`);
+  const w = await commit(d, entries, [{ kind: "entity_country", payload: { entity, country, from: entityCountryOf(state, entity) } }], actor);
+  if (isFail(w)) return w;
+  return { ok: true, entity, country };
+}
+
 interface OnboardIn { name?: unknown; country?: unknown; sop_text?: unknown; sample?: unknown; title?: unknown }
 
 /** Step B: add a synthetic company with its own SOP for the same use case, create everything the run needs, and run it. */
@@ -225,7 +292,7 @@ export async function onboardCompany(d: Deps, actor: string, b: OnboardIn, onSta
   if (name.length < 3) return fail(400, "Give the company a name.");
   if (!/\((synthetic|fictitious)\)/i.test(name)) name = `${name} (synthetic)`;
   const country = typeof b.country === "string" ? b.country : "SG";
-  const c = countryOf(country);
+  const c = countryIn(state, country);
   if (!c) return fail(400, "Unknown country");
   if (!(await scopeOf(d, state, country))) return fail(409, `${c.name} has no knowledge-base index yet: add its policy first`);
   const id = slug(name);
@@ -319,9 +386,9 @@ async function doReset(d: Deps, actor: string): Promise<ResetResult> {
   const { entries, state } = await loadState(d);
   const start = START_STATE();
   // already at the starting state: nothing to undo, so no log entry
-  if (!Object.keys(state.policies).length && !Object.keys(state.companies).length && !Object.keys(state.runs).length && !state.switches.length
+  if (!Object.keys(state.policies).length && !Object.keys(state.companies).length && !Object.keys(state.runs).length && !state.switches.length && !Object.keys(state.countries).length && !Object.keys(state.entityCountries).length
     && state.active.company === start.active.company && state.active.country === start.active.country) return { ok: true, removed: { blobs: [], use_cases: [] }, noop: true };
-  const blobs = [...Object.keys(state.policies).map((k) => `vectors:${k}`), ...Object.keys(state.companies).map((k) => `sop:${k}`)];
+  const blobs = [...Object.keys(state.policies).map((k) => `vectors:${k}`), ...Object.keys(state.countries).map((k) => `policydocs:${k}`), ...Object.keys(state.companies).map((k) => `sop:${k}`)];
   const ucs = Object.values(state.companies).map((c) => c.ext_id);
   for (const k of blobs) await d.store.delBlob(k);
   for (const e of ucs) await d.useCases.remove(e);

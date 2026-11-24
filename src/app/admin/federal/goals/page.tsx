@@ -2,7 +2,11 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
+import { appCountryDeps } from "@/lib/un/country-app";
+import { loadState } from "@/lib/un/country-actions";
+import { allCountries, entityCountryOf } from "@/lib/un/country";
 import { loadEntityOverview } from "@/lib/un/target-store";
+import { EntityCountry } from "./EntityCountry";
 import { controlsOf, coverage, describeTarget } from "@/lib/un/targets";
 import LangShell, { T } from "../_components/Lang";
 import { card } from "../_components/ui";
@@ -19,6 +23,8 @@ export default async function GoalsPage() {
   if (!user) redirect("/login?next=/admin/federal/goals");
   if (!profile?.org_id) redirect("/login");
   const entities = await loadEntityOverview(profile.org_id);
+  const cs = await loadState(appCountryDeps(profile.org_id)).then((r) => r.state).catch(() => null);
+  const countries = allCountries(cs ?? { countries: {} }).map((c) => ({ id: c.id, name: c.name }));
 
   return (
     <LangShell>
@@ -30,6 +36,7 @@ export default async function GoalsPage() {
         {entities.map((e) => (
           <section key={e.name} className={`${card} mt-6`} aria-labelledby={`gl-${e.name}`}>
             <h2 id={`gl-${e.name}`} className="font-display text-xl font-medium">{e.name}</h2>
+            <p className="mt-2 text-sm"><T k="gl.country" en="Country" />: <EntityCountry entity={e.name} country={cs ? entityCountryOf(cs, e.name) : "UAE"} countries={countries} canEdit={profile.role === "admin"} /></p>
             <p className="mt-1 text-xs text-ink-soft"><T k="gl.source" en="Goals read from" />: <span className="font-mono">{e.source}</span> · {e.goals.length} <T k="gl.goals" en="goals" /> · {e.use_cases.length} <T k="gl.ucs" en="use cases" /></p>
             <div className="mt-3 overflow-x-auto">
               <table className="w-full text-start text-sm">

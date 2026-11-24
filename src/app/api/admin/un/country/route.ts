@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad, requireAdmin } from "@/lib/api-auth";
-import { addPolicy, onboardCompany, recordRun, resetDemo, switchCountry, type Fail } from "@/lib/un/country-actions";
+import { addCountry, addPolicy, addPolicyDocs, linkEntity, onboardCompany, recordRun, resetDemo, switchCountry, type Fail } from "@/lib/un/country-actions";
 import { appCountryDeps } from "@/lib/un/country-app";
 import type { Timing } from "@/lib/un/country";
 
@@ -20,13 +20,16 @@ export async function POST(request: Request) {
     switch (b.action) {
       case "switch": return switchCountry(d, actor, str("country"), str("company") || "marsa");
       case "add_policy": return addPolicy(d, actor, str("country"), onStage);
+      case "add_country": return addCountry(d, actor, b);
+      case "link_entity": return linkEntity(d, actor, b.entity, b.country);
+      case "add_policy_docs": return addPolicyDocs(d, actor, str("country"), Array.isArray(b.docs) ? (b.docs as never[]) : [], onStage);
       case "onboard": return onboardCompany(d, actor, b, onStage);
       case "run": return recordRun(d, actor, str("company") || "marsa", str("country"));
       case "reset": return resetDemo(d, actor, who.org_id!);
       default: return Promise.resolve<Fail>({ ok: false, status: 400, error: "Unknown action" });
     }
   };
-  if (b.stream === true && (b.action === "add_policy" || b.action === "onboard")) {
+  if (b.stream === true && (b.action === "add_policy" || b.action === "onboard" || b.action === "add_policy_docs")) {
     const enc = new TextEncoder();
     const body = new ReadableStream({
       async start(c) {

@@ -18,6 +18,8 @@ export default function HeaderTools({ country = false }: { /** Show the country 
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
+  /** A country picked whose knowledge base is not built yet: it cannot be switched to until its policy is added. */
+  const [setup, setSetup] = useState<{ id: string; name: string } | null>(null);
   const busyRef = useRef(false);
   useEffect(() => {
     let live = true;
@@ -40,6 +42,15 @@ export default function HeaderTools({ country = false }: { /** Show the country 
 
   async function change(country: string) {
     if (busyRef.current || !info || country === info.active) return;
+    const target = info.countries.find((c) => c.id === country);
+    // a country without a knowledge base cannot be switched to: an admin is taken to the country screen, which lists what is required
+    if (target && !target.ready) {
+      setError(null); setNote(null);
+      if (info.canSwitch) router.push(`/admin/federal/country?setup=${encodeURIComponent(target.id)}`);
+      else setSetup({ id: target.id, name: target.name });
+      return;
+    }
+    setSetup(null);
     busyRef.current = true; setBusy(true); setError(null); setNote(null);
     try {
       const res = await fetch("/api/admin/un/country", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action: "switch", country }) });
@@ -58,7 +69,7 @@ export default function HeaderTools({ country = false }: { /** Show the country 
   const label = tr(lang, "hdr.country", "Country");
   const people = tr(lang, "go.people", "People and roles");
   return (
-    <div className="flex items-center gap-2">
+    <div className="relative flex items-center gap-2">
       {country && <label className="flex items-center gap-1.5 text-ink-soft" title={info.canSwitch ? label : `${label}: ${tr(lang, "cn.readonly", "Read-only: judges and viewers see the stored result and cannot change it.")}`}>
         <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round"><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c2.6 2.8 4 5.8 4 9s-1.4 6.2-4 9c-2.6-2.8-4-5.8-4-9s1.4-6.2 4-9z" /></svg>
         <span className="sr-only">{label}</span>
@@ -68,7 +79,7 @@ export default function HeaderTools({ country = false }: { /** Show the country 
           onChange={(e) => void change(e.target.value)}
           className="max-w-36 rounded-md border border-line bg-paper px-1.5 py-1 text-[13px] text-ink disabled:opacity-70 sm:text-sm"
         >
-          {info.countries.map((c) => <option key={c.id} value={c.id}>{c.name}</option>)}
+          {info.countries.map((c) => <option key={c.id} value={c.id}>{c.name}{c.ready ? "" : ` · ${tr(lang, "hdr.setup", "needs setting up")}`}</option>)}
         </select>
       </label>}
       {country && info.canSwitch && (
@@ -77,6 +88,14 @@ export default function HeaderTools({ country = false }: { /** Show the country 
         </button>
       )}
       {country && note && !error && <span role="status" className="hidden max-w-56 truncate text-xs text-ink-soft md:inline" title={note}>{note}</span>}
+      {country && setup && (
+        <div role="status" className="absolute end-0 top-full z-20 mt-2 w-72 rounded-lg border border-line bg-paper p-3 text-sm shadow-lg">
+          <p>{tr(lang, "hdr.setup.msg", "{country} has no knowledge base yet, so the process cannot be run under it. Add its policy first; then it can be switched to.").replace("{country}", setup.name)}</p>
+          <div className="mt-2 flex items-center gap-3">
+            <button type="button" onClick={() => setSetup(null)} className="text-ink-soft underline">{tr(lang, "hdr.setup.close", "Close")}</button>
+          </div>
+        </div>
+      )}
       {country && error && <span role="alert" className="max-w-48 truncate text-xs text-[color:var(--color-v-nogo)]" title={error}>{error}</span>}
       {info.canManagePeople && (
         <Link href="/admin/federal/people" aria-label={people} title={people} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-soft hover:text-ink">

@@ -61,8 +61,10 @@ const TOUR: TourStep[] = [
 ];
 
 export default function FederalPanel({
-  policy, dashboard: d, useCases, canEdit, hitl, asOf, gatesAdded = {}, journeys = {},
+  policy, dashboard: d, useCases, canEdit, hitl, asOf, gatesAdded = {}, journeys = {}, noTarget = false,
 }: {
+  /** The active country has no framework target recorded: the target, its progress and the policy form are not shown. */
+  noTarget?: boolean;
   /** Gates each use case adds beyond its rule set, by ext id (gates.ts). */
   gatesAdded?: Record<string, number>;
   policy: Policy;
@@ -144,7 +146,7 @@ export default function FederalPanel({
   return (
     <div className="mt-6 space-y-14">
       <nav aria-label={tr(lang, "ua.nav.aria", "On this page")} className="-mx-1 flex flex-wrap gap-1 text-sm">
-        {NAV.filter(([id]) => canEdit || !["policy", "import", "hitl"].includes(id)).map(([id, label]) => (
+        {NAV.filter(([id]) => (canEdit || !["policy", "import", "hitl"].includes(id)) && !(noTarget && ["progress", "policy"].includes(id))).map(([id, label]) => (
           <a key={id} href={`#${id}`} className="rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep"><T k={`nav.${id}`} en={label} /></a>
         ))}
         <span className="ms-auto"><TourButton onClick={() => setTour(true)} /></span>
@@ -169,8 +171,8 @@ export default function FederalPanel({
         </div>
         <div className="mt-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-t border-line pt-5">
           <p className="max-w-[60ch] text-lg font-medium sm:text-xl">
-            {tr(lang, "hl.target", "Target")}: {d.targetPercent}% {tr(lang, "hl.deployed_l", "deployed")}{deadlineNote(lang, policy)} ({d.targetCount} {tr(lang, "hl.of", "of")} {d.total}).{" "}
-            {d.gap === 0 && d.total > 0 ? tr(lang, "hl.met", "Target met.") : `${tr(lang, "hl.gap", "Gap")}: ${d.gap}.`}
+            {noTarget ? tr(lang, "ua.pg.notarget", "No framework target is recorded for this country yet.") : <>{tr(lang, "hl.target", "Target")}: {d.targetPercent}% {tr(lang, "hl.deployed_l", "deployed")}{deadlineNote(lang, policy)} ({d.targetCount} {tr(lang, "hl.of", "of")} {d.total}).{" "}
+            {d.gap === 0 && d.total > 0 ? tr(lang, "hl.met", "Target met.") : `${tr(lang, "hl.gap", "Gap")}: ${d.gap}.`}</>}
           </p>
           <Link href="/admin/federal/scenarios" className={`${btnPrimary} px-5 py-2.5 text-base`}>{noVerdicts ? tr(lang, "hl.cta_first", "Run scenario S1: see a decision made") : tr(lang, "hl.cta", "Run a staged scenario")} <span aria-hidden className="rtl:rotate-180">→</span></Link>
         </div>
@@ -187,9 +189,11 @@ export default function FederalPanel({
         ))}
       </nav>
 
+      {!noTarget && (
       <Section id="progress" eyebrow={tr(lang, "ua.sec.headline", "Headline")} title={tr(lang, "ua.sec.progress", "Progress toward the federal target")}>
         <TargetProgress d={d} deadline={policy.deadline} deadlineNote={deadlineNote(lang, policy)} asOf={asOf} />
       </Section>
+      )}
 
       <Section
         id="portfolio"
@@ -330,7 +334,7 @@ export default function FederalPanel({
 
       {canEdit && (
         <>
-          <Section
+          {!noTarget && <Section
             id="policy"
             eyebrow={tr(lang, "ua.sec.configure", "Configure")}
             title={tr(lang, "nav.policy", "Policy")}
@@ -396,7 +400,7 @@ export default function FederalPanel({
                 {policyMsg && <p role="status" className={`text-sm whitespace-pre-wrap ${policyMsg.ok ? "text-lit-deep" : "text-ember"}`}>{policyMsg.ok ? "✓" : "✕"} {policyMsg.text}</p>}
               </div>
             </div>
-          </Section>
+          </Section>}
 
           <Section id="import" eyebrow={tr(lang, "ua.sec.configure", "Configure")} title={tr(lang, "ua.imp.title", "Import use cases")} lede={tr(lang, "ua.imp.lede", "Upload the entity register as CSV. All rows are checked first; a single error blocks the import so the register is never half-updated.")}>
             <div className={card}>
