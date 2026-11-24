@@ -23,5 +23,11 @@ export const USECASE_UI_AR: Record<string, string> = {
   "tabs.pilot": "التجربة",
   "tabs.tuning": "الضبط",
   "tabs.production": "الإنتاج",
+  "ucsum.pilot": "التجربة الفعلية:",
+  "ucsum.pilot.met": "مستوفاة",
+  "ucsum.pilot.notmet": "غير مستوفاة، يلزم إصلاح {n}",
+  "ucsum.pilot.link": "افتح التجربة",
+  "ucsum.runs.show": "عرض جدول الجولات ({n})",
+  "ucsum.hist.show": "عرض السجل ({n})",
   "ns.readonly": "صلاحيتك للقراءة فقط؛ يجري هذه التغييرات مالك العملية أو المسؤول.",
 };

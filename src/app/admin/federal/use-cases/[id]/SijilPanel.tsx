@@ -70,17 +70,7 @@ export default function SijilPanel({ uc, runs, goals, attestation: a, thresholds
 
   return (
     <div className="space-y-12">
-      <header>
-        <Link href="/admin/federal" className="text-sm text-ink-soft underline underline-offset-2"><span className="inline-block rtl:rotate-180">←</span> {tr(lang, "uc.sj.back", "Federal dashboard")}</Link>
-        <p className="mt-4 font-mono text-xs text-ink-soft"><bdi dir="ltr">{uc.ext_id}</bdi> · {uc.entity} · {quadLabel(lang, uc.quadrant)}{uc.client_facing ? ` · ${tr(lang, "uc.sj.client", "client-facing")}` : ""}</p>
-        <h1 className="font-display mt-1 text-3xl font-medium tracking-tight sm:text-4xl">{uc.title}</h1>
-        <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm">
-          <VerdictBadge verdict={uc.verdict} size="lg" />
-          <span className="text-ink-soft">{tr(lang, "uc.sj.stage", "stage")} <span className="font-mono text-ink">{stageLabel(lang, uc.stage)}</span></span>
-          <span className="text-ink-soft">{uc.compliant ? tr(lang, "uc.sj.compliant", "✓ compliant and aligned") : tr(lang, "uc.sj.notcompliant", "not yet compliant")}</span>
-        </div>
-        {uc.hitl_rule && <p className="mt-3 max-w-[68ch] text-sm text-ink-soft">{tr(lang, "uc.sj.hitl", "Human-in-the-loop rule:")} {uc.hitl_rule}</p>}
-      </header>
+      {uc.hitl_rule && <p className="max-w-[68ch] text-sm text-ink-soft">{tr(lang, "uc.sj.hitl", "Human-in-the-loop rule:")} {uc.hitl_rule}</p>}
 
       <Section
         eyebrow={liveMode ? tr(lang, "uc.sj.eyebrow", "Pilot attestation") : tr(lang, "uc.sj.eyebrow_sim", "Pilot attestation · simulated")}
@@ -187,6 +177,9 @@ export default function SijilPanel({ uc, runs, goals, attestation: a, thresholds
       </div>
 
       <Section eyebrow={tr(lang, "uc.sj.data", "Data")} title={`${tr(lang, "uc.sj.runs", "Runs")} (${runs.length})`} lede={hasRuns ? tr(lang, "uc.sj.table_l", "Latest first. ✕ marks a value outside its threshold or a hard-criterion reject; this table is the text version of the charts.") : undefined}>
+        <details open={!hasRuns}>
+          <summary className="cursor-pointer text-sm underline underline-offset-4">{tr(lang, "ucsum.runs.show", "Show the runs table ({n})").replace("{n}", String(runs.length))}</summary>
+          <div className="mt-3">
         <div {...scrollRegion("sj-runs-cap")} className="relative max-h-[28rem] overflow-auto rounded-2xl border border-line bg-card">
           <table className="w-full min-w-[40rem] text-sm">
             <caption id="sj-runs-cap" className="sr-only">{tr(lang, "uc.sj.table_cap", "Pilot runs with accuracy, hallucination, alignment and rejects")}</caption>
@@ -212,6 +205,8 @@ export default function SijilPanel({ uc, runs, goals, attestation: a, thresholds
             </tbody>
           </table>
         </div>
+          </div>
+        </details>
       </Section>
     </div>
   );
