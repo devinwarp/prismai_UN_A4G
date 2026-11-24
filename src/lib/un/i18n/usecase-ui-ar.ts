@@ -29,5 +29,7 @@ export const USECASE_UI_AR: Record<string, string> = {
   "ucsum.pilot.link": "افتح التجربة",
   "ucsum.runs.show": "عرض جدول الجولات ({n})",
   "ucsum.hist.show": "عرض السجل ({n})",
+  "gp.show": "عرض كل الحالات ({n})",
+  "gr.show": "عرض الأحكام ({n})",
   "ns.readonly": "صلاحيتك للقراءة فقط؛ يجري هذه التغييرات مالك العملية أو المسؤول.",
 };

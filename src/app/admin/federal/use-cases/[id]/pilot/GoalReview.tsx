@@ -59,6 +59,8 @@ export function GoalReview({ useCaseId, profile, pilotId, review, approvers, may
             {review.approved ? `${tr(lang, "gr.approved", "Approved")} · ${review.approved.approver} · ${review.approved.hash.slice(0, 12)}` : tr(lang, "gr.pending", "Judged by the model, waiting for a person to approve")}
             <span className="ms-2 font-mono text-[11px] text-ink-soft">{review.model}</span>
           </p>
+          <details className="mt-3" open={!review.approved}>
+          <summary className="cursor-pointer text-sm underline underline-offset-4">{tr(lang, "gr.show", "Show the {n} judgments").replace("{n}", String(review.judgments.length))}</summary>
           <div className="mt-3 overflow-x-auto" role="region" {...scrollFocus} aria-label={tr(lang, "gr.h", "Goal alignment")}>
             <table className="w-full text-sm">
               <thead><tr className="text-ink-soft">
@@ -94,6 +96,7 @@ export function GoalReview({ useCaseId, profile, pilotId, review, approvers, may
               </tbody>
             </table>
           </div>
+          </details>
 
           {!review.approved && mayApprove && (
             <div className="mt-4">

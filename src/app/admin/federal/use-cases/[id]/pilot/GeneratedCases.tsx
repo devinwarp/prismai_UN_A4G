@@ -45,6 +45,8 @@ export function GeneratedCases({ useCaseId, profile, pilotId, block, rulings, ma
         {block.disputed > 0 && ` (${waiting} ${tr(lang, "gp.waiting", "waiting for a ruling")}, ${confirmed} ${tr(lang, "gp.confirmed", "confirmed agent failures")}, ${dropped} ${tr(lang, "gp.dropped", "expectation wrong")})`}
       </p>
       {note && <p className="mt-2 text-sm font-medium" role="status">{note}</p>}
+      <details className="mt-3" open={waiting > 0}>
+      <summary className="cursor-pointer text-sm underline underline-offset-4">{tr(lang, "gp.show", "Show all {n} cases").replace("{n}", String(block.cases.length))}{waiting > 0 ? ` · ${waiting} ${tr(lang, "gp.waiting", "waiting for a ruling")}` : ""}</summary>
       <ul className="mt-3 space-y-2">
         {block.cases.map((c) => {
           const r = ruled(c.case_id);
@@ -74,6 +76,7 @@ export function GeneratedCases({ useCaseId, profile, pilotId, block, rulings, ma
           );
         })}
       </ul>
+      </details>
       {error && <p role="alert" className="mt-2 text-sm" style={{ color: "var(--color-v-nogo)" }}>{error}</p>}
     </section>
   );
