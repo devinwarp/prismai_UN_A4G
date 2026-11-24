@@ -2,6 +2,9 @@
 // native speaker, like the rest of dict.ts. Spread into AR there. Role ids and action labels are not translated.
 export const PEOPLE_AR: Record<string, string> = {
   "go.people": "الأشخاص والأدوار",
+  "hdr.country": "الدولة",
+  "hdr.reran": "أُعيد التشغيل وفق قواعد هذه الدولة",
+  "hdr.reused": "القواعد لم تتغير: تُعرض النتيجة المخزَّنة",
   "go.people.h": "من يملك أي دور، للمؤسسة كلها أو لحالة استخدام واحدة.",
   "pe.eyebrow": "الأشخاص والأدوار",
   "pe.h1": "من يستطيع فعل ماذا",

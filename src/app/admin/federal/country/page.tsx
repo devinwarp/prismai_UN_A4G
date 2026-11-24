@@ -58,7 +58,7 @@ export default async function CountryPage({ searchParams }: { searchParams: Prom
           <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase">{canEdit ? <T k="gt.eyebrow" en="Governance" /> : <T k="gt.readonly" en="Read-only" />}</p>
           <h1 className="font-display mt-2 text-3xl font-medium tracking-tight sm:text-4xl"><T k="cn.title" en="Country and knowledge base" /></h1>
           <p className="mt-3 max-w-[68ch] text-base text-ink-soft">
-            <T k="cn.lede" en="A country is data: the scope of its sources (its own plus international standards) and the rule set that judges its verdicts. Switching the country re-runs the whole process for the licence-renewal use case under that country's rule set and sources." />{" "}
+            <T k="cn.lede" en="A country is data: the scope of its sources (its own plus international standards) and the rule set that judges its verdicts. Switching the country shows its stored result: the process is run again only the first time a country's rules are used, when its rules, sources or the company's SOP have changed, or when a new company is added. An admin can also run it again at any time." />{" "}
             <Link href="/admin/federal" className="underline"><T k="sop.back" en="Back to the dashboard" /></Link>
           </p>
           <p role="note" className="mt-3 max-w-[68ch] rounded-lg border border-line bg-paper-deep p-3 text-sm">

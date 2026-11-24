@@ -1,7 +1,8 @@
+import { createHash } from "node:crypto";
 import { buildPolicy, type Embed, type StagedFile } from "./country-build.ts";
 import type { CountryStore } from "./country-store.ts";
 import {
-  appendCountry, BUILTIN_COMPANIES, countryOf, indexInfo, replayCountry, runProcess, scopeChunks, verifyCountry,
+  appendCountry, BUILTIN_COMPANIES, countryOf, indexInfo, replayCountry, rulesetOf, runProcess, scopeChunks, verifyCountry,
   type CompanyRec, type Country, type CountryEntry, type CountryKind, type CountryState, type IndexInfo, type RunResult, type Timing,
 } from "./country.ts";
 import type { GovState } from "./gates.ts";
@@ -99,14 +100,33 @@ async function companyCtx(d: Deps, state: CountryState, id: string): Promise<Com
   return { id, name: rec.name, sop_id: rec.sop_id, ext_id: rec.ext_id, facts: rec.flags, entity: rec.name, sop: blob?.chunks ?? [] };
 }
 
-export async function runFor(d: Deps, state: CountryState, companyId: string, countryId: string): Promise<RunResult | Fail> {
+/** A fingerprint of everything a run depends on: the country's rule set, its policy sources, the company's SOP and facts, and the gate state. */
+const fingerprint = (c: Country, policy: Chunk[], co: CompanyCtx, gov: GovState): string =>
+  createHash("sha256").update(JSON.stringify({ country: c.id, ruleset: rulesetOf(c), policy: policy.map((x) => [x.chunk_id, x.text]), sop: co.sop.map((x) => [x.chunk_id, x.text]), facts: co.facts, entity: co.entity, gov })).digest("hex");
+
+/** Everything one run needs, or why it cannot run. */
+async function inputsFor(d: Deps, state: CountryState, companyId: string, countryId: string) {
   const c = countryOf(countryId);
   if (!c) return fail(400, "Unknown country");
   const policy = await scopeOf(d, state, countryId);
   if (!policy) return fail(409, `${c.name} has no knowledge-base index yet: add its policy first`);
   const co = await companyCtx(d, state, companyId);
   if (!co) return fail(404, "Unknown company");
-  return runProcess({ company: co, country: c, policy, sop: co.sop, facts: co.facts, entity: co.entity, gov: await d.gov() });
+  const gov = await d.gov();
+  return { c, policy, co, gov, hash: fingerprint(c, policy, co, gov) };
+}
+
+/** The fingerprint of the inputs a run of this company under this country would use now, without running it. */
+export async function inputsHashFor(d: Deps, state: CountryState, companyId: string, countryId: string): Promise<string | Fail> {
+  const i = await inputsFor(d, state, companyId, countryId);
+  return isFail(i) ? i : i.hash;
+}
+
+export async function runFor(d: Deps, state: CountryState, companyId: string, countryId: string): Promise<RunResult | Fail> {
+  const i = await inputsFor(d, state, companyId, countryId);
+  if (isFail(i)) return i;
+  const run = await runProcess({ company: i.co, country: i.c, policy: i.policy, sop: i.co.sop, facts: i.co.facts, entity: i.co.entity, gov: i.gov });
+  return { ...run, inputs_hash: i.hash };
 }
 const isFail = (x: unknown): x is Fail => !!x && typeof x === "object" && (x as Fail).ok === false;
 
@@ -139,25 +159,32 @@ export async function indexOfCountry(d: Deps, state: CountryState, id: string): 
 export type Ok<T> = { ok: true } & T;
 
 /** Switch a company's country. Instant for precomputed scopes: nothing is built, the whole process is re-run. */
-export async function switchCountry(d: Deps, actor: string, to: string, company = "marsa"): Promise<Ok<{ run: RunResult; before: string; matchesStored: boolean | null; ms: number }> | Fail> {
+/** Switch the active country. This does not re-run the process by itself: the stored result is used when the rules, sources, SOP and gates it was
+ * run under are unchanged. A run happens only when there is no stored result for this company under the country yet (rules entered for the first
+ * time, or a new company), or when what it depended on has changed since (`reran` says which, and `why` says why). */
+export async function switchCountry(d: Deps, actor: string, to: string, company = "marsa"): Promise<Ok<{ run: RunResult; before: string; matchesStored: boolean | null; ms: number; reran: boolean; why: "unchanged" | "first_run" | "inputs_changed" | "no_fingerprint" }> | Fail> {
   const t0 = d.clock();
   const { entries, state } = await loadState(d);
   const c = countryOf(to);
   if (!c) return fail(400, "Unknown country");
   const before = state.active.country;
   if (!(await companyCtx(d, state, company))) return fail(404, "Unknown company");
-  const run = await runFor(d, state, company, to);
+  const stored = state.runs[`${company}:${to}`];
+  const now = await inputsHashFor(d, state, company, to);
+  if (isFail(now)) return now;
+  const why = !stored ? "first_run" : !stored.inputs_hash ? "no_fingerprint" : stored.inputs_hash !== now ? "inputs_changed" : "unchanged";
+  const reran = why !== "unchanged";
+  const run = reran ? await runFor(d, state, company, to) : stored;
   if (isFail(run)) return run;
   const drafts: { kind: CountryKind; payload: Record<string, unknown> }[] = [];
   // the country we leave gets its result stored first, so switching back can be checked against it
   const fromRun = state.runs[`${company}:${before}`] ? null : await runFor(d, state, company, before);
   if (fromRun && !isFail(fromRun)) drafts.push({ kind: "run", payload: { result: fromRun } });
-  const stored = state.runs[`${company}:${to}`];
-  drafts.push({ kind: "switch", payload: { company, from: before, to, ruleset: c.ruleset, index: { chunks: run.corpus.policy_chunks, sources: run.corpus.policy_sources } } });
-  drafts.push({ kind: "run", payload: { result: run, matches_stored: stored ? stored.head_hash === run.head_hash : null } });
+  drafts.push({ kind: "switch", payload: { company, from: before, to, ruleset: c.ruleset, reran, why, index: { chunks: run.corpus.policy_chunks, sources: run.corpus.policy_sources } } });
+  if (reran) drafts.push({ kind: "run", payload: { result: run, matches_stored: stored ? stored.head_hash === run.head_hash : null } });
   const w = await commit(d, entries, drafts, actor);
   if (isFail(w)) return w;
-  return { ok: true, run, before, matchesStored: stored ? stored.head_hash === run.head_hash : null, ms: Math.round(d.clock() - t0) };
+  return { ok: true, run, before, matchesStored: reran && stored ? stored.head_hash === run.head_hash : null, ms: Math.round(d.clock() - t0), reran, why };
 }
 
 /** Step A: build the EU scope live from the staged policy files, register it with its rule set, and run the process under it. */

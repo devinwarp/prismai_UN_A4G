@@ -73,6 +73,9 @@ export interface RunResult {
   cited: { chunk_id: string; source_id: string; title: string; url: string; jurisdiction: string; quote: string; step: string; from: "policy" | "company_sop" }[];
   corpus: { policy_chunks: number; policy_sources: number; sop_chunks: number };
   head_hash: string; records: number; ms: number;
+  /** A fingerprint of everything the run depended on (rule set, policy sources, the company's SOP and facts, the gate state). Switching back to a
+   * country re-runs only when this has changed; absent on runs stored before it was recorded. */
+  inputs_hash?: string;
 }
 
 export interface RunInput {

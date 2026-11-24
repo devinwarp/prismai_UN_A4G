@@ -90,7 +90,8 @@ async function fullFlow(store: CountryStore) {
   const sw = await A.switchCountry(d, "admin@x", "SG");
   assert.ok(sw.ok && sw.run.country === "SG" && sw.before === "UAE");
   const back = await A.switchCountry(d, "admin@x", "UAE");
-  assert.ok(back.ok && back.matchesStored === true, "switching back must reproduce the stored UAE result exactly");
+  assert.ok(back.ok && back.reran === false && back.why === "unchanged", "switching back to a country whose rules and inputs are unchanged re-runs nothing");
+  assert.equal(back.run.head_hash, (await A.loadState(d)).state.runs["marsa:UAE"].head_hash, "and shows the stored UAE result exactly");
   assert.equal((await A.switchCountry(d, "admin@x", "EU")).ok, false, "an EU switch before the policy exists is refused");
   const pol = await A.addPolicy(d, "admin@x", "EU", () => {});
   assert.ok(pol.ok && pol.chunks > 20 && pol.vectors && pol.timings.map((t) => t.stage).join().includes("index (BM25)"));
@@ -117,6 +118,8 @@ async function fullFlow(store: CountryStore) {
   assert.match(added, /goods-and-services tax/); // fee check
   assert.match(added, /corporate profile extract \(D7\)/); // extra document
   assert.ok((await A.recordRun(d, "admin@x", "marsa", "SG")).ok && (await A.recordRun(d, "admin@x", on.company.id, "SG")).ok);
+  // a switch no longer logs a run of its own when nothing changed, so log a few explicit ones: the log must pass entry 9 for the sort check below
+  for (let i = 0; i < 3; i++) assert.ok((await A.recordRun(d, "admin@x", "marsa", "UAE")).ok);
   const l = await A.loadState(d);
   assert.ok(l.verified.ok);
   assert.deepEqual(l.entries.map((e) => e.seq), l.entries.map((_, i) => i + 1));
@@ -268,4 +271,24 @@ test("the country demo ignores use-case gates and waivers added on the lifecycle
 test("the compare dropdowns are re-created when the default pair changes (a stale pair made Compare swap the diff after onboarding)", () => {
   const page = readFileSync("src/app/admin/federal/country/page.tsx", "utf8");
   assert.match(page, /<select key=\{`\$\{k\}:\$\{A\?\.key\}:\$\{B\?\.key\}`\} name=\{k\}/);
+});
+
+
+test("switching re-runs only when there is no stored result yet or what the result depended on changed", async () => {
+  const store = memoryStore();
+  const { d } = mk(store);
+  const runs = async () => (await store.log()).filter((e) => e.kind === "run").length;
+  const first = await A.switchCountry(d, "a", "SG");
+  assert.ok(first.ok && first.reran && first.why === "first_run", "rules used for the first time are run");
+  const n = await runs();
+  const back = await A.switchCountry(d, "a", "UAE");
+  const again = await A.switchCountry(d, "a", "SG");
+  assert.ok(back.ok && !back.reran && again.ok && !again.reran && again.why === "unchanged");
+  assert.equal(await runs(), n, "switching between countries with unchanged inputs logs no run");
+  assert.equal((await store.log()).filter((e) => e.kind === "switch").length, 3, "but every switch is logged");
+  // the gate state is one of the inputs: when it changes, the next switch re-runs
+  const changed: A.Deps = { ...d, gov: async () => ({ ...(await noGov()), rule_sets: { changed: true } }) as never };
+  const re = await A.switchCountry(changed, "a", "UAE");
+  assert.ok(re.ok && re.reran && re.why === "inputs_changed");
+  assert.equal(await runs(), n + 1);
 });

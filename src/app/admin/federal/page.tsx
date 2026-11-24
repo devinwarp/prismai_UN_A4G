@@ -36,7 +36,7 @@ export default async function FederalPage() {
 
   return (
     <div className="conduit-bg min-h-dvh">
-      <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
+      <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} country />
       <LangShell>
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
         <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase">

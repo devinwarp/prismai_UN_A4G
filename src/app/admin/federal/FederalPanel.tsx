@@ -37,7 +37,6 @@ const GO = [
   { href: "/admin/federal/country", k: "go.country", en: "Country and knowledge base", hint: "Switch country, add a policy, add a company and its SOP." },
   { href: "/admin/federal/outside", k: "go.outside", en: "Answer outside requests", hint: "Questions the SOP cannot answer wait here for a person." },
   { href: "/admin/federal/goals", k: "go.goals", en: "Entity goals and targets", hint: "What each entity wants, and what each use case commits to deliver." },
-  { href: "/admin/federal/people", k: "go.people", en: "People and roles", hint: "Who holds which role, for the organisation or for one use case." },
   { href: "/admin/federal/gaps", k: "go.gaps", en: "Read the gaps", hint: "Where today's rules fall short of agentic AI." },
 ];
 

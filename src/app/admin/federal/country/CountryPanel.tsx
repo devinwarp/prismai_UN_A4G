@@ -62,7 +62,8 @@ export function CountryPanel({ canEdit, active, countries, staged, euBuilt, comp
       if (!res.ok || !out || out.ok === false) setError(String(out?.error ?? tr(lang, "gt.failed", "The request failed.")));
       else {
         const ms = Math.round(performance.now() - t0.current);
-        if (out.noop === true) setNote(tr(lang, "cn.reset.noop", "Already at the starting state. Nothing to reset, nothing logged."));
+        if (action === "switch" && out.reran === false) setNote(tr(lang, "hdr.reused", "Rules unchanged: stored result shown"));
+        else if (out.noop === true) setNote(tr(lang, "cn.reset.noop", "Already at the starting state. Nothing to reset, nothing logged."));
         else setNote(`${tr(lang, "cn.elapsed", "Elapsed")}: ${(ms / 1000).toFixed(2)} ${tr(lang, "ub.cn.sec", "s")}` + (out.matchesStored === true ? ` · ${tr(lang, "cn.sameHash", "Identical to the stored result (same head hash)")}` : ""));
         router.refresh();
       }
@@ -83,7 +84,9 @@ export function CountryPanel({ canEdit, active, countries, staged, euBuilt, comp
               <Ct id={c.id} en={c.name} />{c.id === active ? " ✓" : ""}
             </button>
           ))}
+          <button type="button" disabled={!!busy} className={btnGhost} onClick={() => void call("run", { company: "marsa", country: active })}>{tr(lang, "cn.rerun", "Run again now")}</button>
         </div>
+        <p className="mt-1 text-xs text-ink-soft">{tr(lang, "cn.rerun.h", "Runs the process again under the active country's rules and logs it. An admin can do this whenever it is wanted; a switch alone does not.")}</p>
       </div>
 
       <div className="rounded-xl border border-line p-4">
