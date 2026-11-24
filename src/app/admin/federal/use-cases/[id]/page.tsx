@@ -15,6 +15,7 @@ import { effectiveGates } from "@/lib/un/gates";
 import { approversForUseCase } from "@/lib/un/approvers-store";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { loadRun } from "@/lib/un/runs";
+import { loadReleaseCached } from "@/lib/un/release-cached";
 
 const DUBAI = { timeZone: "Asia/Dubai" } as const;
 interface ChangeRow { seq: number; at: string; op: string; changes: Record<string, { from: unknown; to: unknown }>; actor: string; hash: string }
@@ -40,6 +41,8 @@ async function ChangeHistory({ ext_id }: { ext_id: string }) {
       {rows.length === 0 ? (
         <p className="mt-3 text-sm text-ink-soft"><T k="uc.ch.none" en="No changes recorded for this use case yet." /></p>
       ) : (
+        <details className="mt-3">
+        <summary className="cursor-pointer text-sm underline underline-offset-4"><TV k="ucsum.hist.show" en="Show the history ({n})" v={{ n: rows.length }} /></summary>
         <ul className="mt-3 divide-y divide-line text-sm">
           {rows.map((r) => (
             <li key={r.seq} className="py-2">
@@ -53,6 +56,7 @@ async function ChangeHistory({ ext_id }: { ext_id: string }) {
             </li>
           ))}
         </ul>
+        </details>
       )}
     </section>
   );
@@ -75,13 +79,21 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
   const eff = effectiveGates({ ext: uc.ext_id, facts: factsOf(uc), gov: await loadGov(profile.org_id) });
   const verdictRun = uc.verdict_run_id ? await loadRun(profile.org_id, uc.verdict_run_id) : null;
   const perms = await permissionsFor(profile, user.id);
+  const release = await loadReleaseCached(profile.org_id, id);
   let liveMode = false;
   try { liveMode = liveConfigFromEnv() !== null; } catch { liveMode = true; /* misconfigured: the pull reports the error */ }
   return (
     <LangShell>
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-        <p className="mb-4 text-sm">
-          <Link href="/admin/federal/evals" className="underline underline-offset-4"><T k="uc.pg.all" en="All use cases side by side" /></Link>
+        <p className="mb-4 text-sm" data-testid="real-pilot">
+          <strong><T k="ucsum.pilot" en="Real pilot:" /></strong>{" "}
+          {release.ok ? <T k="ucsum.pilot.met" en="met" /> : <TV k="ucsum.pilot.notmet" en="not met, {n} to fix" v={{ n: release.blockers.length }} one="not met, 1 to fix" />}
+          {" · "}
+          <Link href={`/admin/federal/use-cases/${id}/pilot`} className="underline underline-offset-4"><T k="ucsum.pilot.link" en="Open the pilot" /></Link>
+        </p>
+        <p className="mb-4 text-sm text-ink-soft">
+          <strong><T k="ucsum.sim.att" en="Simulated attestation:" /></strong>{" "}
+          {uc.compliant ? <T k="uc.sj.compliant" en="✓ compliant and aligned" /> : <T k="uc.sj.notcompliant" en="not yet compliant" />}
         </p>
         <SijilPanel
           uc={uc}

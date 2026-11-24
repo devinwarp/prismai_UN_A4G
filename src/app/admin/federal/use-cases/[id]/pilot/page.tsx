@@ -116,8 +116,10 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
                 )}
                 {last.plan.unexecuted.length > 0 && (
                   <div className="mt-4">
-                    <p className="text-sm font-medium"><TV k="pi.unexec" en="Tests that could not be executed ({n})" v={{ n: last.plan.unexecuted.length }} /></p>
-                    <ul className="mt-1 list-disc ps-5 text-xs text-ink-soft">{last.plan.unexecuted.slice(0, 30).map((u) => <li key={u.id}>{u.id}: {u.why}</li>)}</ul>
+                    <details>
+                      <summary className="cursor-pointer text-sm font-medium"><TV k="pi.unexec" en="Tests that could not be executed ({n})" v={{ n: last.plan.unexecuted.length }} /></summary>
+                      <ul className="mt-1 list-disc ps-5 text-xs text-ink-soft">{last.plan.unexecuted.slice(0, 30).map((u) => <li key={u.id}>{u.id}: {u.why}</li>)}</ul>
+                    </details>
                   </div>
                 )}
                 {original && (

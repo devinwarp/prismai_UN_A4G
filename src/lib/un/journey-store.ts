@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { alignment, type EvalSummary } from "./eval-run";
 import { evalSetFor } from "./evalset";
 import { journeyStatus, type Journey } from "./journey";
-import { loadRelease } from "./release-store";
+import { loadReleaseCached } from "./release-cached";
 import { gateAcceptance } from "./journey-gates";
 import type { UnUseCaseState } from "./model";
 import type { LogEntry } from "./tuning";
@@ -69,7 +69,7 @@ export async function loadJourneys(orgId: string, ucs: Pick<UnUseCaseState, "id"
       tuning: asLog<LogEntry>(tl.get(u.id)),
       watch: asLog<WatchEntry>(wl.get(u.id)),
       // worked out for one use case only (its own page): a list of many would read several logs for each
-      ...(ucs.length === 1 && sopId ? { release: await loadRelease(orgId, u.id).then((x) => ({ ready: x.ok, blockers: x.blockers.length })).catch(() => undefined) } : {}),
+      ...(ucs.length === 1 && sopId ? { release: await loadReleaseCached(orgId, u.id).then((x) => ({ ready: x.ok, blockers: x.blockers.length })).catch(() => undefined) } : {}),
     }));
   }
   return out;
