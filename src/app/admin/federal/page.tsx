@@ -4,7 +4,8 @@ import { getUserAndProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { appCountryDeps } from "@/lib/un/country-app";
 import { loadState } from "@/lib/un/country-actions";
-import { allCountries, countryIn, entityUseCases } from "@/lib/un/country";
+import { allCountries, countryIn, entityUseCases, inScope } from "@/lib/un/country";
+import { loadChunks } from "@/lib/un/kb";
 import { computeDashboard } from "@/lib/un/model";
 import { effectiveGates } from "@/lib/un/gates";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
@@ -42,6 +43,11 @@ export default async function FederalPage() {
   const cs = await loadState(appCountryDeps(profile.org_id)).then((r) => r.state).catch(() => null);
   const active = (cs && countryIn(cs, cs.active.country)) || allCountries({ countries: {} })[0];
   const scoped = cs ? entityUseCases(cs, useCases, active.id) : useCases;
+  const activeHasKb = active.built === "precomputed" || (cs?.policies?.[active.id] != null);
+  const kbStats = active.built === "precomputed" ? (() => {
+    const cc = loadChunks().filter((c) => inScope(c, active));
+    return { chunks: cc.length, sources: new Set(cc.map((c) => c.source_id)).size };
+  })() : null;
   // The framework policy on file (its name, target and deadline) is the UAE federal one. No other country has a target recorded yet, so none is shown for it.
   const hasTarget = active.id === "UAE";
   const shown = hasTarget ? policy : { ...policy, name: `${active.name}: agentic AI deployment`, jurisdiction: active.name, source_url: null, deadline: null };
@@ -66,22 +72,46 @@ export default async function FederalPage() {
         </p>
         {scoped.length === 0 ? (
           <section className="mt-6 max-w-[68ch] rounded-xl border border-line bg-paper-deep p-5" data-testid="no-entities">
-            <p className="font-medium"><TV k="ua.pg.noent" en="No entities are linked to {c} yet." v={{ c: active.name }} /></p>
-            <p className="mt-1 text-sm text-ink-soft"><T k="ua.pg.noent.h" en="This dashboard counts only the use cases of entities linked to the active country. Link an entity to it, and its numbers appear here." /></p>
-            <p className="mt-3 text-sm"><Link href="/admin/federal/goals" className="underline"><T k="ua.pg.noent.go" en="Link an entity to this country" /></Link></p>
+            {activeHasKb ? (
+              <>
+                <p className="font-medium"><T k="ua.pg.kb.exists" en="Knowledge base exists — 0 entities linked" /></p>
+                {kbStats && (
+                  <p className="mt-1 text-sm text-ink-soft">
+                    <TV k="ua.pg.kb.stats" en="{n} chunks from {s} sources indexed for {c}." v={{ n: kbStats.chunks, s: kbStats.sources, c: active.name }} />
+                  </p>
+                )}
+                <p className="mt-1 text-sm text-ink-soft"><T k="ua.pg.kb.noent.h" en="This dashboard counts only the use cases of entities linked to the active country. Link an entity to see its numbers here." /></p>
+                <p className="mt-3 text-sm"><Link href="/admin/federal/goals" className="underline"><T k="ua.pg.noent.go" en="Link an entity to this country" /></Link></p>
+              </>
+            ) : (
+              <>
+                <p className="font-medium"><T k="ua.pg.nokb" en="No knowledge base — no entities linked" /></p>
+                <p className="mt-1 text-sm text-ink-soft"><T k="ua.pg.nokb.h" en="This country has no knowledge base yet. Add the AI governance policy for this country first, then link entities to it." /></p>
+                <p className="mt-3 text-sm"><Link href="/admin/federal/country" className="underline"><T k="ua.pg.nokb.go" en="Set up this country" /></Link></p>
+              </>
+            )}
           </section>
         ) : (
-        <FederalPanel
-          noTarget={!hasTarget}
-          policy={shown}
-          dashboard={dashboard}
-          useCases={scoped}
-          canEdit={profile.role === "admin"}
-          hitl={hitl}
-          gatesAdded={gatesAdded}
-          journeys={journeys}
-          asOf={new Date().toISOString()}
-        />
+        <>
+          <p className="mt-1 text-xs text-ink-soft">
+            {activeHasKb
+              ? (kbStats
+                ? <TV k="ua.pg.kb.badge" en="KB · {n} chunks · {s} sources" v={{ n: kbStats.chunks, s: kbStats.sources }} />
+                : <T k="ua.pg.kb.badge.on" en="Knowledge base: ready" />)
+              : <T k="ua.pg.kb.none" en="Knowledge base: not built" />}
+          </p>
+          <FederalPanel
+            noTarget={!hasTarget}
+            policy={shown}
+            dashboard={dashboard}
+            useCases={scoped}
+            canEdit={profile.role === "admin"}
+            hitl={hitl}
+            gatesAdded={gatesAdded}
+            journeys={journeys}
+            asOf={new Date().toISOString()}
+          />
+        </>
         )}
         <CitizenMessageCheck />
       </main>
