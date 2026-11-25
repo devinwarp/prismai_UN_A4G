@@ -74,15 +74,18 @@ export const DELIVER_TOOL = "deliver_output";
 export const DISCLOSURE_MISSING_HIT = "prism:ai_disclosure_missing";
 
 /** The agent's deliverable, sealed as a call of a fixed tool name (Sijil has no deliverable record type): input_hash is the hash of the exact text.
- * null when the run produced no text. A client-facing deliverable without an AI disclosure (disclosed === false) is flagged with the missing-disclosure hit. */
-export function deliverableBody(text: string | null, disclosed: boolean | null, ctx: { sessionId: string }): SealBody | null {
+ * null when the run produced no text. A client-facing message without an AI disclosure (disclosed === false) is flagged with the missing-disclosure hit.
+ * A structured decision (kind "decision") is sealed too, so every run's output is on the chain; a disclosure does not apply to it. */
+export function deliverableBody(text: string | null, disclosed: boolean | null, ctx: { sessionId: string }, kind: "message" | "decision" = "message"): SealBody | null {
   if (text === null) return null;
-  const missing = disclosed === false;
+  const missing = kind === "message" && disclosed === false;
+  const what = kind === "decision" ? "structured decision" : "deliverable";
+  const disclosure = kind === "decision" ? "not applicable" : disclosed === true ? "present" : missing ? "MISSING" : "not checked";
   return {
     type: "tool_call", rulepack_hash: "", decision: missing ? "flag" : "allow", mode: "record",
     input_hash: sha256Hex(text),
     rule_hits: missing ? [DISCLOSURE_MISSING_HIT] : [],
-    ext: baseExt(DELIVER_TOOL, ctx, `ai-generated deliverable, sealed by Prism after the run; AI disclosure ${disclosed === true ? "present" : missing ? "MISSING" : "not applicable"}`),
+    ext: baseExt(DELIVER_TOOL, ctx, `ai-generated ${what}, sealed by Prism after the run; AI disclosure ${disclosure}`),
   };
 }
 
@@ -95,4 +98,14 @@ export function decisionFromSealed(sent: SealBody, sealed: { decision: string })
 export function deliverableText(output: unknown): string | null {
   const email = (output as { email?: { body?: unknown } | null } | null)?.email;
   return typeof email?.body === "string" && email.body.length > 0 ? email.body : null;
+}
+
+/** What a run delivered: the client-facing message when there is one, otherwise the structured decision (canonical JSON of the output); nothing for
+ * a run that refused or produced no output. */
+export function deliverableOf(result: { output?: unknown; refused?: unknown }): { text: string; kind: "message" | "decision" } | null {
+  const message = deliverableText(result.output);
+  if (message !== null) return { text: message, kind: "message" };
+  const out = result.output;
+  if (result.refused || !out || typeof out !== "object" || (out as { status?: unknown }).status === "outside_kb") return null;
+  return { text: canonicalJson(out), kind: "decision" };
 }

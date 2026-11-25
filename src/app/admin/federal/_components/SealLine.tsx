@@ -14,7 +14,9 @@ export function SealLine({ sijil }: { sijil?: SealSummary | null }) {
     kind = "node";
     line = sijil.chain_ok === true
       ? <TV k="sl.node.ok" en="Sijil node {id}: {n} records sealed across {r} runs, chain verified." v={{ id, n: sijil.sealed, r: sijil.runs_sealed }} />
-      : sijil.chain_ok === false
+      : sijil.chain_ok === false && sijil.chain_orphan
+        ? <TV k="sl.node.orphan" en="Sijil node {id}: {n} records sealed across {r} runs. Chain not checked by the node's verifier, which stops at tool calls with no recorded model call (this agent's model calls do not go through the node)." v={{ id, n: sijil.sealed, r: sijil.runs_sealed }} />
+        : sijil.chain_ok === false
         ? <TV k="sl.node.bad" en="Sijil node {id}: {n} records sealed across {r} runs, chain NOT verified ({why})." v={{ id, n: sijil.sealed, r: sijil.runs_sealed, why: sijil.chain_reason ?? "no reason given" }} />
         : <TV k="sl.node.unk" en="Sijil node {id}: {n} records sealed across {r} runs." v={{ id, n: sijil.sealed, r: sijil.runs_sealed }} />;
   } else if (sijil?.source === "partial") {
@@ -25,7 +27,7 @@ export function SealLine({ sijil }: { sijil?: SealSummary | null }) {
     line = <TV k="sl.sim.note" en="Simulated Sijil gate: {note}" v={{ note: sijil.note }} />;
   } else if (sijil) {
     kind = "simulated";
-    line = <T k="sl.sim.down" en="Simulated Sijil gate: a Sijil node was configured but unreachable, so these runs used the simulated gate." />;
+    line = <TV k="sl.sim.down" en="Simulated Sijil gate: a Sijil node was configured but these runs used the simulated gate ({why})." v={{ why: sijil.reason ?? "no reason given" }} />;
   } else {
     kind = "simulated";
     line = <T k="sl.sim.none" en="Simulated Sijil gate: no Sijil node was used for this pilot; rejected calls come from Prism's own allowlist check." />;

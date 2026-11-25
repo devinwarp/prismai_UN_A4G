@@ -88,3 +88,9 @@ test("sealSummary reports halted only when every sealed run was halted", () => {
   assert.equal(sealSummary([withSijil({ halted: true }), withSijil({ halted: true })])!.halted, true);
   assert.equal(sealSummary([withSijil({ halted: true }), withSijil({ halted: false })])!.halted, false);
 });
+
+test("sealSummary keeps the first fallback reason so the page can say why, and the orphan flag passes through the route type", () => {
+  const sm = sealSummary([withSijil({ source: "simulated:unreachable", sealed: 0, reason: "Sijil node returned HTTP 409 for /api/agent/seal" }), withSijil({ source: "simulated:unreachable", sealed: 0, reason: "later" })])!;
+  assert.equal(sm.source, "simulated");
+  assert.equal(sm.reason, "Sijil node returned HTTP 409 for /api/agent/seal");
+});

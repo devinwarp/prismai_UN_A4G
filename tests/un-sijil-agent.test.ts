@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { createHash, createPublicKey, verify as edVerify } from "node:crypto";
 import {
-  callBody, canonicalJson, decisionFromSealed, deliverableBody, deliverableText, newAgentKeyHex, publicKeyHex, registerMessage, sessionMessage, sha256Hex, signProof,
+  callBody, canonicalJson, decisionFromSealed, deliverableBody, deliverableOf, deliverableText, newAgentKeyHex, publicKeyHex, registerMessage, sessionMessage, sha256Hex, signProof,
 } from "../src/lib/un/sijil-agent.ts";
 import type { CallDecision } from "../src/lib/un/sijil-calls.ts";
 
@@ -100,4 +100,21 @@ test("deliverableText returns the email body, and null for output with no email"
   assert.equal(deliverableText({ status: "ok" }), null);
   assert.equal(deliverableText(null), null);
   assert.equal(deliverableText({ email: { body: "" } }), null);
+});
+
+test("deliverableBody of a structured decision is allow with no disclosure hit and says so in the summary", () => {
+  const b = deliverableBody('{"status":"ok"}', null, ctx, "decision")!;
+  assert.equal(b.decision, "allow");
+  assert.deepEqual(b.rule_hits, []);
+  assert.match(String(b.ext.summary), /structured decision/);
+  assert.match(String(b.ext.summary), /not applicable/);
+});
+
+test("deliverableOf: a message when there is an email body, a structured decision for other output, nothing for a refusal or no output", () => {
+  assert.deepEqual(deliverableOf({ output: { email: { body: "hi" } } }), { text: "hi", kind: "message" });
+  assert.deepEqual(deliverableOf({ output: { b: 1, a: [2] } }), { text: '{"a":[2],"b":1}', kind: "decision" });
+  assert.equal(deliverableOf({ output: { status: "x" }, refused: true }), null);
+  assert.equal(deliverableOf({ output: { status: "outside_kb" } }), null);
+  assert.equal(deliverableOf({ output: null }), null);
+  assert.equal(deliverableOf({}), null);
 });

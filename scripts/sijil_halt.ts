@@ -1,3 +1,4 @@
+export {};
 // The Sijil node's halt switch, for the demo: `on` makes the node seal every call as blocked, `off` resumes. Needs the node's admin token
 // (SIJIL_ADMIN_TOKEN), which only a person running this script holds; the app never reads it.
 //   SIJIL_BASE_URL=http://127.0.0.1:8000 SIJIL_ADMIN_TOKEN=... node scripts/sijil_halt.ts on|off

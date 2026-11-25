@@ -48,3 +48,13 @@ test("SealLine names a node only for a sealed source, never calls a simulated or
   assert.match(src, /chain NOT verified/);
   assert.doesNotMatch(src, /attested/i);
 });
+
+test("SealLine says plainly, without the word NOT in capitals, when the node's strict verifier cannot check tool calls with no recorded model call", () => {
+  const src = page("_components/SealLine.tsx");
+  assert.match(src, /sl\.node\.orphan/);
+  assert.match(src, /chain_orphan/);
+});
+
+test("the pilot route tells an operator when Sijil is configured but the agent settings are incomplete", () => {
+  assert.match(read("src/app/api/admin/un/use-cases/[id]/pilot/route.ts"), /configProblem\(/);
+});

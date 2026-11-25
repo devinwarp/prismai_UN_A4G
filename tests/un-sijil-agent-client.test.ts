@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { agentConfigFromEnv, createSealer, verifyChain, type AgentConfig } from "../src/lib/un/sijil-agent-client.ts";
+import { agentConfigFromEnv, configProblem, createSealer, verifyChain, type AgentConfig } from "../src/lib/un/sijil-agent-client.ts";
 import { newAgentKeyHex, sha256Hex } from "../src/lib/un/sijil-agent.ts";
 import type { PilotRun } from "../src/lib/un/pilot.ts";
 import type { CaseOutcome } from "../src/lib/un/task-evals.ts";
@@ -10,13 +10,14 @@ const KEY = newAgentKeyHex();
 const cfg: AgentConfig = { baseUrl: "https://sijil.example", agentId: "spiffe://prism/agent/pilot", keyHex: KEY, agentToken: "tok-secret-123" };
 const run = { test_id: "t01#c1", rep: 1 } as PilotRun;
 const call = (tool: string, decision: "allow" | "reject" = "allow"): CallDecision => ({ call: { tool, args: { a: 1 } }, decision, ...(decision === "reject" ? { reason: "tool_not_authorised" as const } : {}) });
-const outcome = (calls: CallDecision[], body?: string): CaseOutcome => ({ calls, result: { output: body === undefined ? { status: "ok" } : { email: { body } } } } as unknown as CaseOutcome);
+const outcome = (calls: CallDecision[], body?: string, extra: Record<string, unknown> = {}): CaseOutcome => ({ calls, result: { output: body === undefined ? { status: "ok" } : { email: { body } }, ...extra } } as unknown as CaseOutcome);
 
 interface Seen { method: string; path: string; body: Record<string, unknown> | null; headers: Record<string, string> }
-function node(opts: { halted?: boolean; failSealAt?: number; sessionStatusOnce?: number; sealStatus401Times?: number; down?: boolean; verify?: unknown } = {}) {
+function node(opts: { halted?: boolean; failAllSeals?: boolean; failSealAt?: number; sessionStatusOnce?: number; sealStatus401Times?: number; down?: boolean; verify?: unknown } = {}) {
   const seen: Seen[] = [];
-  let seq = 10, seals = 0, s401 = opts.sealStatus401Times ?? 0, sessions = 0;
+  let seq = 10, seals = 0, s401 = opts.sealStatus401Times ?? 0, sessions = 0, attempts = 0;
   const f = (async (url: string | URL | Request, init?: RequestInit) => {
+    attempts++;
     if (opts.down) throw new TypeError("fetch failed");
     const u = new URL(String(url));
     const body = init?.body ? JSON.parse(String(init.body)) : null;
@@ -31,7 +32,7 @@ function node(opts: { halted?: boolean; failSealAt?: number; sessionStatusOnce?:
       case "/api/agent/seal": {
         seals++;
         if (s401 > 0) { s401--; return json({ detail: "agent session unknown or expired" }, 401); }
-        if (opts.failSealAt === seals) return json({ detail: "boom" }, 409);
+        if (opts.failSealAt === seals || opts.failAllSeals) return json({ detail: "boom" }, 409);
         return json({ seq: ++seq, record_hash: "h", decision: opts.halted ? "block" : (body as { decision: string }).decision });
       }
       case "/api/agent/task/end": return json({ seq: ++seq, record_hash: "h" });
@@ -39,7 +40,7 @@ function node(opts: { halted?: boolean; failSealAt?: number; sessionStatusOnce?:
     }
     return json({}, 404);
   }) as typeof fetch;
-  return { f, seen, paths: () => seen.map((s) => s.path), count: (p: string) => seen.filter((s) => s.path === p).length };
+  return { f, seen, attempts: () => attempts, paths: () => seen.map((s) => s.path), count: (p: string) => seen.filter((s) => s.path === p).length };
 }
 
 test("seals each call then the deliverable, in order, inside one task, and returns the sealed counts", async () => {
@@ -57,9 +58,9 @@ test("seals each call then the deliverable, in order, inside one task, and retur
   assert.deepEqual(tools, ["lookup", "send_customer_message", "deliver_output"]);
 });
 
-test("a run with no deliverable text seals the calls and ends the task, with no deliverable record", async () => {
+test("a run that produced nothing (a refusal) seals the calls and ends the task, with no deliverable record", async () => {
   const n = node();
-  const out = await createSealer(cfg, n.f)(run, outcome([call("lookup")]));
+  const out = await createSealer(cfg, n.f)(run, outcome([call("lookup")], undefined, { refused: true }));
   assert.equal(n.count("/api/agent/seal"), 1);
   assert.equal(n.count("/api/agent/task/end"), 1);
   assert.equal(out.deliverable_seq, undefined);
@@ -157,4 +158,64 @@ test("verifyChain reports a node that cannot verify orphan calls as not ok, with
   assert.equal(r.ok, false);
   assert.match(String(r.reason), /parent inference/);
   assert.equal((await verifyChain(cfg, node({ down: true }).f)).ok, false);
+});
+
+test("a run whose output is a structured decision seals that decision as the deliverable, hashed from its canonical JSON", async () => {
+  const n = node();
+  const o = outcome([call("lookup")]);
+  const out = await createSealer(cfg, n.f)(run, o);
+  assert.equal(out.sealed, 2);
+  assert.equal(out.deliverable_hash, sha256Hex('{"status":"ok"}'));
+  const last = n.seen.filter((s) => s.path === "/api/agent/seal").pop()!;
+  assert.match(String((last.body!.ext as { summary: string }).summary), /structured decision/);
+  assert.deepEqual(last.body!.rule_hits, []);
+});
+
+test("a drafted message is checked for an AI disclosure even when the pilot did not (disclosed unset), for the seal only", async () => {
+  const bare = node();
+  await createSealer(cfg, bare.f)(run, outcome([call("lookup")], "Dear applicant, your licence is approved."));
+  assert.deepEqual(bare.seen.filter((s) => s.path === "/api/agent/seal").pop()!.body!.rule_hits, ["prism:ai_disclosure_missing"]);
+  const ok = node();
+  await createSealer(cfg, ok.f)(run, outcome([call("lookup")], "This message was drafted by an AI assistant. A person will release it."));
+  assert.deepEqual(ok.seen.filter((s) => s.path === "/api/agent/seal").pop()!.body!.rule_hits, []);
+  assert.equal(run.disclosed, undefined, "the run record is not changed");
+});
+
+test("circuit breaker: after the node is unreachable no further request is made for the rest of the pilot", async () => {
+  const n = node({ down: true });
+  const seal = createSealer(cfg, n.f);
+  await seal(run, outcome([call("a")]));
+  const after = n.attempts();
+  const out = await seal(run, outcome([call("b")]));
+  assert.equal(n.attempts(), after);
+  assert.equal(out.source, "simulated:unreachable");
+  assert.match(String(out.reason), /unreachable/);
+});
+
+test("circuit breaker: three runs in a row that fall back stop further attempts, and a success resets the count", async () => {
+  const n = node({ failAllSeals: true });
+  const seal = createSealer(cfg, n.f);
+  for (let i = 0; i < 3; i++) await seal(run, outcome([call("a")]));
+  const after = n.attempts();
+  await seal(run, outcome([call("a")]));
+  assert.equal(n.attempts(), after);
+  const ok = node();
+  const s2 = createSealer(cfg, ok.f);
+  for (let i = 0; i < 5; i++) assert.equal((await s2(run, outcome([call("a")]))).source, "node:node-a");
+});
+
+test("verifyChain marks the node's orphan complaint so the page can say it plainly", async () => {
+  const r = await verifyChain(cfg, node({ verify: { ok: false, exit_code: 1, output: "FAIL seq=3 tool_call without parent inference" } }).f);
+  assert.equal(r.orphan, true);
+  const other = await verifyChain(cfg, node({ verify: { ok: false, exit_code: 1, output: "FAIL seq=9 hash mismatch" } }).f);
+  assert.equal(other.orphan, undefined);
+});
+
+test("configProblem names what is wrong when SIJIL_BASE_URL is set but the agent settings are incomplete or invalid", () => {
+  const full = { SIJIL_BASE_URL: "https://sijil.example", SIJIL_AGENT_ID: "spiffe://prism/agent/pilot", SIJIL_AGENT_KEY: KEY, SIJIL_AGENT_TOKEN: "t" };
+  assert.equal(configProblem(full), null);
+  assert.equal(configProblem({}), null, "no node configured is not a problem");
+  assert.match(String(configProblem({ ...full, SIJIL_AGENT_TOKEN: undefined })), /SIJIL_AGENT_TOKEN/);
+  assert.match(String(configProblem({ ...full, SIJIL_AGENT_KEY: "ABC" })), /SIJIL_AGENT_KEY/);
+  assert.ok(!String(configProblem({ ...full, SIJIL_AGENT_KEY: "ABC" })).includes("ABC"));
 });

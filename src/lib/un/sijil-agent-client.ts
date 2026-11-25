@@ -1,4 +1,5 @@
-import { callBody, decisionFromSealed, deliverableBody, deliverableText, sessionMessage, sha256Hex, signProof, type SealBody } from "./sijil-agent.ts";
+import { callBody, decisionFromSealed, deliverableBody, deliverableOf, sessionMessage, sha256Hex, signProof, type SealBody } from "./sijil-agent.ts";
+import { checkCitizenMessage } from "./citizen-message.ts";
 import { liveConfigFromEnv, type LiveConfig } from "./sijil-live.ts";
 import type { PilotRun, SijilSeal } from "./pilot.ts";
 import type { CaseOutcome } from "./task-evals.ts";
@@ -18,6 +19,15 @@ export function agentConfigFromEnv(env: Record<string, string | undefined> = pro
   const agentId = env.SIJIL_AGENT_ID?.trim(), keyHex = env.SIJIL_AGENT_KEY?.trim(), agentToken = env.SIJIL_AGENT_TOKEN?.trim();
   if (!agentId || !keyHex || !agentToken || !/^[0-9a-f]{64}$/.test(keyHex)) return null;
   return { ...base, agentId, keyHex, agentToken };
+}
+
+/** Says what is wrong when SIJIL_BASE_URL is set but the agent settings are incomplete or invalid (the key's value is never echoed); null when fine or when no node is configured. */
+export function configProblem(env: Record<string, string | undefined> = process.env): string | null {
+  if (!env.SIJIL_BASE_URL?.trim()) return null;
+  const missing = ["SIJIL_AGENT_ID", "SIJIL_AGENT_KEY", "SIJIL_AGENT_TOKEN"].filter((k) => !env[k]?.trim());
+  if (missing.length) return `SIJIL_BASE_URL is set but ${missing.join(", ")} ${missing.length > 1 ? "are" : "is"} missing`;
+  if (!/^[0-9a-f]{64}$/.test(env.SIJIL_AGENT_KEY!.trim())) return "SIJIL_AGENT_KEY must be 64 lower-case hexadecimal characters";
+  return null;
 }
 
 export type SealRun = (run: PilotRun, o: CaseOutcome) => Promise<SijilSeal>;
@@ -90,8 +100,10 @@ export function createSealer(cfg: AgentConfig, f: typeof fetch = fetch): SealRun
         decisions.push(String(r.decision));
         if (decisionFromSealed(body, { decision: String(r.decision) }) === "reject") rejected++;
       }
-      const text = deliverableText(o.result.output);
-      const d = deliverableBody(text, run.disclosed ?? null, ctx);
+      const made = deliverableOf(o.result as { output?: unknown; refused?: unknown });
+      // a drafted message is checked for an AI disclosure here when the pilot did not (only client-facing tests are); the run record is not changed
+      const disclosed = made?.kind === "message" ? (run.disclosed ?? checkCitizenMessage(made.text, "en").checks.find((c) => c.id === "ai_disclosure")!.ok) : null;
+      const d = made ? deliverableBody(made.text, disclosed, ctx, made.kind) : null;
       let deliverable: { seq: number; hash: string; decision: string } | undefined;
       if (d) {
         const r = await send("POST", "/api/agent/seal", { ...d, task_seq: taskSeq }, s.id);
@@ -111,28 +123,40 @@ export function createSealer(cfg: AgentConfig, f: typeof fetch = fetch): SealRun
     }
   }
 
+  // circuit breaker: once the node is unreachable (no HTTP answer), or three runs in a row fell back, the rest of the pilot goes straight to the
+  // simulated gate. Without it a frozen node would cost a full timeout on every remaining run.
+  let dead: string | null = null, streak = 0;
+  const fallback = (o: CaseOutcome, reason: string): SijilSeal => ({ source: "simulated:unreachable", sealed: 0, calls_rejected: simulatedRejected(o), reason });
+
   return async (run, o) => {
+    if (dead) return fallback(o, dead);
     try {
       for (let tries = 0; ; tries++) {
         session ??= await handshake(cfg, send);
-        try { return await attempt(run, o, session); } catch (e) {
+        try { const out = await attempt(run, o, session); streak = 0; return out; } catch (e) {
           if (e instanceof SealError && e.status === 401 && tries === 0) { session = null; continue; }
           throw e;
         }
       }
     } catch (e) {
       session = null;
-      return { source: "simulated:unreachable", sealed: 0, calls_rejected: simulatedRejected(o), reason: e instanceof SealError ? e.message : "Sijil sealing failed" };
+      const reason = e instanceof SealError ? e.message : "Sijil sealing failed";
+      streak++;
+      if ((e instanceof SealError && e.status === undefined) || streak >= 3) dead = reason;
+      return fallback(o, reason);
     }
   };
 }
 
 /** The node's own verification of its chain. Asks for orphan-tolerant verification (our agent's model calls do not go through the node, so its tool
  * calls have no parent model-call record); a node that cannot do that reports ok:false with its reason. */
-export async function verifyChain(cfg: AgentConfig, f: typeof fetch = fetch): Promise<{ ok: boolean; reason?: string }> {
+export async function verifyChain(cfg: AgentConfig, f: typeof fetch = fetch): Promise<{ ok: boolean; reason?: string; orphan?: true }> {
   try {
     const v = await sender(cfg, f)("GET", "/api/verify?allow_orphan_tool_calls=1");
-    return v.ok === true ? { ok: true } : { ok: false, reason: String(v.output ?? "verification failed").slice(0, 160) };
+    if (v.ok === true) return { ok: true };
+    const output = String(v.output ?? "verification failed");
+    // the node's strict verifier stops at the first tool call that has no recorded model call behind it (ours never do): say so, not "tampered"
+    return { ok: false, reason: output.slice(0, 160), ...(/without parent inference/i.test(output) ? { orphan: true as const } : {}) };
   } catch (e) {
     return { ok: false, reason: e instanceof SealError ? e.message : "verification failed" };
   }

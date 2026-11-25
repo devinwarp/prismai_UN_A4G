@@ -4,7 +4,7 @@ import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { isUuid } from "@/lib/un/model";
 import { buildReport } from "@/lib/un/pilot";
 import { couldNotRun, executePilot, generatedCases, planPilot, sealSummary, spreadSample, type AgentInfo } from "@/lib/un/pilot-run";
-import { agentConfigFromEnv, createSealer, verifyChain, type AgentConfig } from "@/lib/un/sijil-agent-client";
+import { agentConfigFromEnv, configProblem, createSealer, verifyChain, type AgentConfig } from "@/lib/un/sijil-agent-client";
 import { costOf, metered, recordToolCalls } from "@/lib/un/cost";
 import { makeDrafter } from "@/lib/un/notice-draft";
 import { prices } from "@/lib/un/price-store";
@@ -97,14 +97,14 @@ export async function POST(request: Request, { params }: Ctx) {
   };
   // Sijil: when a node and an agent key are configured every run is sealed into it (sijil-agent-client.ts); otherwise the simulated gate stands
   let sijilCfg: AgentConfig | null = null, sijilNote: string | undefined;
-  try { sijilCfg = agentConfigFromEnv(); } catch (e) { sijilNote = e instanceof Error ? e.message : "invalid Sijil configuration"; }
+  try { sijilCfg = agentConfigFromEnv(); if (!sijilCfg) sijilNote = configProblem() ?? undefined; } catch (e) { sijilNote = e instanceof Error ? e.message : "invalid Sijil configuration"; }
   const seal = sijilCfg ? createSealer(sijilCfg) : undefined;
   const whole = await metered(() => executePilot(tset.blueprints, cases, run, wantReps, Date.now, role, only, seal));
   const { runs, plan } = whole.result;
   const sealed = sealSummary(runs);
   if (sealed && sijilCfg) {
     const chain = sealed.runs_sealed > 0 ? await verifyChain(sijilCfg) : null;
-    plan.sijil = { ...sealed, chain_ok: chain ? chain.ok : null, ...(chain && !chain.ok && chain.reason ? { chain_reason: chain.reason } : {}) };
+    plan.sijil = { ...sealed, chain_ok: chain ? chain.ok : null, ...(chain && !chain.ok && chain.reason ? { chain_reason: chain.reason } : {}), ...(chain && !chain.ok && chain.orphan ? { chain_orphan: true } : {}) };
   } else if (sijilNote) plan.sijil = { source: "simulated", sealed: 0, runs_sealed: 0, runs: runs.length, chain_ok: null, halted: false, note: sijilNote };
   const pilotCost = costOf(whole.usage, table);
   const agent: AgentInfo = { reasoner: llm ? "llm" : "rule", ...(llm ? { model: llm.model, usage: { calls: llm.usage.calls, fallbacks: llm.usage.fallbacks, prompt_tokens: llm.usage.prompt_tokens, completion_tokens: llm.usage.completion_tokens } } : {}), ...(drafter ? { drafter: { model: drafter.model, ...drafter.usage } } : {}), ...(reflector ? { reflection: { model: reflector.model, ...reflector.usage } } : {}), ...(only || wantReps < params_.min_runs_per_test ? { sample: { tests: only ? only.size : bound.length, of: bound.length, reps: wantReps } } : {}) };

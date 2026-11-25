@@ -85,6 +85,10 @@ export interface SealSummary {
   /** The node's own verification of its chain after the pilot; null when no run was sealed. */
   chain_ok: boolean | null;
   chain_reason?: string;
+  /** The node's strict verifier stopped at a tool call with no recorded model call (expected for this agent), not at a broken chain. */
+  chain_orphan?: boolean;
+  /** Why the runs fell back to the simulated gate (the first reason), when they did. */
+  reason?: string;
   /** Every sealed record came back blocked: the node is halted. */
   halted: boolean;
   /** Why no node was used, when that was a configuration problem. */
@@ -100,6 +104,7 @@ export function sealSummary(runs: PilotRun[]): Omit<SealSummary, "chain_ok"> | u
   return {
     source, sealed: nodeRuns.reduce((a, r) => a + r.sijil!.sealed, 0), runs_sealed: nodeRuns.length, runs: runs.length,
     halted: nodeRuns.length > 0 && nodeRuns.every((r) => r.sijil!.halted === true),
+    ...(tried.find((r) => r.sijil!.reason)?.sijil!.reason ? { reason: tried.find((r) => r.sijil!.reason)!.sijil!.reason } : {}),
   };
 }
 
