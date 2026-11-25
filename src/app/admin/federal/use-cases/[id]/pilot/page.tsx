@@ -18,6 +18,7 @@ import { AgentLine } from "./AgentLine";
 import { GeneratedCases } from "./GeneratedCases";
 import { GoalReview } from "./GoalReview";
 import { RunPilot } from "./PilotControls";
+import { SealLine } from "../../../_components/SealLine";
 
 export const metadata: Metadata = { title: "Pilot and verdict", robots: { index: false, follow: false } };
 
@@ -83,6 +84,7 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
                 </p>
                 <p className="mt-2 text-xs text-ink-soft"><TV k="pi.meta" en="{runs} runs ({reps} repetitions of each test) · {at} · {by}" v={{ runs: last.runs, reps: last.reps, at: new Date(last.at).toLocaleString("en-GB", { timeZone: "Asia/Dubai" }), by: last.actor }} /></p>
                 {last.plan.agent && <AgentLine agent={last.plan.agent} />}
+                <SealLine sijil={last.plan.sijil} />
                 <p className="mt-1 font-mono text-[11px] text-ink-soft">tests {last.report.test_set_hash.slice(0, 12)} · params {last.report.params_hash.slice(0, 12)} · report {last.report.report_hash.slice(0, 12)}</p>
 
                 <div className="mt-4 overflow-x-auto" role="region" {...scrollFocus} aria-label="Findings">

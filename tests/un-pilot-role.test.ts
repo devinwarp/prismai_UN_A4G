@@ -56,7 +56,7 @@ test("the pilot route derives the role from the profile, passes it to both calls
   assert.match(src, /!Object\.hasOwn\(ROLE_OF_PROFILE, profile\)\) return NextResponse\.json\(\{ error: [^\n]*status: 422/);
   assert.match(src, /const role = ROLE_OF_PROFILE\[profile\]/);
   assert.match(src, /generatedCases\(tset\.blueprints, ALL_CASES, role(, [^)]*)?\)/);
-  assert.match(src, /executePilot\([^\n]*, role(, only)?\)/);
+  assert.match(src, /executePilot\([^\n]*, role(, only)?(, seal)?\)/);
   assert.ok(src.indexOf("hasOwn(ROLE_OF_PROFILE") < src.indexOf("loadTestLog("), "refused before any state is read");
 });
 

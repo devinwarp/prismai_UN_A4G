@@ -72,6 +72,27 @@ export interface PilotRun {
   disputed?: boolean;
   /** What differed, from checkExpectation. */
   differences?: string[];
+  /** Where the sealed figures for this run came from (a Sijil node, or the simulated gate), when a seal was attempted. */
+  sijil?: SijilSeal;
+}
+
+/** What sealing one run into a Sijil node produced, or why it fell back to the simulated gate (never a mix within one run). */
+export interface SijilSeal {
+  /** "node:<id>" when the run was sealed into a node; "simulated:unreachable" when a node was configured but the run fell back. */
+  source: string;
+  /** Records sealed (tool calls plus the deliverable). */
+  sealed: number;
+  /** Tool calls rejected: by our gate, or blocked by the node (halt). Not the deliverable record. */
+  calls_rejected: number;
+  /** Every record sealed as block: the node is halted. */
+  halted?: boolean;
+  task_seq?: number;
+  deliverable_seq?: number;
+  /** sha256 of the exact deliverable text. */
+  deliverable_hash?: string;
+  deliverable_decision?: string;
+  /** Why the run fell back. Never contains a key, token or session id. */
+  reason?: string;
 }
 
 export interface Rate { k: number; n: number; rate: number | null; lower: number | null }

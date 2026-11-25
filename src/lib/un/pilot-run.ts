@@ -1,7 +1,8 @@
 import type { UsageSnapshot } from "./cost.ts";
 import { createHash } from "node:crypto";
 import { OUTSIDE, type Blueprint } from "./test-derive.ts";
-import type { PilotRun } from "./pilot.ts";
+import type { PilotRun, SijilSeal } from "./pilot.ts";
+import type { SealRun } from "./sijil-agent-client.ts";
 import { checkCitizenMessage, PROMISE } from "./citizen-message.ts";
 import { figureProblems, mentionsDate, OFFICE } from "./notice-draft.ts";
 import { checkExpectation } from "./testgen.ts";
@@ -67,6 +68,44 @@ export interface PilotPlan {
   unexecuted: { id: string; family: string; task: string | null; why: string }[];
   /** Non-functional tests: each is a measure over every run (latency, consistency, ...), not a case of its own. */
   aggregate?: string[];
+  /** Whether the runs of this pilot were sealed into a Sijil node, and what the node said about its chain. Absent on pilots recorded before sealing. */
+  sijil?: SealSummary;
+}
+
+export type { SealRun };
+
+/** Where a pilot's sealed figures came from. */
+export interface SealSummary {
+  /** "node:<id>" when every run was sealed into the node; "partial" when some were; "simulated" when none was (unset, or every run fell back). */
+  source: string;
+  /** Records sealed across the pilot. */
+  sealed: number;
+  runs_sealed: number;
+  runs: number;
+  /** The node's own verification of its chain after the pilot; null when no run was sealed. */
+  chain_ok: boolean | null;
+  chain_reason?: string;
+  /** The node's strict verifier stopped at a tool call with no recorded model call (expected for this agent), not at a broken chain. */
+  chain_orphan?: boolean;
+  /** Why the runs fell back to the simulated gate (the first reason), when they did. */
+  reason?: string;
+  /** Every sealed record came back blocked: the node is halted. */
+  halted: boolean;
+  /** Why no node was used, when that was a configuration problem. */
+  note?: string;
+}
+
+/** What the runs of a pilot say about sealing; undefined when no seal was attempted. */
+export function sealSummary(runs: PilotRun[]): Omit<SealSummary, "chain_ok"> | undefined {
+  const tried = runs.filter((r) => r.sijil);
+  if (!tried.length) return undefined;
+  const nodeRuns = tried.filter((r) => r.sijil!.source.startsWith("node:"));
+  const source = nodeRuns.length === 0 ? "simulated" : nodeRuns.length === runs.length ? nodeRuns[0].sijil!.source : "partial";
+  return {
+    source, sealed: nodeRuns.reduce((a, r) => a + r.sijil!.sealed, 0), runs_sealed: nodeRuns.length, runs: runs.length,
+    halted: nodeRuns.length > 0 && nodeRuns.every((r) => r.sijil!.halted === true),
+    ...(tried.find((r) => r.sijil!.reason)?.sijil!.reason ? { reason: tried.find((r) => r.sijil!.reason)!.sijil!.reason } : {}),
+  };
 }
 
 export function planPilot(blueprints: Blueprint[], cases: TaskCase[], role: Role = "dv"): PilotPlan {
@@ -148,7 +187,7 @@ export function spreadSample(boundIds: string[], n: number): string[] {
 }
 
 /** Execute the plan: every bound case, `reps` times. `now` is injected (Date.now in the app). */
-export async function executePilot(blueprints: Blueprint[], cases: TaskCase[], run: RunCase, reps: number, now: () => number = Date.now, role: Role = "dv", only?: Set<string>): Promise<{ runs: PilotRun[]; plan: PilotPlan }> {
+export async function executePilot(blueprints: Blueprint[], cases: TaskCase[], run: RunCase, reps: number, now: () => number = Date.now, role: Role = "dv", only?: Set<string>, seal?: SealRun): Promise<{ runs: PilotRun[]; plan: PilotPlan }> {
   const plan = planPilot(blueprints, cases, role);
   // a sample runs only the named blueprints; the others are not run and not listed as unexecuted either
   if (only) for (const id of Object.keys(plan.bound)) if (!only.has(id)) delete plan.bound[id];
@@ -160,7 +199,14 @@ export async function executePilot(blueprints: Blueprint[], cases: TaskCase[], r
       for (let rep = 1; rep <= reps; rep++) {
         const t0 = now();
         const o = await run(c);
-        runs.push(toPilotRun(b, o, rep, Math.max(0, now() - t0)));
+        const pr = toPilotRun(b, o, rep, Math.max(0, now() - t0));
+        if (seal) {
+          // sealed into a Sijil node when one is configured; a failure never ends the pilot, the run keeps the simulated gate's figures and says so
+          const sealed: SijilSeal = await seal(pr, o).catch(() => ({ source: "simulated:unreachable", sealed: 0, calls_rejected: o.calls.filter((c) => c.decision === "reject").length, reason: "Sijil sealing failed" }));
+          pr.sijil = sealed;
+          if (sealed.source.startsWith("node:")) pr.rejected_calls = pr.refusal_expected ? 0 : sealed.calls_rejected;
+        }
+        runs.push(pr);
       }
     }
   }
