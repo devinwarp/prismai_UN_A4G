@@ -23,7 +23,7 @@ function Side({ side, okLabel }: { side: DemoSide; okLabel: string }) {
         })}
         {rules.length ? ` · ${rules.join(", ")}` : ""}
       </p>
-      <p className="mt-1 text-sm font-medium">{side.allowed ? okLabel : tv("tn.demo.notallowed", "Inference not allowed (alignment blocks)")}</p>
+      <p className="mt-1 text-sm font-medium">{side.allowed ? okLabel : tv("tn.demo.notallowed", "Inference not allowed (alignment blocks)", {})}</p>
       {side.seqs.length > 0 && <p className="mt-1 font-mono text-xs text-ink-soft" dir="ltr">seq {side.seqs.join(", ")}</p>}
     </div>
   );
