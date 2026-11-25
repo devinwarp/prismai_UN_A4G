@@ -25,7 +25,8 @@ if (!hosted) {
   const org = String(db.organizations?.[0]?.id);
   const now = new Date().toISOString();
   db.profiles ??= []; db.un_role_assignments ??= [];
-  let people = 0, roles = 0, missing: string[] = [];
+  let people = 0, roles = 0;
+  const missing: string[] = [];
   for (const o of owners) {
     const uc = (db.un_use_cases ?? []).find((u) => u.ext_id === o.use_case && u.org_id === org);
     if (!uc) { missing.push(o.use_case); continue; }
