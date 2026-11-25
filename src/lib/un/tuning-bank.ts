@@ -1,5 +1,6 @@
+import { SijilBlockedError } from "../llm.ts";
 import type { ReactConfig } from "./react-config.ts";
-import { reactAnswer, type ReactResult, type Retrieve, type Step } from "./react-sop.ts";
+import { reactAnswer, type ReactResult, type Reasoner, type Reflector, type Retrieve, type Step } from "./react-sop.ts";
 
 // The question bank for tuning the knowledge-base agent. Each question says where the answer is
 // (one of several acceptable chunks) or that it must go outside (the SOP does not say). Questions are
@@ -16,7 +17,9 @@ export type QVerdict =
   /** the SOP answers it but the loop went outside */
   | "went_outside"
   /** the SOP does not answer it but the loop answered */
-  | "answered_anyway";
+  | "answered_anyway"
+  /** the Sijil node blocked the prompt before inference */
+  | "sijil_blocked";
 
 export interface QResult {
   id: string;
@@ -27,6 +30,8 @@ export interface QResult {
   status: ReactResult["status"];
   citations: string[];
   steps: Step[];
+  /** the node's block record when verdict is sijil_blocked */
+  sijil_block?: { rules: string[]; seq: number };
 }
 
 const S = "SOP-LIC-014#";
@@ -86,11 +91,17 @@ export function verdictOf(x: Question, r: ReactResult): QVerdict {
 }
 
 /** Run questions through the real ReAct loop (the same reactAnswer the agent calls) under a config. */
-export async function runQuestions(sopId: string, cfg: ReactConfig, qs: Question[], retrieve: Retrieve): Promise<QResult[]> {
+export async function runQuestions(sopId: string, cfg: ReactConfig, qs: Question[], retrieve: Retrieve, agent: { reasoner?: Reasoner; reflect?: Reflector } = {}): Promise<QResult[]> {
   const out: QResult[] = [];
   for (const x of qs) {
-    const r = await reactAnswer(sopId, x.question, { retrieve, config: cfg });
-    out.push({ id: x.id, question: x.question, split: x.split, expect: x.expect, verdict: verdictOf(x, r), status: r.status, citations: r.citations, steps: r.steps });
+    try {
+      const r = await reactAnswer(sopId, x.question, { retrieve, config: cfg, ...agent });
+      out.push({ id: x.id, question: x.question, split: x.split, expect: x.expect, verdict: verdictOf(x, r), status: r.status, citations: r.citations, steps: r.steps });
+    } catch (e) {
+      // A Sijil pre-inference block is a counted outcome, not a crash: the question could not be asked.
+      if (!(e instanceof SijilBlockedError)) throw e;
+      out.push({ id: x.id, question: x.question, split: x.split, expect: x.expect, verdict: "sijil_blocked", status: "outside_kb", citations: [], steps: [], sijil_block: { rules: e.rules, seq: e.seq } });
+    }
   }
   return out;
 }

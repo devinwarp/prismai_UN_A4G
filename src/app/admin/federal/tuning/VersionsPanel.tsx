@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import type { TuningState } from "@/lib/un/tuning-service";
-import type { Scores, Version } from "@/lib/un/tuning-versions";
+import type { Scores, SijilScore, Version } from "@/lib/un/tuning-versions";
 import { btnGhost, btnPrimary, field } from "../_components/ui";
 import { useAct, useT } from "./useTuning";
 
@@ -37,6 +37,22 @@ function ScoreGrid({ before, after }: { before: Scores; after: Scores }) {
   );
 }
 
+function SijilNote({ before, after }: { before?: SijilScore; after?: SijilScore }) {
+  const { t, tv } = useT();
+  const s = after ?? before;
+  if (!s) return null;
+  const rules = Object.keys(s.by_rule).length ? ` · ${Object.keys(s.by_rule).join(", ")}` : "";
+  return (
+    <p className="mt-2 text-xs text-ink-soft">
+      {tv("tn.v.sijil", "Sijil screening: {b} block(s) before, {a} after ({at} attacks stopped, {al} alignment) — inference {ok}{rules}", {
+        b: before?.blocks ?? 0, a: after?.blocks ?? 0,
+        at: after?.attacks_stopped ?? before?.attacks_stopped ?? 0, al: after?.alignment ?? before?.alignment ?? 0,
+        ok: s.allowed ? t("tn.v.allowed", "allowed") : t("tn.v.blocked", "blocked"), rules,
+      })}
+    </p>
+  );
+}
+
 function Decide({ v, canEdit }: { v: Version; canEdit: boolean }) {
   const { t } = useT();
   const { busy, error, act } = useAct();
@@ -63,6 +79,17 @@ export default function VersionsPanel({ state, canEdit }: { state: TuningState; 
       <h2 id="h-versions" className="font-display text-2xl font-medium">{t("tn.v.title", "Versions and approval")}</h2>
       <p className="mt-2 max-w-[68ch] text-sm text-ink-soft">{t("tn.v.lede", "Every change is a version. A person approves the version the agent uses. Code refuses an approval of a value outside the safe ranges, of a stale version, and of a version that makes the agent answer what the SOP does not answer.")}</p>
       {!versions.length && <p className="mt-4 text-sm text-ink-soft">{t("tn.v.none", "No versions yet. The agent uses the built-in defaults (v0).")}</p>}
+      {(() => {
+        // the iteration at which each target's prompt version was agreed: the first approved version whose
+        // screening recorded no alignment block (inference allowed). Only shown when screening recorded blocks.
+        const screened = versions.some((v) => v.before.sijil || v.after.sijil);
+        if (!screened) return null;
+        const agreed = [...new Set(versions.map((v) => v.target))].map((target) => {
+          const vs = versions.filter((v) => v.target === target && v.status === "approved" && v.after.sijil?.allowed).sort((a, b) => a.version - b.version);
+          return vs.length ? `${target} v${vs[0].version}` : null;
+        }).filter(Boolean);
+        return agreed.length ? <p className="mt-3 text-sm text-ink-soft">{tv("tn.v.agreed", "First approved version per target with inference allowed (no alignment blocks): {list}", { list: agreed.join(", ") })}</p> : null;
+      })()}
       <ul className="mt-4 space-y-3">
         {versions.map((v) => (
           <li key={v.id} className="rounded-2xl border border-line bg-card p-5">
@@ -73,6 +100,7 @@ export default function VersionsPanel({ state, canEdit }: { state: TuningState; 
             <p className="mt-1 text-sm font-medium">{v.summary}</p>
             <p className="mt-1 text-xs text-ink-soft">{tv("tn.v.by", "Proposed by {p}", { p: v.proposed_by })}{v.decided_by ? ` · ${tv("tn.v.decided", "decided by {d}", { d: v.decided_by })}` : ""}{v.comment ? ` · “${v.comment}”` : ""}</p>
             <ScoreGrid before={v.before} after={v.after} />
+            <SijilNote before={v.before.sijil} after={v.after.sijil} />
             {v.after.tasks.error && <p className="mt-2 text-xs" style={{ color: "var(--color-v-nogo)" }}>{tv("tn.t.error", "The agent could not open under these settings: {e}", { e: v.after.tasks.error })}</p>}
             {v.status === "proposed" && <Decide v={v} canEdit={canEdit} />}
           </li>

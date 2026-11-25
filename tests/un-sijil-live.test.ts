@@ -52,7 +52,7 @@ test("pullLive verifies first, sends the Bearer token, and returns runs", async 
   assert.equal(pull.verified, true);
   assert.equal(pull.runs.length, 1);
   assert.equal(pull.nodeId, "node-a");
-  assert.match(seen[0].url, /\/api\/verify$/);
+  assert.match(seen[0].url, /\/api\/verify\?allow_orphan_tool_calls=1$/);
   assert.equal(seen[0].auth, "Bearer secret-token");
 });
 
