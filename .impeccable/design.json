@@ -1,0 +1,426 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-11-25T04:14:26.736765+00:00",
+  "title": "Design System: Prism",
+  "extensions": {
+    "colorMeta": {
+      "paper": {
+        "role": "neutral",
+        "displayName": "Warm Paper",
+        "canonical": "#f6f4ec",
+        "oklch": "oklch(96.6% 0.011 95)",
+        "tonalRamp": [
+          "#171613",
+          "#2f2e2a",
+          "#494842",
+          "#65635c",
+          "#88867f",
+          "#acaba5",
+          "#d2d1cd",
+          "#efeeec"
+        ]
+      },
+      "paper-deep": {
+        "role": "neutral",
+        "displayName": "Paper Shade",
+        "canonical": "#eceade",
+        "oklch": "oklch(93.5% 0.016 99)",
+        "tonalRamp": [
+          "#171612",
+          "#2f2e28",
+          "#49483f",
+          "#656459",
+          "#88867c",
+          "#adaba2",
+          "#d2d1cb",
+          "#efefea"
+        ]
+      },
+      "card": {
+        "role": "neutral",
+        "displayName": "Card Cream",
+        "canonical": "#fffdf6",
+        "oklch": "oklch(99.4% 0.009 94)",
+        "tonalRamp": [
+          "#171614",
+          "#2f2e2a",
+          "#494842",
+          "#65635d",
+          "#888680",
+          "#acaba5",
+          "#d2d1cd",
+          "#efeeec"
+        ]
+      },
+      "ink": {
+        "role": "neutral",
+        "displayName": "Field Ink",
+        "canonical": "#1c211c",
+        "oklch": "oklch(24.1% 0.012 145)",
+        "tonalRamp": [
+          "#141714",
+          "#2b2f2b",
+          "#444944",
+          "#5f655f",
+          "#828882",
+          "#a7aca7",
+          "#ced2ce",
+          "#edefed"
+        ]
+      },
+      "ink-soft": {
+        "role": "neutral",
+        "displayName": "Soft Ink",
+        "canonical": "#5e685c",
+        "oklch": "oklch(50.5% 0.022 140)",
+        "tonalRamp": [
+          "#141713",
+          "#2a3029",
+          "#424b40",
+          "#5d675b",
+          "#7f8a7d",
+          "#a5aea3",
+          "#cdd3cb",
+          "#ecf0eb"
+        ]
+      },
+      "line": {
+        "role": "neutral",
+        "displayName": "Ruled Line",
+        "canonical": "#dcd8c6",
+        "oklch": "oklch(88.1% 0.025 97)",
+        "tonalRamp": [
+          "#171610",
+          "#302e24",
+          "#4b483a",
+          "#676354",
+          "#8a8676",
+          "#aeab9d",
+          "#d3d1c7",
+          "#f0efe8"
+        ]
+      },
+      "pine": {
+        "role": "primary",
+        "displayName": "Deep Pine",
+        "canonical": "#2f6242",
+        "oklch": "oklch(45.1% 0.077 154)",
+        "tonalRamp": [
+          "#071b0e",
+          "#153621",
+          "#255336",
+          "#3d704f",
+          "#609471",
+          "#8cb799",
+          "#bcdac5",
+          "#e1f4e6"
+        ]
+      },
+      "pine-soft": {
+        "role": "primary",
+        "displayName": "Pine Mist",
+        "canonical": "#dce7da",
+        "oklch": "oklch(91.6% 0.021 141)",
+        "tonalRamp": [
+          "#141713",
+          "#2a3029",
+          "#424a41",
+          "#5d665b",
+          "#808a7e",
+          "#a5aea3",
+          "#cdd3cc",
+          "#ecf0eb"
+        ]
+      },
+      "pine-deep": {
+        "role": "primary",
+        "displayName": "Pressed Pine",
+        "canonical": "#27513a",
+        "oklch": "oklch(39.7% 0.062 158)",
+        "tonalRamp": [
+          "#0a1a11",
+          "#1a3425",
+          "#2b513c",
+          "#446e56",
+          "#669278",
+          "#90b59f",
+          "#bfd8c8",
+          "#e3f3e9"
+        ]
+      },
+      "moss": {
+        "role": "neutral",
+        "displayName": "Moss",
+        "canonical": "#3f4a3a",
+        "oklch": "oklch(39.4% 0.030 136)",
+        "tonalRamp": [
+          "#131811",
+          "#293026",
+          "#414b3d",
+          "#5c6756",
+          "#7e8b79",
+          "#a4af9f",
+          "#ccd4c9",
+          "#ebf0e9"
+        ]
+      },
+      "ember": {
+        "role": "secondary",
+        "displayName": "Burnt Ember",
+        "canonical": "#a6552e",
+        "oklch": "oklch(54.0% 0.119 45)",
+        "tonalRamp": [
+          "#2a0b00",
+          "#4e1d02",
+          "#753007",
+          "#994921",
+          "#c06d46",
+          "#df9776",
+          "#f7c4ad",
+          "#ffe6d7"
+        ]
+      },
+      "slate": {
+        "role": "secondary",
+        "displayName": "Slate Blue",
+        "canonical": "#4d5e6b",
+        "oklch": "oklch(47.3% 0.030 241)",
+        "tonalRamp": [
+          "#10171c",
+          "#252f37",
+          "#3b4a55",
+          "#556673",
+          "#778997",
+          "#9eadb9",
+          "#c8d3db",
+          "#e8f0f5"
+        ]
+      },
+      "sand": {
+        "role": "tertiary",
+        "displayName": "Dry Sand",
+        "canonical": "#a89f8a",
+        "oklch": "oklch(70.4% 0.031 88)",
+        "tonalRamp": [
+          "#19160e",
+          "#322d21",
+          "#4e4736",
+          "#6b624f",
+          "#8e8571",
+          "#b2aa99",
+          "#d6d1c4",
+          "#f2eee6"
+        ]
+      },
+      "ochre": {
+        "role": "tertiary",
+        "displayName": "Field Ochre",
+        "canonical": "#8a6d2f",
+        "oklch": "oklch(55.1% 0.088 84)",
+        "tonalRamp": [
+          "#1f1400",
+          "#3c2b01",
+          "#5c4303",
+          "#7b5e1f",
+          "#9f8244",
+          "#c1a776",
+          "#e0cfad",
+          "#f9edd7"
+        ]
+      }
+    },
+    "typographyMeta": {
+      "display": {
+        "displayName": "Display",
+        "purpose": "Page title; Spectral 500."
+      },
+      "headline": {
+        "displayName": "Headline",
+        "purpose": "Panel and drawer titles."
+      },
+      "figure": {
+        "displayName": "Figure",
+        "purpose": "The deployed % and compliant % only; tabular numerals."
+      },
+      "title": {
+        "displayName": "Title",
+        "purpose": "Chart questions, link titles, card headings."
+      },
+      "body": {
+        "displayName": "Body",
+        "purpose": "Descriptions and table cells; max 68ch for prose."
+      },
+      "label": {
+        "displayName": "Label",
+        "purpose": "Column heads, KPI captions, IDs, badges; mono uppercase."
+      }
+    },
+    "shadows": [
+      {
+        "name": "popover",
+        "value": "0 12px 32px -12px color-mix(in srgb, #1c211c 45%, transparent)",
+        "purpose": "Where-to-go menu and verdict key, with a 1px ink border."
+      },
+      {
+        "name": "floating-table",
+        "value": "0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1)",
+        "purpose": "The View-as-table alternative opening over a chart."
+      },
+      {
+        "name": "drawer-scrim",
+        "value": "backdrop rgba(28, 33, 28, 0.4)",
+        "purpose": "Behind the Configure drawer."
+      }
+    ],
+    "motion": [
+      {
+        "name": "bar-grow",
+        "value": "0.7s cubic-bezier(0.22, 1, 0.36, 1)",
+        "purpose": "Progress and tally bars grow in once; none under reduced motion."
+      },
+      {
+        "name": "fx-fade",
+        "value": "0.4s cubic-bezier(0.25, 1, 0.5, 1)",
+        "purpose": "Coach marks and chain blocks appear; none under reduced motion."
+      },
+      {
+        "name": "state-transition",
+        "value": "0.15s ease",
+        "purpose": "Hover on buttons and the glossary tip."
+      }
+    ],
+    "breakpoints": [
+      {
+        "name": "desk",
+        "value": "min-width 80rem and min-height 37.5rem"
+      },
+      {
+        "name": "short",
+        "value": "desk and max-height 46rem"
+      },
+      {
+        "name": "sm",
+        "value": "640px"
+      }
+    ]
+  },
+  "components": [
+    {
+      "name": "Primary Button",
+      "kind": "button",
+      "refersTo": "button-primary",
+      "description": "The one filled action on a screen: run a scenario, save.",
+      "html": "<button class=\"ds-btn-primary\">Run a staged scenario <span aria-hidden=\"true\">→</span></button>",
+      "css": ".ds-btn-primary{font-family:Geist,ui-sans-serif,system-ui,sans-serif;display:inline-flex;align-items:center;gap:8px;background:#1c211c;color:#f6f4ec;border:0;border-radius:12px;padding:8px 16px;font-size:14px;font-weight:500;cursor:pointer;transition:opacity .15s}.ds-btn-primary:hover{opacity:.9}.ds-btn-primary:focus-visible{outline:2px solid #2f6242;outline-offset:2px}.ds-btn-primary:disabled{opacity:.5;cursor:not-allowed}"
+    },
+    {
+      "name": "Ghost Button",
+      "kind": "button",
+      "refersTo": "button-ghost",
+      "description": "Toolbar and secondary actions: Where to go, Configure, Close.",
+      "html": "<button class=\"ds-btn-ghost\">Configure</button>",
+      "css": ".ds-btn-ghost{font-family:Geist,ui-sans-serif,system-ui,sans-serif;background:#f6f4ec;color:#1c211c;border:1px solid #dcd8c6;border-radius:12px;padding:8px 14px;font-size:14px;font-weight:500;cursor:pointer;transition:border-color .15s}.ds-btn-ghost:hover{border-color:#5e685c}.ds-btn-ghost:focus-visible{outline:2px solid #2f6242;outline-offset:2px}"
+    },
+    {
+      "name": "Text Field",
+      "kind": "input",
+      "refersTo": "input",
+      "description": "Search and filter fields; Deep Pine border on focus.",
+      "html": "<label class=\"ds-field\"><span>Search</span><input type=\"search\" placeholder=\"ID, title or entity\"></label>",
+      "css": ".ds-field{font-family:Geist,ui-sans-serif,system-ui,sans-serif;display:block;font-size:12px}.ds-field span{font-weight:500}.ds-field input{display:block;width:220px;margin-top:4px;background:#f6f4ec;color:#1c211c;border:1px solid #dcd8c6;border-radius:8px;padding:8px 12px;font:inherit;font-size:14px}.ds-field input::placeholder{color:#5e685c}.ds-field input:focus{border-color:#2f6242;outline:2px solid #2f6242;outline-offset:2px}"
+    },
+    {
+      "name": "Verdict Badge",
+      "kind": "chip",
+      "refersTo": "badge-verdict",
+      "description": "Glyph, then word, tinted from the verdict colour. Colour is never alone.",
+      "html": "<span class=\"ds-badge\"><span aria-hidden=\"true\" class=\"g\">◐</span><span>GO SUPERVISED</span></span>",
+      "css": ".ds-badge{font-family:JetBrains Mono,ui-monospace,monospace;display:inline-flex;align-items:center;gap:6px;border:1px solid color-mix(in srgb,#4d5e6b 55%,transparent);background:color-mix(in srgb,#4d5e6b 13%,transparent);border-radius:9999px;padding:2px 8px;font-size:11px;letter-spacing:.025em;color:#1c211c;white-space:nowrap}.ds-badge .g{color:#4d5e6b}"
+    },
+    {
+      "name": "Entity Chip",
+      "kind": "chip",
+      "refersTo": "chip-entity",
+      "description": "A filter and a tally: deployed (pine) and compliant (slate) bars against the entity's total.",
+      "html": "<button class=\"ds-chip\" aria-pressed=\"false\"><span class=\"n\">Marsa Public Services Authority</span><span class=\"c\">3/4 · 2 ✓</span><span class=\"bar\"><i class=\"d\"></i><i class=\"k\"></i></span></button>",
+      "css": ".ds-chip{font-family:Geist,ui-sans-serif,system-ui,sans-serif;display:block;width:200px;text-align:start;background:#f6f4ec;border:1px solid #dcd8c6;border-radius:8px;padding:6px 10px;cursor:pointer;color:#1c211c}.ds-chip:hover{border-color:#5e685c}.ds-chip[aria-pressed=true]{border-color:#1c211c;background:#eceade}.ds-chip .n{display:block;font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.ds-chip .c{display:block;margin-top:4px;font-family:JetBrains Mono,ui-monospace,monospace;font-size:10px;color:#5e685c}.ds-chip .bar{position:relative;display:block;height:6px;margin-top:4px;border-radius:9999px;background:#eceade}.ds-chip .bar i{position:absolute;inset:0 auto 0 0;border-radius:9999px}.ds-chip .d{width:75%;background:#2f6242}.ds-chip .k{width:50%;background:#4d5e6b}.ds-chip:focus-visible{outline:2px solid #2f6242;outline-offset:2px}"
+    },
+    {
+      "name": "Card",
+      "kind": "card",
+      "refersTo": "card",
+      "description": "The one container: Card Cream, hairline border, no shadow, never nested.",
+      "html": "<section class=\"ds-card\"><h3>Where in its life is each one?</h3><p>Seven stages from intake to deployed.</p></section>",
+      "css": ".ds-card{font-family:Geist,ui-sans-serif,system-ui,sans-serif;background:#fffdf6;color:#1c211c;border:1px solid #dcd8c6;border-radius:16px;padding:24px;width:320px}.ds-card h3{margin:0;font-size:16px;font-weight:500}.ds-card p{margin:6px 0 0;font-size:14px;color:#5e685c;line-height:1.6}"
+    },
+    {
+      "name": "Headline Band",
+      "kind": "custom",
+      "refersTo": "headline-band",
+      "description": "The signature: two serif percentages, side by side, with the target tick on shared tracks.",
+      "html": "<div class=\"ds-band\"><div class=\"st\"><p class=\"l\">Deployed</p><p class=\"v\">48%</p><p class=\"s\">19 of 40 use cases</p></div><div class=\"st\"><p class=\"l\">Compliant</p><p class=\"v\">22%</p><p class=\"s\">9 of 40 use cases</p></div><div class=\"tr\"><div class=\"t\"><i class=\"d\"></i><b></b></div><div class=\"t\"><i class=\"k\"></i><b></b></div></div></div>",
+      "css": ".ds-band{font-family:Geist,ui-sans-serif,system-ui,sans-serif;display:grid;grid-template-columns:auto auto 260px;gap:28px;align-items:center;background:#fffdf6;color:#1c211c;border:2px solid #1c211c;border-radius:16px;padding:14px 20px}.ds-band .l{margin:0;font-size:14px;color:#5e685c}.ds-band .v{margin:0;font-family:Spectral,Georgia,serif;font-size:48px;font-weight:600;line-height:1;font-variant-numeric:tabular-nums}.ds-band .s{margin:4px 0 0;font-size:12px;color:#5e685c}.ds-band .tr{display:grid;gap:12px}.ds-band .t{position:relative;height:12px;border-radius:9999px;background:#eceade}.ds-band .t i{position:absolute;inset:0 auto 0 0;border-radius:9999px}.ds-band .d{width:48%;background:#2f6242}.ds-band .k{width:22%;background:#4d5e6b}.ds-band .t b{position:absolute;top:-6px;bottom:-6px;left:50%;width:2px;background:#1c211c}"
+    }
+  ],
+  "narrative": {
+    "northStar": "The Field Ledger",
+    "overview": "Prism looks like a governed record kept on paper. The ground is warm cream, headings are set in a bookish serif, labels and identifiers in mono, and every figure sits in a ruled panel where it can be traced. Nothing is decorative: depth comes from tonal layers and one-pixel hairlines, colour carries a small number of fixed meanings, and a symbol and a word always travel with it.",
+    "keyCharacteristics": [
+      "Warm paper ground with a faint dot grid; cards are a half-step lighter than the page.",
+      "One accent (pine) for action and lit; ember only for gaps and failures; slate only for compliant.",
+      "Serif for headings and large figures, sans for reading, mono for labels, IDs and measurements.",
+      "Flat at rest: hairline borders, no resting shadows.",
+      "Two themes from one token set: Paper and Pine (default) and Ink and lit glow (dark).",
+      "Every state is glyph plus word plus colour, never colour alone."
+    ],
+    "rules": [
+      {
+        "name": "The One Lit Accent Rule",
+        "body": "Pine is the only accent. If a second colour is needed to say something, it is ember (a gap) or slate (compliant), and nothing else.",
+        "section": "colors"
+      },
+      {
+        "name": "The Never Alone Rule",
+        "body": "A colour never carries a meaning alone. Verdicts, gate status and table states always pair it with a glyph and a word.",
+        "section": "colors"
+      },
+      {
+        "name": "The Beside, Never Merged Rule",
+        "body": "Deployed and compliant are drawn side by side in their own colours. No blended or averaged figure exists.",
+        "section": "colors"
+      },
+      {
+        "name": "The Mono Is For Records Rule",
+        "body": "Mono marks identifiers, counts, status words and column heads. It never decorates a heading.",
+        "section": "typography"
+      },
+      {
+        "name": "The Fixed Scale Rule",
+        "body": "Sizes are fixed rem steps (ratio about 1.2), not fluid. Density changes by stepping down one named size at the desk breakpoint, never by scaling.",
+        "section": "typography"
+      },
+      {
+        "name": "The Flat At Rest Rule",
+        "body": "A surface has a shadow only when it has left the page (a popover, a floating table, a drawer). Cards never do.",
+        "section": "elevation"
+      }
+    ],
+    "dos": [
+      "Do take every colour from the token set; the Ink theme must work with no component changes.",
+      "Do show deployed beside compliant, in pine and slate, wherever a rate appears.",
+      "Do pair every colour state with a glyph and a word, and keep contrast at 4.5:1 for text.",
+      "Do keep numbers in tabular figures and wrap identifiers in bdi dir=ltr so they survive right-to-left.",
+      "Do keep depth to hairlines and tonal layers; use a shadow only for a popover, a floating table, or the drawer.",
+      "Do step density down at the desk and short breakpoints by changing a named size, not by scaling.",
+      "Do label simulated or fictitious data (the Synthetic data badge stays on every federal screen)."
+    ],
+    "donts": [
+      "Don't change the typefaces, the dot-grid background or the palette: they are a binding product commitment.",
+      "Don't use ember or slate for decoration; ember means a gap or failure, slate means compliant.",
+      "Don't put a card inside a card, add an eyebrow label above a heading, or use gradient text.",
+      "Don't let the one-screen desktop page scroll; let the register (and, in a very short window, the portfolio panel) scroll inside their own panels.",
+      "Don't use the paper grain (.paper-bg) on product screens; it is for landing, auth and legal pages only.",
+      "Don't open a modal for what an inline control or a popover can do; the drawer exists only for the forms that change data."
+    ]
+  }
+}
