@@ -1,0 +1,29 @@
+{
+  "note": "FICTITIOUS. One business process owner per use case in data/un-use-cases.csv. Names, titles and addresses are invented for the demo; the addresses use the reserved .example domain, so no mail can reach a real person. job_title follows the use case's department and, for UC02, is exactly the 'Owner' line of its SOP (data/sops/uc02-trade-licence-renewal-sop.md), which is what the approver rules match. Seeded by scripts/seed-process-owners.mts as a person (profile) plus a process_owner role on that use case.",
+  "owners": [
+    { "use_case": "UC01", "entity": "Marsa Public Services Authority", "name": "Hessa Al Rumaithi", "job_title": "Head of Licensing Contact Services", "department": "Licensing", "email": "hessa.alrumaithi@marsa.example" },
+    { "use_case": "UC02", "entity": "Marsa Public Services Authority", "name": "Khalid Bin Saeed Al Mansoori", "job_title": "Head of Licensing", "department": "Licensing", "email": "khalid.almansoori@marsa.example" },
+    { "use_case": "UC03", "entity": "Marsa Public Services Authority", "name": "Noura Al Shamsi", "job_title": "Head of Inspection", "department": "Inspection", "email": "noura.alshamsi@marsa.example" },
+    { "use_case": "UC04", "entity": "Marsa Public Services Authority", "name": "Rashid Al Ketbi", "job_title": "Director of Regulatory Procedures", "department": "Licensing; Inspection", "email": "rashid.alketbi@marsa.example" },
+
+    { "use_case": "UC05", "entity": "Wahat Health Services Authority", "name": "Dr. Salma Haddad", "job_title": "Head of Patient Services", "department": "Patient Services", "email": "salma.haddad@wahat.example" },
+    { "use_case": "UC06", "entity": "Wahat Health Services Authority", "name": "Omar Tabbara", "job_title": "Director of Finance and Procurement", "department": "Finance; Procurement", "email": "omar.tabbara@wahat.example" },
+    { "use_case": "UC07", "entity": "Wahat Health Services Authority", "name": "Dr. Layla Nasser", "job_title": "Head of Clinical Governance", "department": "Clinical Governance", "email": "layla.nasser@wahat.example" },
+    { "use_case": "UC08", "entity": "Wahat Health Services Authority", "name": "Yusuf Al Dhaheri", "job_title": "Head of Public Health Communications", "department": "Public Health", "email": "yusuf.aldhaheri@wahat.example" },
+
+    { "use_case": "UC09", "entity": "Sahel Federal Workforce Agency", "name": "Mariam Al Falasi", "job_title": "Head of Talent Acquisition", "department": "HR", "email": "mariam.alfalasi@sahel.example" },
+    { "use_case": "UC10", "entity": "Sahel Federal Workforce Agency", "name": "Tariq Mansour", "job_title": "Head of HR Shared Services", "department": "HR", "email": "tariq.mansour@sahel.example" },
+    { "use_case": "UC11", "entity": "Sahel Federal Workforce Agency", "name": "Aisha Al Blooshi", "job_title": "Head of Workforce Planning", "department": "HR; Strategy", "email": "aisha.alblooshi@sahel.example" },
+    { "use_case": "UC12", "entity": "Sahel Federal Workforce Agency", "name": "Hamad Al Zaabi", "job_title": "Head of Employment Services", "department": "Employment Services", "email": "hamad.alzaabi@sahel.example" },
+
+    { "use_case": "UC13", "entity": "Qanat Transport and Mobility Agency", "name": "Reem Al Suwaidi", "job_title": "Director of Customer Service and Enforcement", "department": "Customer Service; Enforcement", "email": "reem.alsuwaidi@qanat.example" },
+    { "use_case": "UC14", "entity": "Qanat Transport and Mobility Agency", "name": "Saif Al Hammadi", "job_title": "Head of Fleet Operations", "department": "Fleet Operations", "email": "saif.alhammadi@qanat.example" },
+    { "use_case": "UC15", "entity": "Qanat Transport and Mobility Agency", "name": "Dana Karam", "job_title": "Head of Operations Control", "department": "Operations Control", "email": "dana.karam@qanat.example" },
+    { "use_case": "UC16", "entity": "Qanat Transport and Mobility Agency", "name": "Majid Al Mazrouei", "job_title": "Head of Permits", "department": "Permits", "email": "majid.almazrouei@qanat.example" },
+
+    { "use_case": "UC17", "entity": "Raya Education and Skills Council", "name": "Fatima Al Nahyan Qasim", "job_title": "Head of Admissions", "department": "Admissions", "email": "fatima.qasim@raya.example" },
+    { "use_case": "UC18", "entity": "Raya Education and Skills Council", "name": "Adel Barakat", "job_title": "Head of Legal Affairs", "department": "Legal", "email": "adel.barakat@raya.example" },
+    { "use_case": "UC19", "entity": "Raya Education and Skills Council", "name": "Lina Al Marri", "job_title": "Head of IT Operations", "department": "IT", "email": "lina.almarri@raya.example" },
+    { "use_case": "UC20", "entity": "Raya Education and Skills Council", "name": "Sultan Al Ameri", "job_title": "Head of Education Policy and Rights", "department": "Policy", "email": "sultan.alameri@raya.example" }
+  ]
+}
