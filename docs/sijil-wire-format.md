@@ -25,3 +25,9 @@ What `scripts/sijil_smoke.ts` proved against `sijil-foundationflow` (Python node
 ## Verifying
 - `GET /api/verify` returns `{ok, exit_code, output}`. It runs the verifier **without** orphan mode, so it reports `ok:false` ("tool_call without parent inference") as soon as any orphan call is sealed. That is expected for our agent, whose model calls do not go through Sijil.
 - The verifier CLI with `--allow-orphan-tool-calls` returns PASS for normal and halted runs (`records=14`). Today the node's HTTP endpoint has no way to ask for that mode (open question for the Sijil side).
+
+## End-to-end result (25 Nov 2026, `scripts/sijil_pilot_check.ts --sample 8`, real rule-based agent, local node)
+- **Sealed:** 36 runs, 208 records sealed (tool calls plus 7 deliverables); every deliverable's stored hash equals the sha256 of its message text; the node's verifier CLI with `--allow-orphan-tool-calls` PASSes the whole chain (857 records after all four cases). The node's `GET /api/verify` reads `ok:false` ("tool_call without parent inference") because it has no orphan-tolerant mode: the Pilot page then says "chain NOT verified" with that reason. Open item for the Sijil side.
+- **Missing disclosure** (`--no-disclosure`, a deliberate fixture that strips the AI sentence before the run is recorded): the client-facing deliverable seals `flag` with `prism:ai_disclosure_missing`; the disclosure measure reads 0 of 1, so the `ai_disclosure` gate fails. Nothing was added to any text.
+- **Halted** (`scripts/sijil_halt.ts on`): all 208 records seal `block`, `halted: true`, the pilot's rejected calls rise to 200, the deliverable decision is `block`. `off` resumes.
+- **Node stopped:** the pilot completes; every run falls back (`source: simulated`, reason "Sijil node unreachable"); nothing is counted as sealed.
