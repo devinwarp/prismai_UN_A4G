@@ -1,0 +1,139 @@
+import { callBody, decisionFromSealed, deliverableBody, deliverableText, sessionMessage, sha256Hex, signProof, type SealBody } from "./sijil-agent.ts";
+import { liveConfigFromEnv, type LiveConfig } from "./sijil-live.ts";
+import type { PilotRun, SijilSeal } from "./pilot.ts";
+import type { CaseOutcome } from "./task-evals.ts";
+
+// Seals one pilot run into a Sijil node: one task per run, the agent's tool calls in order, then its deliverable. Sijil is a separate
+// product; this file only calls its HTTP API. SERVER ONLY: it reads the agent key, which must never reach the browser or a log.
+// Any failure falls back, for the WHOLE run, to the simulated gate's own decisions, with the reason: a run is never half sealed.
+
+const TIMEOUT_MS = 5000;
+
+export type AgentConfig = LiveConfig & { agentId: string; keyHex: string; agentToken: string };
+
+/** null unless SIJIL_BASE_URL, SIJIL_AGENT_ID, SIJIL_AGENT_KEY (32-byte hex) and SIJIL_AGENT_TOKEN are all set. An invalid URL throws without the key. */
+export function agentConfigFromEnv(env: Record<string, string | undefined> = process.env): AgentConfig | null {
+  const base = liveConfigFromEnv(env);
+  if (!base) return null;
+  const agentId = env.SIJIL_AGENT_ID?.trim(), keyHex = env.SIJIL_AGENT_KEY?.trim(), agentToken = env.SIJIL_AGENT_TOKEN?.trim();
+  if (!agentId || !keyHex || !agentToken || !/^[0-9a-f]{64}$/.test(keyHex)) return null;
+  return { ...base, agentId, keyHex, agentToken };
+}
+
+export type SealRun = (run: PilotRun, o: CaseOutcome) => Promise<SijilSeal>;
+
+class SealError extends Error {
+  status?: number;
+  constructor(message: string, status?: number) { super(message); this.status = status; }
+}
+
+type Send = (method: "GET" | "POST", path: string, body?: unknown, session?: string) => Promise<Record<string, unknown>>;
+
+function sender(cfg: AgentConfig, f: typeof fetch): Send {
+  return async (method, path, body, session) => {
+    let res: Response;
+    try {
+      res = await f(cfg.baseUrl + path, {
+        method,
+        headers: {
+          Accept: "application/json",
+          ...(body === undefined ? {} : { "Content-Type": "application/json" }),
+          ...(path.startsWith("/api/agent/") ? { "x-sijil-token": cfg.agentToken } : {}),
+          ...(session ? { "x-sijil-agent-session": session } : {}),
+          ...(cfg.token ? { Authorization: `Bearer ${cfg.token}` } : {}),
+        },
+        body: body === undefined ? undefined : JSON.stringify(body),
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+        redirect: "error",
+        cache: "no-store",
+      });
+    } catch (e) {
+      throw new SealError(e instanceof Error && e.name === "TimeoutError" ? "Sijil node timed out" : "Sijil node unreachable");
+    }
+    const where = path.split("?")[0];
+    if (!res.ok) throw new SealError(`Sijil node returned HTTP ${res.status} for ${where}`, res.status);
+    try { return (await res.json()) as Record<string, unknown>; } catch { throw new SealError(`Sijil node returned invalid JSON for ${where}`); }
+  };
+}
+
+interface Session { id: string; nodeId: string }
+
+async function handshake(cfg: AgentConfig, send: Send): Promise<Session> {
+  const pol = await send("GET", "/api/policy");
+  const nodeId = (pol.node_id ?? (pol.policy as { node_id?: unknown } | undefined)?.node_id) as unknown;
+  if (typeof nodeId !== "string" || !nodeId) throw new SealError("Sijil node did not name itself");
+  const ch = await send("POST", "/api/agent/challenge", { agent_id: cfg.agentId, purpose: "session" });
+  const nonce = String(ch.nonce);
+  const s = await send("POST", "/api/agent/session", { agent_id: cfg.agentId, nonce, proof: signProof(cfg.keyHex, sessionMessage({ agent_id: cfg.agentId, node_id: nodeId, nonce })) });
+  if (typeof s.agent_session !== "string") throw new SealError("Sijil node returned no session");
+  return { id: s.agent_session, nodeId };
+}
+
+const simulatedRejected = (o: CaseOutcome) => o.calls.filter((c) => c.decision === "reject").length;
+
+/** The seal function for one pilot (it keeps one session across the runs of that pilot). */
+export function createSealer(cfg: AgentConfig, f: typeof fetch = fetch): SealRun {
+  const send = sender(cfg, f);
+  let session: Session | null = null;
+
+  async function attempt(run: PilotRun, o: CaseOutcome, s: Session): Promise<SijilSeal> {
+    let taskSeq: number | undefined;
+    try {
+      const start = await send("POST", "/api/agent/task/start", { intent_hash: sha256Hex(`${run.test_id}#${run.rep}`), harness: "http-agent", session_id: s.id.slice(0, 8) }, s.id);
+      taskSeq = Number(start.seq);
+      const ctx = { sessionId: `pilot-${run.test_id}` };
+      const decisions: string[] = [];
+      let rejected = 0;
+      for (const c of o.calls) {
+        const body: SealBody = callBody(c, ctx);
+        const r = await send("POST", "/api/agent/seal", { ...body, task_seq: taskSeq }, s.id);
+        decisions.push(String(r.decision));
+        if (decisionFromSealed(body, { decision: String(r.decision) }) === "reject") rejected++;
+      }
+      const text = deliverableText(o.result.output);
+      const d = deliverableBody(text, run.disclosed ?? null, ctx);
+      let deliverable: { seq: number; hash: string; decision: string } | undefined;
+      if (d) {
+        const r = await send("POST", "/api/agent/seal", { ...d, task_seq: taskSeq }, s.id);
+        decisions.push(String(r.decision));
+        deliverable = { seq: Number(r.seq), hash: d.input_hash, decision: String(r.decision) };
+      }
+      await send("POST", "/api/agent/task/end", { outcome: "completed", task_seq: taskSeq }, s.id);
+      return {
+        source: `node:${s.nodeId}`, sealed: decisions.length, calls_rejected: rejected,
+        halted: decisions.length > 0 && decisions.every((x) => x === "block"),
+        task_seq: taskSeq,
+        ...(deliverable ? { deliverable_seq: deliverable.seq, deliverable_hash: deliverable.hash, deliverable_decision: deliverable.decision } : {}),
+      };
+    } catch (e) {
+      if (taskSeq !== undefined) await send("POST", "/api/agent/task/end", { outcome: "error", task_seq: taskSeq }, s.id).catch(() => undefined);
+      throw e;
+    }
+  }
+
+  return async (run, o) => {
+    try {
+      for (let tries = 0; ; tries++) {
+        session ??= await handshake(cfg, send);
+        try { return await attempt(run, o, session); } catch (e) {
+          if (e instanceof SealError && e.status === 401 && tries === 0) { session = null; continue; }
+          throw e;
+        }
+      }
+    } catch (e) {
+      session = null;
+      return { source: "simulated:unreachable", sealed: 0, calls_rejected: simulatedRejected(o), reason: e instanceof SealError ? e.message : "Sijil sealing failed" };
+    }
+  };
+}
+
+/** The node's own verification of its chain. Asks for orphan-tolerant verification (our agent's model calls do not go through the node, so its tool
+ * calls have no parent model-call record); a node that cannot do that reports ok:false with its reason. */
+export async function verifyChain(cfg: AgentConfig, f: typeof fetch = fetch): Promise<{ ok: boolean; reason?: string }> {
+  try {
+    const v = await sender(cfg, f)("GET", "/api/verify?allow_orphan_tool_calls=1");
+    return v.ok === true ? { ok: true } : { ok: false, reason: String(v.output ?? "verification failed").slice(0, 160) };
+  } catch (e) {
+    return { ok: false, reason: e instanceof SealError ? e.message : "verification failed" };
+  }
+}
