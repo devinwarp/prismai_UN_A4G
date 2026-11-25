@@ -33,3 +33,18 @@ test("the README says plainly what sealing does and does not mean", () => {
   assert.match(t, /Prism's own gate (still )?decides/i);
   assert.match(t, /never added/i);
 });
+
+const page = (p: string) => read(`src/app/admin/federal/${p}`);
+
+test("every screen that prints a Sijil rejected-call figure says whether it is a node or the simulated gate", () => {
+  const screens = ["use-cases/[id]/pilot/page.tsx", "use-cases/[id]/evals/page.tsx", "use-cases/[id]/production/page.tsx", "use-cases/[id]/tuning/page.tsx", "evals/page.tsx", "_components/AgentRuntimePanel.tsx"];
+  for (const s of screens) assert.match(page(s), /SealLine|simulated/i, `${s} does not say where its Sijil figures come from`);
+  assert.match(page("use-cases/[id]/pilot/page.tsx"), /<SealLine /, "the pilot page must render the seal line");
+});
+
+test("SealLine names a node only for a sealed source, never calls a simulated or fallback source attested, and always says simulated for those", () => {
+  const src = page("_components/SealLine.tsx");
+  assert.match(src, /Simulated Sijil gate/);
+  assert.match(src, /chain NOT verified/);
+  assert.doesNotMatch(src, /attested/i);
+});

@@ -16,6 +16,7 @@ import { TESTGEN_AR } from "./testgen-ar.ts";
 import { TARGETS_AR } from "./targets-ar.ts";
 import { AUTOTUNE_AR } from "./autotune-ar.ts";
 import { USECASE_UI_AR } from "./usecase-ui-ar.ts";
+import { SIJIL_RUN_AR } from "./sijil-run-ar.ts";
 import { PEOPLE_AR } from "./people-ar.ts";
 
 // Lightweight Arabic/English dictionary for the federal admin UI. Pure, no
@@ -332,6 +333,7 @@ export const AR: Record<string, string> = {
   ...TARGETS_AR,
   ...AUTOTUNE_AR,
   ...USECASE_UI_AR,
+  ...SIJIL_RUN_AR,
   ...PEOPLE_AR,
   ...UI_C_AR,
 };
