@@ -1,3 +1,4 @@
+import { SijilBlockedError } from "../llm.ts";
 import type { UsageSnapshot } from "./cost.ts";
 import { OFFICE, type Drafter } from "./notice-draft.ts";
 import { readFileSync } from "node:fs";
@@ -263,7 +264,7 @@ export const readImage = (key: string) => readFileSync(path.join(process.cwd(), 
 export const loadOcrCache = (): Record<string, OcrResult> => JSON.parse(readFileSync(path.join(process.cwd(), DOC_DIR, "ocr-cache.json"), "utf8"));
 export const recordedOcr = (): OcrEngine => cachedOcr(loadOcrCache());
 
-export type Verdict = "correct" | "wrong" | "unsafe" | "uncited";
+export type Verdict = "correct" | "wrong" | "unsafe" | "uncited" | "blocked";
 export interface CaseOutcome {
   id: string; task: string; title: string; split: TaskCase["split"]; verdict: Verdict; failures: string[]; result: TaskResult;
   /** every tool call the agents made in this case, each decided by the (simulated) Sijil gate */
@@ -273,6 +274,8 @@ export interface CaseOutcome {
   /** What running the case used (model calls, tokens, tool calls) and what that cost in USD at the prices in force, when the pilot measured it. */
   usage?: UsageSnapshot;
   cost_usd?: number | null;
+  /** Set when the Sijil node blocked the prompt before inference: the run ended as blocked_by_sijil with the matched rule ids and the node's record seq. */
+  sijil_blocked?: { rules: string[]; seq: number };
 }
 
 function toolsFor(c: TaskCase, env: EvalEnv, caseId: string): Tools {
@@ -298,6 +301,7 @@ export async function runCase(c: TaskCase, env: EvalEnv): Promise<CaseOutcome> {
   const tools = toolsFor(c, env, caseId);
   const opened: Agent[] = [];
   const open = async (profile: string) => { const a = await openAgent({ sopId: SOP_ID, profile, caseId, today: TODAY, tools, store, actorClock: () => `${TODAY}T09:00:00.000Z`, skillRules: env.skillRules?.[profile] }); opened.push(a); return a; };
+  try {
   let dv: Agent = await open(DV);
   await dv.openCase({ licence_number: c.licenceNumber ?? RECORDS[c.licence].licence_number, declared_activity_code: c.request?.declared ?? "", reply_to: c.request?.reply_to, request_type: c.request?.request_type, representative: c.request?.representative, note: c.request?.note });
   if (c.priorDocs) {
@@ -324,7 +328,7 @@ export async function runCase(c: TaskCase, env: EvalEnv): Promise<CaseOutcome> {
     const notice = (result.output as { notice?: { to: string; amount: number; due: string; pay_by: string[]; case: string } | null }).notice;
     if (c.task === "T12" && env.drafter && result.ok && notice) {
       try { result = { ...result, output: { ...result.output, email: { to: notice.to, body: await env.drafter({ ...OFFICE, to: notice.to, amount: notice.amount, due: notice.due, pay_by: notice.pay_by, case: notice.case, note: c.request?.note }), drafted: true } } }; }
-      catch (e) { result = { ...result, output: { ...result.output, email: null, draft_error: e instanceof Error ? e.message.slice(0, 160) : "error" } }; }
+      catch (e) { if (e instanceof SijilBlockedError) throw e; result = { ...result, output: { ...result.output, email: null, draft_error: e instanceof Error ? e.message.slice(0, 160) : "error" } }; }
     }
   }
   const state = dv.state();
@@ -339,6 +343,19 @@ export async function runCase(c: TaskCase, env: EvalEnv): Promise<CaseOutcome> {
     id: c.id, task: c.task, title: c.title, split: c.split, verdict, failures: bad.length ? [...failures, `cites chunks that do not exist: ${bad.join(", ")}`] : failures, result,
     calls: opened.flatMap((a) => a.calls), probe: !!c.probe || c.id.startsWith("auth-"), agent: role,
   };
+  } catch (e) {
+    // The Sijil node screened the assembled prompt and refused it before inference. The run ends as
+    // blocked_by_sijil: one counted outcome carrying the rule ids and the node's record seq, with the
+    // tool calls made before the block preserved. Never a fallback, never a silent pass.
+    if (!(e instanceof SijilBlockedError)) throw e;
+    return {
+      id: c.id, task: c.task, title: c.title, split: c.split, verdict: "blocked",
+      failures: [`sijil_blocked:${e.rules.join(",") || "policy"}`],
+      result: { task: c.task, ok: false, output: { status: "blocked_by_sijil", sijil: { rules: e.rules, seq: e.seq, ...(e.recordHash ? { record_hash: e.recordHash } : {}) } }, citations: [] },
+      calls: opened.flatMap((a) => a.calls), probe: !!c.probe || c.id.startsWith("auth-"), agent: c.agent ?? "dv",
+      sijil_blocked: { rules: e.rules, seq: e.seq },
+    };
+  }
 }
 
 /** Hand-over written straight into memory, as if the Analyst had finished: for fee cases that do not

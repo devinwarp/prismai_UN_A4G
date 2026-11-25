@@ -7,10 +7,10 @@ import type { Retrieve } from "./react-sop.ts";
 import { loadSop, searchSop } from "./sop-kb.ts";
 import { baselineConfig, SUBJECT_RULES } from "./subject.ts";
 import { CASES, recordedOcr, runAll, type CaseOutcome } from "./task-evals.ts";
-import { runQuestions, tally, validateQuestions, type QResult, type Question } from "./tuning-bank.ts";
+import { isOutside, runQuestions, tally, validateQuestions, type QResult, type Question } from "./tuning-bank.ts";
 import { describeFix, proposeFixes } from "./tuning-fix.ts";
 import { optimise, verifyChain } from "./tuning.ts";
-import { activeConfig, activeOf, activeSkillRules, bankEntry, decideEntry, proposeEntries, replay, type Scores, type SkillValue, type Target, type Version } from "./tuning-versions.ts";
+import { activeConfig, activeOf, activeSkillRules, bankEntry, decideEntry, proposeEntries, replay, type Scores, type SijilScore, type SkillValue, type Target, type Version } from "./tuning-versions.ts";
 
 // The tuning screen's logic over a KbStore: run the question bank, run the per-task evals (the real agent
 // code path), propose a version (scored before and after), fix a miss, decide, edit the bank. 'Tuning' means
@@ -26,8 +26,8 @@ const sop = (c: Ctx) => c.sopId ?? SOP_ID;
 const now = (c: Ctx) => (c.now ?? (() => new Date().toISOString()))();
 export const retrieveOf = (c: Ctx): Retrieve => c.retrieve ?? (async (q, kind) => (await searchSop(sop(c), q, { k: 5, kind })).hits);
 
-export interface TaskRow { id: string; task: string; title: string; split: "tune" | "holdout"; verdict: CaseOutcome["verdict"]; failures: string[] }
-const taskRow = (o: CaseOutcome): TaskRow => ({ id: o.id, task: o.task, title: o.title, split: o.split, verdict: o.verdict, failures: o.failures });
+export interface TaskRow { id: string; task: string; title: string; split: "tune" | "holdout"; verdict: CaseOutcome["verdict"]; failures: string[]; sijil_blocked?: { rules: string[]; seq: number; attack: boolean } }
+const taskRow = (o: CaseOutcome): TaskRow => ({ id: o.id, task: o.task, title: o.title, split: o.split, verdict: o.verdict, failures: o.failures, ...(o.sijil_blocked ? { sijil_blocked: { rules: o.sijil_blocked.rules, seq: o.sijil_blocked.seq, attack: o.probe } } : {}) });
 
 async function taskEvals(c: Ctx, react: ReactConfig, skillRules: Record<string, string[]>): Promise<{ rows: TaskRow[]; error?: string }> {
   try {
@@ -42,12 +42,29 @@ const taskTally = (rows: TaskRow[], split: TaskRow["split"], total: number) => {
   return { n: xs.length || (rows.length ? 0 : total), correct: xs.filter((r) => r.verdict === "correct").length, unsafe: xs.filter((r) => r.verdict === "unsafe").length };
 };
 
+/** The Sijil pre-inference blocks recorded while a version was scored: questions the node refused
+ * (an outside-the-SOP question counts as an attack stopped, like a probe case) and task rows it refused.
+ * Undefined when nothing was blocked — the version was not screened or nothing tripped a rule. */
+export function sijilScoreOf(qr: QResult[], rows: TaskRow[]): SijilScore | undefined {
+  const qb = qr.filter((r) => r.sijil_block);
+  const tb = rows.filter((r) => r.sijil_blocked);
+  if (!qb.length && !tb.length) return undefined;
+  const by_rule: Record<string, number> = {};
+  let attacks = 0, alignment = 0;
+  const bump = (rules: string[]) => { for (const r of rules) by_rule[r] = (by_rule[r] ?? 0) + 1; };
+  for (const r of qb) { bump(r.sijil_block!.rules); if (isOutside(r.expect)) attacks++; else alignment++; }
+  for (const r of tb) { bump(r.sijil_blocked!.rules); if (r.sijil_blocked!.attack) attacks++; else alignment++; }
+  return { screened: true, blocks: qb.length + tb.length, attacks_stopped: attacks, alignment, by_rule, allowed: alignment === 0 };
+}
+
 export async function score(c: Ctx, react: ReactConfig, skillRules: Record<string, string[]>, qs: Question[]): Promise<Scores> {
   const qr = await runQuestions(sop(c), react, qs, retrieveOf(c));
   const t = await taskEvals(c, react, skillRules);
+  const sijil = sijilScoreOf(qr, t.rows);
   return {
     questions: { tune: tally(qr, "tune"), holdout: tally(qr, "holdout") },
     tasks: { tune: taskTally(t.rows, "tune", CASES.filter((x) => x.split === "tune").length), holdout: taskTally(t.rows, "holdout", CASES.filter((x) => x.split === "holdout").length), ...(t.error ? { error: t.error } : {}) },
+    ...(sijil ? { sijil } : {}),
   };
 }
 

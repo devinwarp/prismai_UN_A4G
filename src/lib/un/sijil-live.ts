@@ -23,18 +23,18 @@ const PAGE = 1000;
 const MAX_PAGES = 50;
 
 /** http(s) only, no credentials in the URL, no link-local / metadata hosts. */
-export function parseBaseUrl(raw: string): string {
+export function parseBaseUrl(raw: string, name = "SIJIL_BASE_URL"): string {
   let u: URL;
-  try { u = new URL(raw); } catch { throw new SijilLiveError("SIJIL_BASE_URL is not a valid URL"); }
-  if (u.protocol !== "http:" && u.protocol !== "https:") throw new SijilLiveError("SIJIL_BASE_URL must be http(s)");
-  if (u.username || u.password) throw new SijilLiveError("SIJIL_BASE_URL must not contain credentials");
+  try { u = new URL(raw); } catch { throw new SijilLiveError(`${name} is not a valid URL`); }
+  if (u.protocol !== "http:" && u.protocol !== "https:") throw new SijilLiveError(`${name} must be http(s)`);
+  if (u.username || u.password) throw new SijilLiveError(`${name} must not contain credentials`);
   const h = u.hostname.replace(/^\[|\]$/g, "").toLowerCase();
   const blocked =
     /^169\.254\./.test(h) || // link-local, cloud metadata
     /^(fe[89ab][0-9a-f]?:|fd00:ec2:)/.test(h) || // IPv6 link-local, AWS IPv6 metadata
     /^::ffff:169\.254\./.test(h) ||
     h === "0.0.0.0" || h === "metadata.google.internal" || h === "metadata" || h === "100.100.100.200";
-  if (blocked) throw new SijilLiveError("SIJIL_BASE_URL points at a link-local or metadata address");
+  if (blocked) throw new SijilLiveError(`${name} points at a link-local or metadata address`);
   return u.origin + u.pathname.replace(/\/+$/, "");
 }
 
@@ -122,7 +122,10 @@ export function groupRuns(records: SijilRecord[], uc: Pick<UnUseCaseState, "ext_
  * when the node is unreachable; a failed verification is returned, not thrown,
  * so the caller can show it. */
 export async function pullLive(cfg: LiveConfig, uc: Pick<UnUseCaseState, "ext_id">, f: Fetch = fetch): Promise<LivePull> {
-  const v = (await getJson(cfg, "/api/verify", f)) as { ok?: unknown; output?: unknown };
+  // orphan-tolerant verification, same as verifyChain: our agent's sealed tool calls have no parent model-call
+  // record (the model calls are screened on /v1, a different record family). A node that does not know the
+  // parameter ignores it and answers strict; a broken chain still fails.
+  const v = (await getJson(cfg, "/api/verify?allow_orphan_tool_calls=1", f)) as { ok?: unknown; output?: unknown };
   const verified = v?.ok === true;
   const verifyOutput = String(v?.output ?? "").slice(0, 500);
   if (!verified) return { verified, verifyOutput, nodeId: "unknown", disclosureMeasured: Boolean(cfg.disclosureRule), records: 0, runs: [] };

@@ -74,6 +74,12 @@ export interface PilotRun {
   differences?: string[];
   /** Where the sealed figures for this run came from (a Sijil node, or the simulated gate), when a seal was attempted. */
   sijil?: SijilSeal;
+  /** "blocked_by_sijil" when the Sijil node refused the prompt before inference and the run ended there. */
+  status?: "blocked_by_sijil";
+  /** Each pre-inference block the node recorded for this run. `attack`: the block stopped a hostile or
+   * refusal-expected input (counts as an attack stopped and a pass); otherwise it is an alignment block
+   * and the run failed with the `sijil_blocked` failure class and the matched rule ids. */
+  sijil_blocks?: { rules: string[]; seq: number; attack: boolean }[];
 }
 
 /** What sealing one run into a Sijil node produced, or why it fell back to the simulated gate (never a mix within one run). */

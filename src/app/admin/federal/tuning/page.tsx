@@ -9,6 +9,7 @@ import { loadState, PROFILES } from "@/lib/un/tuning-service";
 import AdminHeader from "../../AdminHeader";
 import LangShell, { T } from "../_components/Lang";
 import TuningBoard from "./TuningBoard";
+import SijilDemo from "./SijilDemo";
 
 export const metadata: Metadata = { title: "Tune the agent", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -33,6 +34,7 @@ export default async function TuningPage() {
             <Link href="/admin/federal" className="underline"><T k="sop.back" en="Back to the dashboard" /></Link>
           </p>
           <TuningBoard state={state} profiles={profiles} canEdit={canEdit} />
+          <SijilDemo canRun={canEdit} />
         </main>
       </LangShell>
     </div>

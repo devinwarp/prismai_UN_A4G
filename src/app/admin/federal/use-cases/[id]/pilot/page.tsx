@@ -85,6 +85,12 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
                 <p className="mt-2 text-xs text-ink-soft"><TV k="pi.meta" en="{runs} runs ({reps} repetitions of each test) · {at} · {by}" v={{ runs: last.runs, reps: last.reps, at: new Date(last.at).toLocaleString("en-GB", { timeZone: "Asia/Dubai" }), by: last.actor }} /></p>
                 {last.plan.agent && <AgentLine agent={last.plan.agent} />}
                 <SealLine sijil={last.plan.sijil} />
+                {last.plan.inference_blocks && (
+                  <p className="mt-1 text-xs text-ink-soft">
+                    <TV k="pi.screen" en="Pre-inference screening (Sijil node): {total} block(s) screened against rules and recorded — {attacks} attack(s) stopped, {alignment} alignment block(s){rules}"
+                      v={{ total: last.plan.inference_blocks.total, attacks: last.plan.inference_blocks.attacks_stopped, alignment: last.plan.inference_blocks.alignment, rules: Object.keys(last.plan.inference_blocks.by_rule).length ? ` · ${Object.keys(last.plan.inference_blocks.by_rule).join(", ")}` : "" }} />
+                  </p>
+                )}
                 <p className="mt-1 font-mono text-[11px] text-ink-soft">tests {last.report.test_set_hash.slice(0, 12)} · params {last.report.params_hash.slice(0, 12)} · report {last.report.report_hash.slice(0, 12)}</p>
 
                 <div className="mt-4 overflow-x-auto" role="region" {...scrollFocus} aria-label="Findings">
