@@ -10,10 +10,11 @@ import { replayTestSet, inForce, type TestEntry } from "./test-sets";
 import { replayParams, type ParamEntry } from "./verdict-params";
 import type { WatchEntry } from "./watchdog";
 import { checkSopKb } from "./skill-extract";
-import { profilesOf } from "./sop/data";
+import { profileIndex } from "./sop-version-store";
+import type { JobProfile } from "./sop/profiles";
 
 type Row = Record<string, unknown>;
-const tickedFlags = (on: Row[], all: ReturnType<typeof profilesOf>) => {
+const tickedFlags = (on: Row[], all: JobProfile[] | null) => {
   const ps = (all ?? []).filter((p) => on.some((r) => r.profile === p.name));
   return { client_facing: ps.some((p) => p.flags.client_facing), affects_rights: ps.some((p) => p.flags.affects_rights), irreversible: ps.some((p) => p.flags.irreversible) };
 };
@@ -44,9 +45,11 @@ export async function loadJourneys(orgId: string, ucs: Pick<UnUseCaseState, "id"
   const forProfile = (rows: Row[] | undefined, profile: string) => asLog<never>((rows ?? []).filter((r) => r.profile === profile));
   const kb = new Map<string, boolean>();
   const out = new Map<string, Journey>();
+  const profilesAt = await profileIndex(orgId).catch(() => null);
+  const versionOf = new Map((sops.data ?? []).map((r: Row) => [String(r.use_case_id), Number(r.version ?? 1) || 1]));
   for (const u of ucs) {
     const sopId = sopOf.get(u.id) ?? null;
-    const all = sopId ? profilesOf(sopId) : null;
+    const all = sopId && profilesAt ? profilesAt(sopId, versionOf.get(u.id) ?? 1) : null;
     const on = (ticks.get(u.id) ?? []).filter((r) => r.sop_id === sopId && all?.some((p) => p.name === r.profile));
     if (sopId && !kb.has(sopId)) kb.set(sopId, checkSopKb(sopId).ok);
     const r = runs.get(u.id) ?? [];

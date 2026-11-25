@@ -7,7 +7,7 @@ import { isUuid } from "@/lib/un/model";
 import { permissionsFor } from "@/lib/un/permissions-server";
 import { loadAttachedSop, loadProfileRows } from "@/lib/un/profiles-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
-import { profilesOf } from "@/lib/un/sop/data";
+import { profilesForUseCase } from "@/lib/un/sop-version-store";
 import { loadTestLog, requiredFor } from "@/lib/un/test-set-store";
 import { replayTestSet, review, verifyTest } from "@/lib/un/test-sets";
 import { loadParamLog } from "@/lib/un/verdict-param-store";
@@ -36,7 +36,7 @@ export default async function TestsPage({ params, searchParams }: { params: Prom
 
   const sopId = await loadAttachedSop(profile.org_id, id);
   const names = new Set(sopId ? (await loadProfileRows(profile.org_id, id, sopId)).filter((r) => r.automate).map((r) => r.profile) : []);
-  const profiles = ((sopId && profilesOf(sopId)) || []).filter((p) => names.has(p.name));
+  const profiles = ((sopId && (await profilesForUseCase(profile.org_id, id, sopId))) || []).filter((p) => names.has(p.name));
   const current = profiles.find((p) => p.name === pick) ?? profiles[0] ?? null;
 
   let body = null;

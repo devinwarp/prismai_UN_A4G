@@ -75,11 +75,11 @@ export function Field({
 }
 
 /** Screen-reader / no-JS-chart alternative: a real table, visually hidden unless opened. */
-export function DataTableAlt({ caption, head, rows }: { caption: string; head: string[]; rows: (string | number)[][] }) {
+export function DataTableAlt({ caption, head, rows, floating = false }: { caption: string; head: string[]; rows: (string | number)[][]; /** One-screen desktop: the control sits in the corner of its chart cell (which must be `relative`) and the table opens over the page, taking no height. */ floating?: boolean }) {
   return (
-    <details className="mt-3 text-xs text-ink-soft">
-      <summary className="w-fit cursor-pointer rounded underline underline-offset-2"><T k="ua.viewtable" en="View as table" /></summary>
-      <div className="relative mt-2 overflow-x-auto">
+    <details className={`mt-3 text-xs text-ink-soft ${floating ? "desk:static desk:mt-0" : ""}`}>
+      <summary className={`w-fit cursor-pointer rounded underline underline-offset-2 ${floating ? "desk:absolute desk:end-0 desk:top-0 desk:text-[11px]" : ""}`}><T k="ua.viewtable" en="View as table" /></summary>
+      <div className={`relative mt-2 overflow-x-auto ${floating ? "desk:absolute desk:end-0 desk:top-6 desk:z-20 desk:mt-0 desk:w-72 desk:rounded-lg desk:border desk:border-line desk:bg-card desk:p-3 desk:shadow-lg" : ""}`}>
         <table className="w-full text-start tabular-nums">
           <caption className="sr-only">{caption}</caption>
           <thead><tr>{head.map((h) => <th key={h} scope="col" className="py-1 pe-4 font-mono text-[10px] font-normal uppercase">{h}</th>)}</tr></thead>

@@ -92,7 +92,7 @@ export default async function CountryPage({ searchParams }: { searchParams: Prom
                   <div><dt className="text-ink-soft"><T k="ub.cn.logdt" en="Log" /></dt><dd><Ltr>{entries.length}</Ltr> · {verified.ok ? <T k="ub.cn.verified" en="chain verified" /> : <TX k="ub.cn.broken" en="BROKEN at {n}" v={{ n: String(verified.broken_seq) }} />}</dd></div>
                 </dl>
                 <div className="mt-6">
-                  <CountryPanel canEdit={canEdit} active={active.id} countries={infos.map(({ c, info }) => ({ id: c.id, name: c.name, ready: !!info, onDemand: c.built === "on_demand", custom: !!c.custom }))} rulesets={RULESETS.map((r) => ({ id: r.id, name: r.name }))} staged={euStaged} euBuilt={!!state.policies.EU} companyCount={Object.keys(state.companies).length} />
+                  <CountryPanel canEdit={canEdit} active={active.id} countries={infos.map(({ c, info }) => ({ id: c.id, name: c.name, ruleset: c.ruleset, ready: !!info, onDemand: c.built === "on_demand", custom: !!c.custom, hidden: !!c.hidden, target: c.id === "UAE" ? null : state.targets[c.id] ? { target_percent: state.targets[c.id].target_percent, deadline: state.targets[c.id].deadline } : null }))} rulesets={RULESETS.map((r) => ({ id: r.id, name: r.name }))} staged={euStaged} euBuilt={!!state.policies.EU} companyCount={Object.keys(state.companies).length} />
                 </div>
               </div>
             </Section>

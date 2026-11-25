@@ -6,12 +6,13 @@ import { tr } from "@/lib/un/i18n/dict";
 import { useLang } from "../_components/Lang";
 import { btnGhost, btnPrimary, field } from "../_components/ui";
 import { Ct, En, Ltr } from "../_components/b-bits";
+import { CountryManage, type ManagedCountry } from "./CountryManage";
 
 interface Stage { stage: string; ms: number; detail: string }
 interface Props {
   canEdit: boolean;
   active: string;
-  countries: { id: string; name: string; ready: boolean; onDemand: boolean; custom: boolean }[];
+  countries: (ManagedCountry & { onDemand: boolean })[];
   rulesets: { id: string; name: string }[];
   staged: { id: string; title: string; words: number }[];
   euBuilt: boolean;
@@ -24,6 +25,7 @@ export function CountryPanel({ canEdit, active, countries, rulesets, staged, euB
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const okRef = useRef(false); // whether the last call worked, for a caller that chains two
   const busyRef = useRef(false); // set synchronously, so a double-click cannot start a second request before the disabled state renders
   const [note, setNote] = useState<string | null>(null);
   const [stages, setStages] = useState<Stage[]>([]);
@@ -45,6 +47,7 @@ export function CountryPanel({ canEdit, active, countries, rulesets, staged, euB
   async function call(action: string, body: Record<string, unknown>, stream = false) {
     if (busyRef.current) return;
     busyRef.current = true;
+    okRef.current = false;
     setBusy(action); setError(null); setNote(null); setStages([]); setElapsed(0); t0.current = performance.now();
     try {
       const res = await fetch("/api/admin/un/country", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ action, stream, ...body }) });
@@ -70,6 +73,7 @@ export function CountryPanel({ canEdit, active, countries, rulesets, staged, euB
         if (action === "switch" && out.reran === false) setNote(tr(lang, "hdr.reused", "Rules unchanged: stored result shown"));
         else if (out.noop === true) setNote(tr(lang, "cn.reset.noop", "Already at the starting state. Nothing to reset, nothing logged."));
         else setNote(`${tr(lang, "cn.elapsed", "Elapsed")}: ${(ms / 1000).toFixed(2)} ${tr(lang, "ub.cn.sec", "s")}` + (out.matchesStored === true ? ` Â· ${tr(lang, "cn.sameHash", "Identical to the stored result (same head hash)")}` : ""));
+        okRef.current = true;
         router.refresh();
       }
     } catch { setError(tr(lang, "gt.failed", "The request failed.")); }
@@ -84,7 +88,7 @@ export function CountryPanel({ canEdit, active, countries, rulesets, staged, euB
       <div>
         <h3 className="font-medium">{tr(lang, "cn.switch", "Switch to")}</h3>
         <div className="mt-2 flex flex-wrap gap-2">
-          {countries.filter((c) => c.ready).map((c) => (
+          {countries.filter((c) => c.ready && !c.hidden).map((c) => (
             <button key={c.id} type="button" disabled={!!busy || c.id === active} className={c.id === active ? btnPrimary : btnGhost} aria-pressed={c.id === active} onClick={() => void call("switch", { country: c.id })}>
               <Ct id={c.id} en={c.name} />{c.id === active ? " âœ“" : ""}
             </button>
@@ -113,6 +117,8 @@ export function CountryPanel({ canEdit, active, countries, rulesets, staged, euB
         </div>
         <button type="button" className={`${btnPrimary} mt-3`} disabled={!!busy || !nc.id || !nc.name} onClick={() => void call("add_country", nc)}>{tr(lang, "cn.new.btn", "Create the country")}</button>
       </div>
+
+      <CountryManage countries={countries} active={active} rulesets={rulesets} busy={!!busy} call={async (a, b, s) => { await call(a, b, s); return okRef.current; }} error={error} />
 
       {countries.filter((c) => c.custom && !c.ready).map((c) => (
         <div key={c.id} id={`docs-${c.id}`} className="rounded-xl border border-line p-4">

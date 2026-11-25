@@ -15,9 +15,14 @@ test("I-1: a PATCH carrying verdict or compliant is rejected", () => {
   }
 });
 
-test("I-1: stage is still editable and validated", () => {
-  assert.deepEqual(parseUseCasePatch({ stage: "pilot" }), { ok: true, patch: { stage: "pilot" } });
-  assert.equal(parseUseCasePatch({ stage: "nope" }).ok, false);
+test("I-1: the stage is not hand-editable either: it follows the lifecycle, and a body with nothing the engine owns changes nothing", () => {
+  for (const stage of ["pilot", "approved", "deployed", "nope"]) {
+    const r = parseUseCasePatch({ stage });
+    assert.equal(r.ok, false, stage);
+    assert.match(r.ok ? "" : r.error, /stage cannot be set by hand/);
+  }
+  assert.equal(parseUseCasePatch({}).ok, false);
+  assert.equal(parseUseCasePatch({ title: "x" }).ok, false);
 });
 
 test("I-1: the dashboard reads hand-set verdicts and compliance as unset", () => {

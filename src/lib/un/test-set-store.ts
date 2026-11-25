@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadAttachedSop, loadProfileRows } from "./profiles-store";
 import { loadSop } from "./sop-kb";
-import { profilesOf } from "./sop/data";
+import { profilesForUseCase } from "./sop-version-store";
 import { deriveTests, type Blueprint } from "./test-derive";
 import type { TestEntry } from "./test-sets";
 
@@ -29,7 +29,7 @@ export type Required = { ok: true; sopId: string; required: Blueprint[] } | { ok
 export async function requiredFor(orgId: string, useCaseId: string, profile: string): Promise<Required> {
   const sopId = await loadAttachedSop(orgId, useCaseId);
   if (!sopId) return { ok: false, error: "Attach an SOP to this use case first", status: 409 };
-  const profiles = profilesOf(sopId);
+  const profiles = await profilesForUseCase(orgId, useCaseId, sopId);
   if (!profiles?.some((p) => p.name === profile)) return { ok: false, error: `${sopId} has no job profile "${profile}"`, status: 400 };
   const rows = await loadProfileRows(orgId, useCaseId, sopId);
   if (!rows.some((r) => r.profile === profile && r.automate)) return { ok: false, error: "Tick Automate on this job profile first: tests are written for the agent that will do its work", status: 409 };

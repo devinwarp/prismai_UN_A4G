@@ -1,22 +1,25 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { checkCitizenMessage, draftCitizenMessage, type MsgLang } from "@/lib/un/citizen-message";
 import { T, useLang } from "./Lang";
 import { tr } from "@/lib/un/i18n/dict";
 import { Section, btnGhost, btnPrimary, card, field } from "./ui";
 
 /** Drafts and checks a citizen-facing message for the ai_disclosure gate. Rules only; a person still approves it. */
-export default function CitizenMessageCheck() {
+export default function CitizenMessageCheck({ bare = false }: { /** Inside a panel that already carries the title: just the lede and the form. */ bare?: boolean }) {
   const ui = useLang();
   const [lang, setLang] = useState<MsgLang>("ar");
   const [entity, setEntity] = useState("");
   const [contact, setContact] = useState("");
   const [text, setText] = useState("");
   const [result, setResult] = useState<ReturnType<typeof checkCitizenMessage> | null>(null);
-  return (
-    <div className="mt-14">
-      <Section id="citizen-message" eyebrow={tr(ui, "ua.cm.eyebrow", "Disclosure gate")} title={tr(ui, "msg.title", "Citizen message check")} lede={tr(ui, "ua.cm.lede", "Checks that a citizen-facing message says it is an AI assistant, offers a real way to reach a person, and is written in the chosen language. Wording only: a person still approves the message.")}>
+  const lede = tr(ui, "ua.cm.lede", "Checks that a citizen-facing message says it is an AI assistant, offers a real way to reach a person, and is written in the chosen language. Wording only: a person still approves the message.");
+  // A plain function, not a component: a component declared here would remount (and drop focus from the inputs) on every keystroke.
+  const wrap = (children: ReactNode) => bare
+    ? <div><p className="max-w-[68ch] text-sm leading-relaxed text-ink-soft">{lede}</p><div className="mt-4">{children}</div></div>
+    : <div className="mt-14"><Section id="citizen-message" eyebrow={tr(ui, "ua.cm.eyebrow", "Disclosure gate")} title={tr(ui, "msg.title", "Citizen message check")} lede={lede}>{children}</Section></div>;
+  return wrap(
         <div className={card}>
           <div className="grid gap-3 sm:grid-cols-3">
             <label className="block text-xs"><span className="font-medium">{tr(ui, "ua.cm.lang", "Language")}</span>
@@ -45,7 +48,5 @@ export default function CitizenMessageCheck() {
             </div>
           )}
         </div>
-      </Section>
-    </div>
   );
 }

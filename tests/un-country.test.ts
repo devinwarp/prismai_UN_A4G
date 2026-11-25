@@ -320,7 +320,10 @@ test("an admin creates a country: it exists at once but needs its policy, then t
   assert.ok(await A.indexOfCountry(d, st, "NL"));
   const sw = await A.switchCountry(d, "a", "NL");
   assert.ok(sw.ok && sw.run.country === "NL" && sw.reran === false, "the build already ran it, so switching shows the stored result");
-  assert.equal((await A.addPolicyDocs(d, "a", "NL", [{ title: "x", text: POLICY("x") }])).ok, false, "built once");
+  const again = await A.addPolicyDocs(d, "a", "NL", [{ title: "Norland Revised Act", text: POLICY("The Revised Act") }]);
+  assert.ok(again.ok, "a created country's documents can be replaced");
+  assert.deepEqual((await A.policyDocsOf(d, "NL"))!.map((x) => x.title), ["Norland Revised Act"]);
+  assert.equal(await A.policyDocsOf(d, "UAE"), null, "a built-in country has no pasted documents");
 
   // the log carries it, and a reset removes the created country and its stored documents
   assert.ok(verifyCountry(await store.log()).ok);
@@ -350,4 +353,90 @@ test("each entity is linked to a country (UAE unless an admin changes it) and a 
   const r = await A.resetDemo(d, "a");
   assert.ok(r.ok && !("noop" in r && r.noop), "a link is something a reset undoes");
   assert.equal(entityUseCases((await A.loadState(d)).state, ucs, "UAE").length, 3);
+});
+
+test("an admin hides, renames and re-rules a country; the active one cannot be hidden; a hidden one cannot be switched or linked to; a reset undoes it", async () => {
+  const store = memoryStore();
+  const { d } = mk(store);
+  const { visibleCountries, allCountries, countryIn } = await import("../src/lib/un/country.ts");
+  let st = (await A.loadState(d)).state;
+  assert.equal(visibleCountries(st).length, allCountries(st).length);
+  // the active country (UAE) is protected
+  const no = await A.updateCountry(d, "a", "UAE", { hidden: true });
+  assert.ok(!no.ok && /active country/.test(no.error));
+  // bad input
+  assert.equal((await A.updateCountry(d, "a", "XX", { hidden: true })).ok, false);
+  assert.equal((await A.updateCountry(d, "a", "SG", { name: "x" })).ok, false);
+  assert.equal((await A.updateCountry(d, "a", "SG", { name: "European Union" })).ok, false, "names stay unique");
+  assert.equal((await A.updateCountry(d, "a", "SG", { ruleset: "nope" })).ok, false);
+  assert.equal((await A.updateCountry(d, "a", "SG", { hidden: "yes" })).ok, false);
+  // nothing to change logs nothing
+  const before = (await store.log()).length;
+  const same = await A.updateCountry(d, "a", "SG", { name: countryIn(st, "SG")!.name });
+  assert.ok(same.ok && same.changed.length === 0 && (await store.log()).length === before);
+  // hide a built-in country, rename it, change its rule set (the process is re-run under the new one)
+  const hid = await A.updateCountry(d, "a", "SG", { hidden: true, name: "Lion City", ruleset: "eu-ai-act" });
+  assert.ok(hid.ok && hid.changed.sort().join() === "hidden,name,ruleset" && hid.stale === true);
+  assert.ok(!(await store.log()).slice(before).some((e) => e.kind === "run"), "changing a rule set re-runs nothing by itself");
+  st = (await A.loadState(d)).state;
+  assert.equal(countryIn(st, "SG")!.name, "Lion City");
+  assert.ok(!visibleCountries(st).some((c) => c.id === "SG") && allCountries(st).some((c) => c.id === "SG"), "hidden is out of the pickers but still exists");
+  const sw = await A.switchCountry(d, "a", "SG");
+  assert.ok(!sw.ok && /hidden/.test(sw.error));
+  const link = await A.linkEntity(d, "a", "Sahel Federal Workforce Agency", "SG");
+  assert.ok(!link.ok && /hidden/.test(link.error));
+  // unhide: it works again, with its history intact
+  assert.ok((await A.updateCountry(d, "a", "SG", { hidden: false })).ok);
+  assert.ok((await A.switchCountry(d, "a", "SG")).ok);
+  assert.ok(verifyCountry(await store.log()).ok);
+  const r = await A.resetDemo(d, "a");
+  assert.ok(r.ok && !("noop" in r && r.noop));
+  st = (await A.loadState(d)).state;
+  assert.equal(countryIn(st, "SG")!.name, "Singapore");
+  assert.equal(Object.keys(st.overrides).length, 0);
+});
+
+test("an admin sets a country's own target and deadline; fields left out keep their value; bad values are refused; the UAE target stays in the policy form", async () => {
+  const store = memoryStore();
+  const { d } = mk(store);
+  assert.equal((await A.setCountryTarget(d, "a", "XX", { target_percent: 40 })).ok, false);
+  assert.ok(!(await A.setCountryTarget(d, "a", "UAE", { target_percent: 40 })).ok, "the UAE target is the organisation policy row");
+  for (const bad of [{ target_percent: 101 }, { target_percent: 4.5 }, { target_percent: "40" }, { deadline: "soon" }, { counting_verdicts: [] }, { counting_verdicts: ["MAYBE"] }, { name: "" }, { source_url: "ftp://x" }]) {
+    assert.equal((await A.setCountryTarget(d, "a", "SG", bad)).ok, false, JSON.stringify(bad));
+  }
+  const first = await A.setCountryTarget(d, "a", "SG", { target_percent: 40, deadline: "2028-06-30" });
+  assert.ok(first.ok && first.target.target_percent === 40 && first.target.deadline === "2028-06-30" && first.target.name.startsWith("Singapore"));
+  const second = await A.setCountryTarget(d, "a", "SG", { target_percent: 60 });
+  assert.ok(second.ok && second.target.target_percent === 60 && second.target.deadline === "2028-06-30", "the deadline is kept");
+  const cleared = await A.setCountryTarget(d, "a", "SG", { deadline: "" });
+  assert.ok(cleared.ok && cleared.target.deadline === null);
+  const log = (await store.log()).length;
+  const noop = await A.setCountryTarget(d, "a", "SG", { target_percent: 60 });
+  assert.ok(noop.ok && noop.noop === true && (await store.log()).length === log, "no change, no log entry");
+  assert.equal((await A.loadState(d)).state.targets.SG.target_percent, 60);
+  assert.ok(verifyCountry(await store.log()).ok);
+  await A.resetDemo(d, "a");
+  assert.equal(Object.keys((await A.loadState(d)).state.targets).length, 0);
+});
+
+test("a failed rebuild of a country's documents leaves the previous ones in place", async () => {
+  const store = memoryStore();
+  const { d } = mk(store);
+  await A.addCountry(d, "a", { id: "NL", name: "Norland", ruleset: "eu-ai-act" });
+  assert.ok((await A.addPolicyDocs(d, "a", "NL", [{ title: "Original", text: POLICY("The Original") }])).ok);
+  assert.equal((await A.addPolicyDocs(d, "a", "NL", [{ title: "Bad", text: "too short" }])).ok, false);
+  assert.deepEqual((await A.policyDocsOf(d, "NL"))!.map((x) => x.title), ["Original"]);
+});
+
+test("the country routes are admin-only, and the screen's new strings have Arabic", () => {
+  const route = readFileSync("src/app/api/admin/un/country/route.ts", "utf8");
+  assert.match(route, /update_country/);
+  assert.match(route, /set_target/);
+  const docs = readFileSync("src/app/api/admin/un/country/docs/route.ts", "utf8");
+  assert.match(docs, /requireAdmin\(\)/);
+  assert.ok(docs.indexOf("requireAdmin") < docs.indexOf("appCountryDeps"));
+  const summary = readFileSync("src/app/api/admin/un/country/summary/route.ts", "utf8");
+  assert.match(summary, /visibleCountries/, "the header's country switch offers only the countries that are not hidden");
+  const ui = readFileSync("src/app/admin/federal/country/CountryManage.tsx", "utf8");
+  for (const k of new Set([...ui.matchAll(/"(cn\.m\.[\w.]+)"/g)].map((m) => m[1]))) assert.ok(AR[k], `no Arabic for ${k}`);
 });

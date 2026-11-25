@@ -11,7 +11,7 @@ import { replayGen } from "@/lib/un/testgen";
 import { loadGenLog } from "@/lib/un/testgen-store";
 import { loadAttachedSop, loadProfileRows } from "@/lib/un/profiles-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
-import { profilesOf } from "@/lib/un/sop/data";
+import { profilesForUseCase } from "@/lib/un/sop-version-store";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card, scrollFocus, VerdictBadge } from "../../../_components/ui";
 import { AgentLine } from "./AgentLine";
@@ -38,7 +38,7 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
 
   const sopId = await loadAttachedSop(profile.org_id, id);
   const names = new Set(sopId ? (await loadProfileRows(profile.org_id, id, sopId)).filter((r) => r.automate).map((r) => r.profile) : []);
-  const profiles = ((sopId && profilesOf(sopId)) || []).filter((p) => names.has(p.name));
+  const profiles = ((sopId && (await profilesForUseCase(profile.org_id, id, sopId))) || []).filter((p) => names.has(p.name));
   const current = profiles.find((p) => p.name === pick) ?? profiles[0] ?? null;
   const pilots = current ? await loadPilots(profile.org_id, id, current.name) : [];
   const last = pilots[0] ?? null;

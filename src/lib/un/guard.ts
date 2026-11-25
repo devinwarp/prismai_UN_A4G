@@ -1,4 +1,4 @@
-import { STAGES, type UnUseCaseState, type Verdict } from "./model.ts";
+import { type UnUseCaseState, type Verdict } from "./model.ts";
 
 // Integrity guard (I-1). A verdict is written only from a completed scenario
 // run (and, since I-4, a human signature); `compliant` only from a passing
@@ -6,23 +6,24 @@ import { STAGES, type UnUseCaseState, type Verdict } from "./model.ts";
 // routes and the database trigger (supabase/un-federal-t1.sql)
 // enforce the same rules.
 
-export const ENGINE_ONLY_FIELDS = ["verdict", "compliant"] as const;
+export const ENGINE_ONLY_FIELDS = ["verdict", "compliant", "stage"] as const;
 
 export type PatchResult = { ok: true; patch: Record<string, unknown> } | { ok: false; error: string };
 
-/** Validate a use-case PATCH body. Only `stage` is hand-editable. */
+const HOW: Record<(typeof ENGINE_ONLY_FIELDS)[number], string> = {
+  verdict: "it is written only from a signed scenario run",
+  compliant: "it is written only from a passing Sijil attestation",
+  stage: "it follows the use case's lifecycle: a verdict puts it in the pilot stage, and the approval and the go-live (which check the pilot report) set approved and deployed",
+};
+
+/** Validate a use-case PATCH body. Nothing about a use case is hand-editable: the verdict, compliance and the stage all come from the engine and the
+ * lifecycle, and the dashboard shows what is in the database. Any of those fields is refused with the way it IS set; a body with none of them
+ * changes nothing and is refused too. */
 export function parseUseCasePatch(b: Record<string, unknown>): PatchResult {
   for (const f of ENGINE_ONLY_FIELDS) {
-    if (f in b) return { ok: false, error: `${f} cannot be set by hand: it is written only from a ${f === "verdict" ? "signed scenario run" : "passing Sijil attestation"}` };
+    if (f in b) return { ok: false, error: `${f} cannot be set by hand: ${HOW[f]}` };
   }
-  const patch: Record<string, unknown> = {};
-  if ("stage" in b) {
-    if (!STAGES.includes(b.stage as never)) return { ok: false, error: "Unknown stage" };
-    // approved and deployed are reached only through the approval and the go-live, which check that the pilot is met
-    if (b.stage === "approved" || b.stage === "deployed") return { ok: false, error: `The ${b.stage} stage cannot be set by hand: it is set by the ${b.stage === "approved" ? "approval" : "go-live"}, which checks the pilot report` };
-    patch.stage = b.stage;
-  }
-  return { ok: true, patch };
+  return { ok: false, error: "A use case cannot be edited by hand: its stage, verdict and compliance are read from the lifecycle and the signed runs" };
 }
 
 /** The values the dashboard may show. A verdict without a run id, head hash

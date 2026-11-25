@@ -112,9 +112,12 @@ export default function JourneyBar({ base, journey }: { base: string; journey: J
 const TVLang = ({ lang, k, en, v }: { lang: Lang; k: string; en: string; v: Record<string, string | number> }) => <>{tr(lang, k, en).replace(/\{(\w+)\}/g, (_, n: string) => String(v[n] ?? ""))}</>;
 
 /** One line for lists: nine glyphs, how many are done, and what comes next. Used inside a LangShell. */
-export function JourneyLine({ journey }: { journey: Journey }) {
+export function JourneyLine({ journey, compact = false }: { journey: Journey; /** One-screen desktop: the "done of 9 · next" words leave the screen (still read aloud and on hover); the nine glyphs stay. */ compact?: boolean }) {
   const lang = useLang();
   const next = journey.stages.find((s) => s.id === journey.next);
+  const words = (
+    <><TV k="jb.compact" en="Journey: {d} of 9" v={{ d: journey.done }} />{" · "}{next ? <TV k="jb.compact.next" en="Next: {s}" v={{ s: tr(lang, `jb.stage.${next.id}`, STAGE_EN[next.id]) }} /> : <T k="jb.compact.none" en="Nothing waiting" />}</>
+  );
   return (
     <span className="inline-flex flex-wrap items-center gap-x-2 text-xs">
       <ol aria-label="Journey" className="inline-flex gap-0.5">
@@ -125,7 +128,7 @@ export function JourneyLine({ journey }: { journey: Journey }) {
           </li>
         ))}
       </ol>
-      <span className="text-ink-soft"><TV k="jb.compact" en="Journey: {d} of 9" v={{ d: journey.done }} />{" · "}{next ? <TV k="jb.compact.next" en="Next: {s}" v={{ s: tr(lang, `jb.stage.${next.id}`, STAGE_EN[next.id]) }} /> : <T k="jb.compact.none" en="Nothing waiting" />}</span>
+      <span className={`text-ink-soft ${compact ? "desk:sr-only" : ""}`}>{words}</span>
     </span>
   );
 }

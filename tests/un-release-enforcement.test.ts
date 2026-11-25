@@ -6,20 +6,22 @@ import { journeyStatus, type JourneyInput } from "../src/lib/un/journey.ts";
 
 const src = (p: string) => readFileSync(p, "utf8").replace(/\r\n/g, "\n");
 
-test("the stage cannot be set to approved or deployed by hand; the other stages still can", () => {
-  for (const stage of ["approved", "deployed"]) {
+test("no stage can be set by hand: approved and deployed are reached only through the approval and the go-live, the rest follow the lifecycle", () => {
+  for (const stage of ["intake", "sop", "org", "scout", "pilot", "approved", "deployed", "nope"]) {
     const r = parseUseCasePatch({ stage });
     assert.equal(r.ok, false, stage);
     assert.match(r.ok ? "" : r.error, /cannot be set by hand/);
-    assert.match(r.ok ? "" : r.error, /checks the pilot report/);
+    assert.match(r.ok ? "" : r.error, /approved and deployed/);
   }
-  for (const stage of ["intake", "sop", "org", "scout", "pilot"]) assert.deepEqual(parseUseCasePatch({ stage }), { ok: true, patch: { stage } });
-  assert.equal(parseUseCasePatch({ stage: "nope" }).ok, false);
 });
 
-test("the dashboard does not offer approved or deployed in a row's stage menu", () => {
+test("the dashboard shows a row's stage and verdict as text from the database: no control edits either", () => {
   const panel = src("src/app/admin/federal/FederalPanel.tsx");
-  assert.match(panel, /STAGES\.filter\(\(s\) => \(s !== "approved" && s !== "deployed"\) \|\| s === u\.stage\)/);
+  assert.doesNotMatch(panel, /STAGES\.filter\(/, "no stage menu");
+  assert.doesNotMatch(panel, /onChange=\{\(e\) => patch\(/, "nothing writes a row");
+  assert.doesNotMatch(panel, /\/api\/admin\/un\/use-cases\/\$\{id\}"/, "no PATCH of a use case from the dashboard");
+  assert.match(panel, /\{stageLabel\(lang, u\.stage\)\}<\/span>/);
+  assert.match(panel, /<VerdictBadge verdict=\{u\.verdict\} \/>/);
 });
 
 const ready: JourneyInput = {

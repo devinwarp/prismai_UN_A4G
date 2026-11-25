@@ -1,5 +1,12 @@
 @import "tailwindcss";
 
+/* One-screen desktop: wide AND tall enough to fit a dashboard without scrolling the page.
+   Anything smaller (phones, tablets, short windows) gets the stacked, scrolling layout. */
+@custom-variant desk (@media (min-width: 80rem) and (min-height: 37.5rem));
+/* The one-screen desktop in a window that is short (a laptop with browser chrome): spacing steps down one notch. */
+@custom-variant short (@media (min-width: 80rem) and (min-height: 37.5rem) and (max-height: 46rem));
+@custom-variant nodesk (@media not ((min-width: 80rem) and (min-height: 37.5rem)));
+
 @theme {
   /* Default: warm paper + deep pine ("field notes" editorial). */
   --color-paper: #f6f4ec;
