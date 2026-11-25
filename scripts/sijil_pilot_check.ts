@@ -5,7 +5,7 @@
 // deliverable sealed flagged. It edits the check's own copy of the output, never product code.
 import { executePilot, generatedCases, sealSummary, spreadSample } from "../src/lib/un/pilot-run.ts";
 import { agentConfigFromEnv, createSealer, verifyChain } from "../src/lib/un/sijil-agent-client.ts";
-import { sha256Hex } from "../src/lib/un/sijil-agent.ts";
+import { deliverableOf, sha256Hex } from "../src/lib/un/sijil-agent.ts";
 import { deriveTests } from "../src/lib/un/test-derive.ts";
 import { loadSop, searchSop } from "../src/lib/un/sop-kb.ts";
 import { profilesOf } from "../src/lib/un/sop/data.ts";
@@ -30,7 +30,8 @@ const run = async (c: (typeof cases)[number]) => {
   const o = await runCase(c, env);
   const email = (o.result.output as { email?: { body?: string } | null }).email;
   if (strip && email?.body) email.body = email.body.replace(/[^.\n]*\bAI\b[^.\n]*\.?/gi, "").trim() || "Your documents were received.";
-  if (email?.body) texts.set(c.id, email.body);
+  const made = deliverableOf(o.result as { output?: unknown; refused?: unknown });
+  if (made) texts.set(c.id, made.text);
   return o;
 };
 const { runs } = await executePilot(set, cases, run, 1, Date.now, "dv", only, createSealer(cfg));

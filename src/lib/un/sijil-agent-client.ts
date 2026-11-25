@@ -66,7 +66,7 @@ function sender(cfg: AgentConfig, f: typeof fetch): Send {
   };
 }
 
-interface Session { id: string; nodeId: string }
+interface Session { id: string; nodeId: string; rulepackHash: string }
 
 async function handshake(cfg: AgentConfig, send: Send): Promise<Session> {
   const pol = await send("GET", "/api/policy");
@@ -76,7 +76,18 @@ async function handshake(cfg: AgentConfig, send: Send): Promise<Session> {
   const nonce = String(ch.nonce);
   const s = await send("POST", "/api/agent/session", { agent_id: cfg.agentId, nonce, proof: signProof(cfg.keyHex, sessionMessage({ agent_id: cfg.agentId, node_id: nodeId, nonce })) });
   if (typeof s.agent_session !== "string") throw new SealError("Sijil node returned no session");
-  return { id: s.agent_session, nodeId };
+  return { id: s.agent_session, nodeId, rulepackHash: await rulepackHashOf(send) };
+}
+
+/** The rule-pack hash in force on the node: its newest record carries it ("" when the node has no rule pack). A seal must carry exactly this hash
+ * or the node answers 409 "rulepack mismatch". Two small reads, once per session. */
+async function rulepackHashOf(send: Send): Promise<string> {
+  const head = await send("GET", "/api/records?since=1000000000");
+  const total = Number(head.total);
+  if (!Number.isFinite(total) || total < 1) return "";
+  const last = (await send("GET", `/api/records?since=${total - 1}`)).records as { rulepack_hash?: unknown }[] | undefined;
+  const h = last?.[last.length - 1]?.rulepack_hash;
+  return typeof h === "string" ? h : "";
 }
 
 const simulatedRejected = (o: CaseOutcome) => o.calls.filter((c) => c.decision === "reject").length;
@@ -96,7 +107,7 @@ export function createSealer(cfg: AgentConfig, f: typeof fetch = fetch): SealRun
       let rejected = 0;
       for (const c of o.calls) {
         const body: SealBody = callBody(c, ctx);
-        const r = await send("POST", "/api/agent/seal", { ...body, task_seq: taskSeq }, s.id);
+        const r = await send("POST", "/api/agent/seal", { ...body, rulepack_hash: s.rulepackHash, task_seq: taskSeq }, s.id);
         decisions.push(String(r.decision));
         if (decisionFromSealed(body, { decision: String(r.decision) }) === "reject") rejected++;
       }
@@ -106,7 +117,7 @@ export function createSealer(cfg: AgentConfig, f: typeof fetch = fetch): SealRun
       const d = made ? deliverableBody(made.text, disclosed, ctx, made.kind) : null;
       let deliverable: { seq: number; hash: string; decision: string } | undefined;
       if (d) {
-        const r = await send("POST", "/api/agent/seal", { ...d, task_seq: taskSeq }, s.id);
+        const r = await send("POST", "/api/agent/seal", { ...d, rulepack_hash: s.rulepackHash, task_seq: taskSeq }, s.id);
         decisions.push(String(r.decision));
         deliverable = { seq: Number(r.seq), hash: d.input_hash, decision: String(r.decision) };
       }
