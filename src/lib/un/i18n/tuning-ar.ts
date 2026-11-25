@@ -57,6 +57,7 @@ export const TUNING_AR: Record<string, string> = {
   "tn.vd.wrong_citation": "مقطع خاطئ",
   "tn.vd.went_outside": "ذهب إلى الخارج",
   "tn.vd.answered_anyway": "أجاب وما كان يجب أن يجيب",
+  "tn.vd.sijil_blocked": "حُجب بواسطة Sijil",
   "tn.fix": "اقترح إصلاحاً",
   "tn.fix.done": "اقتُرح: {s}. تجده ضمن الإصدارات ليعتمده شخص.",
   "tn.fix.none": "لم يُعثر على إصلاح موثَّق: لم يُصلح أي ما جرّبه المقترِح هذا السؤال دون أن يكسر سؤال ضبط آخر. عدّل المسرد أو الإعدادات يدوياً.",

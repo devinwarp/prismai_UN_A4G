@@ -65,7 +65,7 @@ test("runCase turns a Sijil block into a counted blocked_by_sijil outcome", asyn
 test("runQuestions marks only the blocked question as sijil_blocked", async () => {
   const bm25 = async (q: string, kind?: string) => (await searchSop(SOP, q, { k: 5, kind })).hits;
   let calls = 0;
-  const reasoner = async () => { calls++; if (calls === 1) throw new SijilBlockedError(["agent_to_agent"], 9); return { thought: "x", action: { tool: "request_outside_information", question: "q", reason: "r" } }; };
+  const reasoner = async () => { calls++; if (calls === 1) throw new SijilBlockedError(["agent_to_agent"], 9); return { thought: "x", action: { tool: "request_outside_information" as const, question: "q", reason: "r" } }; };
   const out = await runQuestions(SOP, DEFAULT_REACT_CONFIG, SEED_QUESTIONS.slice(0, 2), bm25, { reasoner });
   assert.equal(out[0].verdict, "sijil_blocked");
   assert.deepEqual(out[0].sijil_block, { rules: ["agent_to_agent"], seq: 9 });
