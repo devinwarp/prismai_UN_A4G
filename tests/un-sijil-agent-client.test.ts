@@ -13,7 +13,7 @@ const call = (tool: string, decision: "allow" | "reject" = "allow"): CallDecisio
 const outcome = (calls: CallDecision[], body?: string, extra: Record<string, unknown> = {}): CaseOutcome => ({ calls, result: { output: body === undefined ? { status: "ok" } : { email: { body } }, ...extra } } as unknown as CaseOutcome);
 
 interface Seen { method: string; path: string; body: Record<string, unknown> | null; headers: Record<string, string> }
-function node(opts: { halted?: boolean; failAllSeals?: boolean; failSealAt?: number; sessionStatusOnce?: number; sealStatus401Times?: number; down?: boolean; verify?: unknown } = {}) {
+function node(opts: { rulepack?: string; halted?: boolean; failAllSeals?: boolean; failSealAt?: number; sessionStatusOnce?: number; sealStatus401Times?: number; down?: boolean; verify?: unknown } = {}) {
   const seen: Seen[] = [];
   let seq = 10, seals = 0, s401 = opts.sealStatus401Times ?? 0, sessions = 0, attempts = 0;
   const f = (async (url: string | URL | Request, init?: RequestInit) => {
@@ -26,6 +26,10 @@ function node(opts: { halted?: boolean; failAllSeals?: boolean; failSealAt?: num
     const json = (o: unknown, status = 200) => new Response(JSON.stringify(o), { status });
     switch (u.pathname) {
       case "/api/policy": return json({ node_id: "node-a" });
+      case "/api/records": {
+        const total = 51, since = Number(u.searchParams.get("since") ?? 0);
+        return json({ total, records: since >= total ? [] : [{ seq: total, rulepack_hash: opts.rulepack ?? "" }] });
+      }
       case "/api/agent/challenge": return json({ nonce: "ab".repeat(32) });
       case "/api/agent/session": sessions++; return json({ agent_session: `as_${sessions}`, expires_at: "x" });
       case "/api/agent/task/start": return json({ seq: ++seq, record_hash: "h" });
@@ -33,6 +37,7 @@ function node(opts: { halted?: boolean; failAllSeals?: boolean; failSealAt?: num
         seals++;
         if (s401 > 0) { s401--; return json({ detail: "agent session unknown or expired" }, 401); }
         if (opts.failSealAt === seals || opts.failAllSeals) return json({ detail: "boom" }, 409);
+        if ((body as { rulepack_hash: string }).rulepack_hash !== (opts.rulepack ?? "")) return json({ detail: "rulepack mismatch" }, 409);
         return json({ seq: ++seq, record_hash: "h", decision: opts.halted ? "block" : (body as { decision: string }).decision });
       }
       case "/api/agent/task/end": return json({ seq: ++seq, record_hash: "h" });
@@ -218,4 +223,22 @@ test("configProblem names what is wrong when SIJIL_BASE_URL is set but the agent
   assert.match(String(configProblem({ ...full, SIJIL_AGENT_TOKEN: undefined })), /SIJIL_AGENT_TOKEN/);
   assert.match(String(configProblem({ ...full, SIJIL_AGENT_KEY: "ABC" })), /SIJIL_AGENT_KEY/);
   assert.ok(!String(configProblem({ ...full, SIJIL_AGENT_KEY: "ABC" })).includes("ABC"));
+});
+
+test("seals carry the rule-pack hash the node has in force, read from its newest record, so a node with a rule pack accepts them", async () => {
+  const n = node({ rulepack: "0d19ffa9937c7c48" + "0".repeat(48) });
+  const out = await createSealer(cfg, n.f)(run, outcome([call("lookup")], "This message was drafted by an AI assistant."));
+  assert.equal(out.source, "node:node-a");
+  const seals = n.seen.filter((x) => x.path === "/api/agent/seal");
+  assert.ok(seals.length >= 2);
+  for (const sl of seals) assert.equal(sl.body!.rulepack_hash, "0d19ffa9937c7c48" + "0".repeat(48));
+});
+
+test("a node with no rule pack still gets the empty hash, and the hash is read once per session, not once per run", async () => {
+  const n = node();
+  const seal = createSealer(cfg, n.f);
+  await seal(run, outcome([call("a")]));
+  await seal(run, outcome([call("b")]));
+  for (const sl of n.seen.filter((x) => x.path === "/api/agent/seal")) assert.equal(sl.body!.rulepack_hash, "");
+  assert.equal(n.seen.filter((x) => x.path.startsWith("/api/records")).length, 2, "two small reads for the one session");
 });
