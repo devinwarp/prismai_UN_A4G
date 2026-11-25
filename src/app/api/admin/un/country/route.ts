@@ -3,6 +3,7 @@ import { bad, requireAdmin } from "@/lib/api-auth";
 import { addCountry, addPolicy, addPolicyDocs, linkEntity, onboardCompany, recordRun, resetDemo, setCountryTarget, switchCountry, updateCountry, type Fail } from "@/lib/un/country-actions";
 import { appCountryDeps } from "@/lib/un/country-app";
 import type { Timing } from "@/lib/un/country";
+import { knownCountries } from "@/lib/un/country-context";
 
 /** POST { action: "update_country", country, name?, ruleset?, hidden? } | { action: "set_target", country, target_percent?, deadline?, counting_verdicts?, name?, jurisdiction?, source_url? }
  * | { action: "switch", country, company? } | { action: "add_policy", country } | { action: "onboard", name?, country?, sample? | sop_text?, title? }
@@ -20,12 +21,16 @@ export async function POST(request: Request) {
   const go = (onStage?: (t: Timing) => void) => {
     switch (b.action) {
       case "switch": return switchCountry(d, actor, str("country"), str("company") || "marsa");
-      case "add_policy": return addPolicy(d, actor, str("country"), onStage);
-      case "add_country": return addCountry(d, actor, b);
+      case "add_policy": return addPolicy(d, actor, str("country"), onStage, b.setup_only === true);
+      case "add_country": {
+        const id = str("id").trim().toUpperCase();
+        const country = knownCountries().find((entry) => entry.id === id);
+        return country ? addCountry(d, actor, { ...b, ...country }) : Promise.resolve<Fail>({ ok: false, status: 400, error: "Choose a country from the list." });
+      }
       case "update_country": return updateCountry(d, actor, str("country"), b);
       case "set_target": return setCountryTarget(d, actor, str("country"), b);
       case "link_entity": return linkEntity(d, actor, b.entity, b.country);
-      case "add_policy_docs": return addPolicyDocs(d, actor, str("country"), Array.isArray(b.docs) ? (b.docs as never[]) : [], onStage);
+      case "add_policy_docs": return addPolicyDocs(d, actor, str("country"), Array.isArray(b.docs) ? (b.docs as never[]) : [], onStage, b.setup_only === true);
       case "onboard": return onboardCompany(d, actor, b, onStage);
       case "run": return recordRun(d, actor, str("company") || "marsa", str("country"));
       case "reset": return resetDemo(d, actor, who.org_id!);

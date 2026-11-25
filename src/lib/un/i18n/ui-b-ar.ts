@@ -2,6 +2,29 @@
 // federal screens as <T k="..."/>, <TV k="..."/> or tr(lang, "...", english).
 // Screens: compare, gaps, kb, country, gates, outside, evals (chrome only; data and source text stay English).
 export const UI_B_AR: Record<string, string> = {
+  // shared federal workspaces
+  "workspace.sections": "أقسام مساحة العمل",
+  "workspace.tuning": "ضبط الوكيل",
+  "workspace.kb.search": "البحث والنتائج",
+  "workspace.kb.prompt": "ابحث عن مصطلح في السياسات أو اختر مثالًا لعرض المقاطع ذات الصلة.",
+  "workspace.gates.log": "تم التحقق من السلسلة. عدد الإدخالات لهذه الدولة: {count}.",
+  "workspace.gates.description": "راجع البوابات المطلوبة في مجموعة القواعد المحددة والتغييرات المسجلة في سجلها.",
+  "workspace.country.overview": "نظرة عامة",
+  "workspace.country.manage": "إدارة الدول",
+  "workspace.country.audit": "سجل التدقيق",
+  "workspace.country.summary": "نظرة عامة على الدولة",
+  "workspace.country.description": "راجع مصادر السياسات وأدر ملفات الدول وقارن نتائج التشغيل التجريبي.",
+  "workspace.country.noruns": "لا توجد عمليات تشغيل مسجلة لهذه الدولة.",
+  "workspace.country.nolog": "لا توجد سجلات تدقيق لهذه الدولة حتى الآن.",
+  "workspace.outside.description": "راجع الأسئلة التي لم يُجب عنها الإجراء. تُحفظ الردود المسجلة في سجل الحالة.",
+  "workspace.outside.demo": "سؤال تجريبي",
+  "workspace.goals": "أهداف الجهات ومستهدفاتها",
+  "workspace.goals.description": "اختر جهة لعرض أهدافها والمستهدفات التي تلتزم بها كل حالة استخدام.",
+  "workspace.goals.matrix": "الأهداف ومستهدفات حالات الاستخدام",
+  "workspace.goals.manage": "إدارة الجهات",
+  "workspace.gaps": "فجوات السياسات والمعايير",
+  "workspace.gaps.ruleset": "النتائج الخاصة بمجموعة القواعد هذه",
+  "workspace.compare.policy": "كيف تُطبَّق السياسة",
   // shared
   "ub.none": "لا شيء",
   "ub.comma": "، ",
@@ -53,7 +76,7 @@ export const UI_B_AR: Record<string, string> = {
   "ub.cmp.allpass": "اجتازت كل الفحوص",
   "ub.cmp.apply": "طبّق",
   "ub.cmp.under": "العمليات ضمن {rs}",
-  "ub.cmp.baseline": "هذه هي الحالة المرجعية. انتقل إلى سياسة أخرى أعلاه لترى أي القرارات تتغير.",
+  "ub.cmp.baseline": "هذه هي الحالة المرجعية. انتقل إلى سياسة أخرى لترى أي القرارات تتغير.",
   "ub.cmp.changed": "تتغير {c} من {n} قرارات ضمن {rs} مقارنةً بالإمارات.",
   "ub.cmp.nochange": "لا يتغير أي قرار ضمن {rs} لهذه العمليات.",
   "ub.cmp.asks": "كل عملية تطلب التشغيل المستقل. تتبع UC02 السيناريو المرحلي S1 حتى {step} (تركيبي)، وفي العمليات الأخرى {ev}.",

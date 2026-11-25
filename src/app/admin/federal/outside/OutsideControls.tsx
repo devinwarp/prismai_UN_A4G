@@ -38,7 +38,7 @@ export function AnswerForm({ id }: { id: string }) {
 }
 
 /** Ask the agent a question about the demo case, to see an outside request being raised. */
-export function AskForm() {
+export function AskForm({ country }: { country: string }) {
   const router = useRouter();
   const lang = useLang();
   const [q, setQ] = useState("");
@@ -48,7 +48,7 @@ export function AskForm() {
     e.preventDefault();
     setBusy(true);
     setResult(null);
-    const r = await post("/api/admin/un/outside/ask", { question: q });
+    const r = await post("/api/admin/un/outside/ask", { question: q, country });
     setBusy(false);
     if (!r.ok) setResult(String(r.data.error ?? tr(lang, "ub.oq.qfail", "The question failed.")));
     else {

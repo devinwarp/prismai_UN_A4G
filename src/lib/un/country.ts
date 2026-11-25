@@ -1,3 +1,4 @@
+import { regionalCurrency } from "./country-context.ts";
 import data from "../../../data/un-countries.json" with { type: "json" };
 import { effectiveGates, EMPTY_GOV, type GovState } from "./gates.ts";
 import { hitlConfigFor, RULESETS } from "./rulesets.ts";
@@ -15,13 +16,13 @@ import type { VectorFile } from "./vector.ts";
 // rule set and sources. Everything here is pure; storage is country-store.ts, the actions are country-actions.ts.
 // The rule sets are SIMPLIFIED DEMO ENCODINGS, not legal advice; retrieval is lexical BM25 (plus vectors where built).
 
-export interface Country { id: string; name: string; ruleset: string; home: string[]; international: string[]; built: "precomputed" | "on_demand"; stage?: string;
+export interface Country { id: string; name: string; ruleset: string; currency?: string; home: string[]; international: string[]; built: "precomputed" | "on_demand"; stage?: string;
   /** Created by an admin on the screen (not in data/un-countries.json): its policy documents are stored, not staged on disk. */
   custom?: boolean;
   /** Hidden by an admin: out of the country switch and the pickers, with all its data and history kept. Reversible. */
   hidden?: boolean }
 /** What an admin can change on any country, built-in or created. Applied over the country's own data when the log is replayed. */
-export interface CountryPatch { name?: string; ruleset?: string; hidden?: boolean }
+export interface CountryPatch { name?: string; ruleset?: string; currency?: string; hidden?: boolean }
 /** A country's own deployment target. The UAE's lives in the organisation's policy row; every other country's is in the log. */
 export type CountryTarget = Policy;
 export interface BuiltinCompany { id: string; name: string; country: string; sop_id: string; sop_file: string }
@@ -30,8 +31,10 @@ export const BUILTIN_COMPANIES = data.companies as BuiltinCompany[];
 export const countryOf = (id: string) => COUNTRIES.find((c) => c.id === id);
 /** A country by id, including the ones an admin created (they live in the replayed state). */
 export const countryIn = (state: { countries: Record<string, Country>; overrides?: Record<string, CountryPatch> }, id: string): Country | undefined => {
-  const base = countryOf(id) ?? state.countries[id];
-  return base && state.overrides?.[id] ? { ...base, ...state.overrides[id] } : base;
+  const base = countryOf(id) ?? (Object.hasOwn(state.countries, id) ? state.countries[id] : undefined);
+  if (!base) return undefined;
+  const country = { ...base, ...state.overrides?.[id] };
+  return { ...country, currency: country.currency ?? regionalCurrency(id) };
 };
 /** The country every entity belongs to unless an admin links it elsewhere: all the entities the app ships with are UAE federal entities. */
 export const DEFAULT_ENTITY_COUNTRY = "UAE";

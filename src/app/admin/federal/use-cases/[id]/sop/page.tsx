@@ -1,16 +1,17 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { mayReadUseCase } from "@/lib/un/federal-read-access";
 import { getUserAndProfile } from "@/lib/auth";
 import { isUuid } from "@/lib/un/model";
 import { loadGov } from "@/lib/un/gates-store";
 import { loadAttachedSop, loadProfileRows } from "@/lib/un/profiles-store";
-import { latestOf, loadAttachment, loadChangeRequests, profilesForUseCase } from "@/lib/un/sop-version-store";
+import { getVersion, latestOf, loadAttachment, loadChangeRequests, profilesForUseCase } from "@/lib/un/sop-version-store";
 import { permissionsFor } from "@/lib/un/permissions-server";
 import { RULESETS } from "@/lib/un/rulesets";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { checkSopKb } from "@/lib/un/skill-extract";
-import { SAMPLES } from "@/lib/un/sop/data";
+import { sampleInput, sampleSopIdForUseCase, SAMPLES } from "@/lib/un/sop/data";
 import { assessProfiles, EVIDENCE_KEYS } from "@/lib/un/sop/profiles";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { btnGhost, card, scrollRegion, VerdictBadge } from "../../../_components/ui";
@@ -25,27 +26,37 @@ const EV_EN = { all_pass: "All gates pass", one_fix: "One fix declared", hosting
 const FLAG_EN = { client_facing: "client-facing", affects_rights: "rights-affecting", irreversible: "irreversible" } as const;
 const FLAG_KEY = { client_facing: "pf.cf", affects_rights: "pf.ra", irreversible: "pf.ir" } as const;
 
-export default async function UseCaseSopPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ j?: string }> }) {
-  const [{ id }, { j }] = await Promise.all([params, searchParams]);
+export default async function UseCaseSopPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ j?: string; view?: string }> }) {
+  const [{ id }, { j, view }] = await Promise.all([params, searchParams]);
   const { user, profile } = await getUserAndProfile();
   if (!user) redirect(`/login?next=/admin/federal/use-cases/${id}/sop`);
   if (!profile?.org_id) redirect("/login");
   if (!isUuid(id)) notFound();
+  if (!(await mayReadUseCase(profile.org_id, user.id, profile.role, id))) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
   const canEdit = profile.role === "admin";
   const sopId = await loadAttachedSop(profile.org_id, id);
   // the SOP is read by version: this use case is on one, a deployed one is frozen on it, and a newer one may be waiting
   const att = await loadAttachment(profile.org_id, id).catch(() => null);
-  const latest = sopId ? await latestOf(profile.org_id, sopId).catch(() => null) : null;
-  const profiles = (sopId && (await profilesForUseCase(profile.org_id, id, sopId))) || [];
+  const version = att?.version ?? (sopId ? 1 : null);
+  const [latest, profiles] = sopId ? await Promise.all([
+    latestOf(profile.org_id, sopId).catch(() => null),
+    profilesForUseCase(profile.org_id, id, sopId),
+  ]) : [null, []];
+  const attachedDoc = sopId && version !== null
+    ? latest?.version === version ? latest : await getVersion(profile.org_id, sopId, version).catch(() => null)
+    : null;
+  const sampleId = sopId ? null : sampleSopIdForUseCase(uc);
+  const sampleDoc = sampleId ? sampleInput(sampleId) : null;
+  const document = attachedDoc ? { title: attachedDoc.title, text: attachedDoc.body } : sampleDoc;
   const frozen = uc.stage === "deployed";
   const open = (await loadChangeRequests(profile.org_id).catch(() => [])).filter((r) => r.use_case_id === id && r.status === "open").at(-1) ?? null;
   const perms = await permissionsFor(profile, user.id);
   const rows = sopId ? await loadProfileRows(profile.org_id, id, sopId) : [];
   const ticked = new Set(rows.filter((r) => r.automate).map((r) => r.profile));
   const rs = RULESETS.find((r) => KEY[r.id] === j) ?? RULESETS[0];
-  const a = assessProfiles(profiles, ticked, rs, uc.entity, { ext: uc.ext_id, gov: await loadGov(profile.org_id) });
+  const a = assessProfiles(profiles ?? [], ticked, rs, uc.entity, { ext: uc.ext_id, gov: await loadGov(profile.org_id) });
   const kb = sopId ? checkSopKb(sopId) : null;
   const skill = new Map(rows.map((r) => [r.profile, r.skill_sha256]));
   const th = "px-3 py-2 text-start font-normal";
@@ -60,11 +71,24 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
 
         <p className="mt-3"><Link className="text-sm underline" href={`/admin/federal/use-cases/${id}/tests`}><T k="pf.tests.link" en="Pilot tests and verdict parameters" /></Link></p>
 
-        <section className={`${card} mt-6`} aria-label="SOP">
+        <section id="sop-setup" className={`${card} mt-6 scroll-mt-4`} aria-label="SOP">
           {sopId ? (
             <p className="text-sm"><TV k="pf.attached" en="Attached SOP: {sop}" v={{ sop: sopId }} /></p>
           ) : (
             <p className="text-sm font-medium"><T k="pf.noattach" en="No SOP is attached to this use case." /></p>
+          )}
+          {document ? (
+            <details id="sop-text" open={view === "sop"} className="mt-3 scroll-mt-4 rounded-lg border border-line bg-paper px-4 py-3">
+              <summary className="cursor-pointer text-sm font-medium"><T k="sop.source" en="Source text" /></summary>
+              <h2 className="mt-3 font-display text-xl font-medium" dir="auto">{document.title}</h2>
+              <p className="mt-1 text-xs text-ink-soft">
+                {sampleDoc ? <T k="pf.sop.sample_text" en="Shipped sample. It is not attached to this use case." />
+                  : <TV k="pf.sop.attached_version" en="Attached version {v}" v={{ v: version ?? 1 }} />}
+              </p>
+              <div className="mt-3 max-w-[75ch] text-sm leading-relaxed whitespace-pre-wrap break-words" dir="auto">{document.text}</div>
+            </details>
+          ) : sopId && (
+            <p id="sop-text" className="mt-3 scroll-mt-4 text-sm text-ink-soft"><T k="pf.sop.source.unavailable" en="The attached SOP text is unavailable." /></p>
           )}
           <p className="mt-3 flex flex-wrap gap-2">
             {SAMPLES.filter((s) => s.sop_id !== sopId).map((s) => <AttachButton key={s.sop_id} ucId={id} sopId={s.sop_id} canEdit={canEdit && !frozen} className={btnGhost} />)}
@@ -72,10 +96,10 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
           {!canEdit && <p className="mt-2 text-xs text-ink-soft"><T k="pf.attach.admin" en="Attaching a SOP needs an admin." /></p>}
           {(canEdit || sopId) && (
             <SopEditor
-              ucId={id} attached={sopId} version={att?.version ?? (sopId ? 1 : null)} latest={latest?.version ?? null} frozen={frozen} changes={latest?.changes ?? null}
+              ucId={id} attached={sopId} version={version} latest={latest?.version ?? null} frozen={frozen} changes={latest?.changes ?? null}
               openRequest={open ? { by: open.requested_email ?? open.requested_by, at: open.requested_at, reason: open.reason, plan: open.plan, from: open.from_version, to: open.to_version } : null}
               canEdit={canEdit} canRequest={perms.can("sop.change.request", id)} canApply={perms.can("sop.change.apply", id)}
-              profiles={profiles.map((p) => ({ name: p.name, tasks: p.tasks.map((t) => t.title) }))}
+              profiles={(profiles ?? []).map((p) => ({ name: p.name, tasks: p.tasks.map((t) => t.title) }))}
             />
           )}
         </section>

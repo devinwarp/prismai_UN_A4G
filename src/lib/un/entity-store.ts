@@ -10,7 +10,7 @@ const iso = (v: unknown) => (v ? new Date(String(v)).toISOString() : null);
 /** The entity rows of the organisation. An entity that only exists through its use cases or the code seed has no row until an admin first changes it. */
 export async function loadEntityRows(orgId: string): Promise<EntityRow[]> {
   const { data } = await createAdminClient().from("un_entities").select("*").eq("org_id", orgId);
-  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({ name: String(r.name), sector: (r.sector as string | null) ?? null, goals: parseGoals(r.goals), hidden: r.hidden === true }));
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({ name: String(r.name), sector: (r.sector as string | null) ?? null, goals: parseGoals(r.goals), hidden: r.hidden === true, ...(typeof r.country_id === "string" ? { country_id: r.country_id } : {}) }));
 }
 
 /** Every entity name the organisation has: rows, entities of its use cases, and the seeded ones. */
@@ -24,6 +24,13 @@ export async function loadKnownEntities(orgId: string): Promise<{ rows: EntityRo
 /** The entities an admin has hidden. Empty when the column or table is absent. */
 export async function loadHiddenEntities(orgId: string): Promise<Set<string>> {
   try { return new Set((await loadEntityRows(orgId)).filter((r) => r.hidden).map((r) => r.name)); } catch { return new Set(); }
+}
+
+export async function registerEntity(orgId: string, entity: EntityRow, countryId: string, by: string) {
+  const { error } = await createAdminClient().from("un_entities").insert({
+    ...entity, org_id: orgId, country_id: countryId, updated_by: by, updated_at: new Date().toISOString(),
+  });
+  return error;
 }
 
 /** Creates or updates one entity row, keeping what the caller does not pass. Returns an error message, or null. */

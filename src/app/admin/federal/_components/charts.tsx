@@ -3,7 +3,7 @@ import Pop from "./Pop";
 import { VERDICTS, QUADRANTS, type Dashboard, type Tally, type UnUseCaseState, type Verdict } from "@/lib/un/model";
 import { tr } from "@/lib/un/i18n/dict";
 import { useLang } from "./Lang";
-import { DataTableAlt, scrollFocus, scrollRegion, VerdictBadge } from "./ui";
+import { DataTableAlt, scrollFocus, scrollRegion } from "./ui";
 import { VERDICT_META, fill as fmt, ltr, quadLabel, stageLabel, verdictName } from "./labels";
 
 const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
@@ -18,10 +18,10 @@ export function monthsLeft(asOf: string, deadline: string | null): number | null
 /** One horizontal progress track with the target marked on it. */
 export function TargetTrack({
   label, value, total, target, fill, note,
-}: { label: string; value: number; total: number; target: number; fill: string; note: string }) {
+}: { label: string; value: number; total: number; target: number | null; fill: string; note: string }) {
   const lang = useLang();
   const w = pct(value, total);
-  const t = total ? (target / total) * 100 : 0;
+  const t = total && target !== null ? (target / total) * 100 : null;
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3 text-sm">
@@ -29,16 +29,18 @@ export function TargetTrack({
         <bdi dir="ltr" className="font-mono text-xs text-ink-soft tabular-nums">{note}</bdi>
       </div>
       <div
-        role="meter"
-        aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={total}
-        aria-valuenow={value}
-        aria-valuetext={fmt(tr(lang, "ua.tp.vt", "{v} of {t} use cases; target {g}"), { v: value, t: total, g: target })}
+        {...(total ? {
+          role: "meter",
+          "aria-label": label,
+          "aria-valuemin": 0,
+          "aria-valuemax": total,
+          "aria-valuenow": value,
+          "aria-valuetext": target === null ? note : fmt(tr(lang, "ua.tp.vt", "{v} of {t} use cases; target {g}"), { v: value, t: total, g: target }),
+        } : { "aria-hidden": true })}
         className="relative mt-2 h-4 overflow-visible rounded-full bg-paper-deep desk:mt-1.5 desk:h-3"
       >
         <div className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${w}%`, background: fill }} />
-        <div aria-hidden className="absolute -top-1.5 -bottom-1.5 w-0.5 bg-ink" style={{ insetInlineStart: `calc(${t}% - 1px)` }} />
+        {t !== null && <div aria-hidden className="absolute -top-1.5 -bottom-1.5 w-0.5 bg-ink" style={{ insetInlineStart: `calc(${t}% - 1px)` }} />}
       </div>
     </div>
   );
@@ -112,6 +114,8 @@ export function TargetProgress({ d, deadline, deadlineNote, asOf }: { d: Dashboa
 
 export type VerdictFilter = Verdict | "NONE";
 
+const UNASSESSED_MARK = { glyph: "–", color: "var(--color-ink-soft)" };
+
 /** Stacked bar of verdicts across the portfolio; the legend filters the table. */
 export function VerdictMix({
   useCases, active, onSelect,
@@ -124,7 +128,7 @@ export function VerdictMix({
   const color = (k: VerdictFilter) => (k === "NONE" ? "var(--color-line)" : VERDICT_META[k].color);
   return (
     <div>
-      <div role="group" aria-label={`${tr(lang, "ua.mix.label", "Verdict mix")}: ${all.filter((a) => a.n).map((a) => `${a.n} ${a.key === "NONE" ? tr(lang, "ua.mix.notyet", "not yet assessed") : verdictName(lang, a.key)}`).join(lang === "ar" ? "، " : ", ")}`} className="flex h-9 gap-0.5 overflow-hidden rounded-lg desk:h-6">
+      <div role={useCases.length ? "group" : undefined} aria-hidden={useCases.length ? undefined : true} aria-label={useCases.length ? `${tr(lang, "ua.mix.label", "Verdict mix")}: ${all.filter((a) => a.n).map((a) => `${a.n} ${a.key === "NONE" ? tr(lang, "ua.mix.notyet", "not yet assessed") : verdictName(lang, a.key)}`).join(lang === "ar" ? "، " : ", ")}` : undefined} className="flex h-9 gap-0.5 overflow-hidden rounded-lg bg-paper-deep desk:h-6">
         {all.filter((a) => a.n).map((a) => (
           <button
             key={a.key}
@@ -141,20 +145,24 @@ export function VerdictMix({
         ))}
       </div>
       <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3 desk:mt-2 desk:grid-cols-2 desk:gap-x-3 desk:gap-y-0 desk:text-xs">
-        {all.map((a) => (
-          <li key={a.key}>
-            <button
-              type="button"
-              onClick={() => onSelect(active === a.key ? "all" : a.key)}
-              aria-pressed={active === a.key}
-              className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-start hover:bg-paper-deep aria-pressed:bg-paper-deep desk:py-px desk:leading-4 ${a.n ? "" : "opacity-60"}`}
-            >
-              <span aria-hidden className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: color(a.key) }} />
-              <span className="min-w-0 flex-1 break-words">{a.key === "NONE" ? tr(lang, "ua.mix.none", "Not assessed") : verdictName(lang, a.key)}</span>
-              <span className="font-mono text-xs text-ink-soft tabular-nums">{a.n}</span>
-            </button>
-          </li>
-        ))}
+        {all.map((a) => {
+          const mark = a.key === "NONE" ? UNASSESSED_MARK : VERDICT_META[a.key];
+          return (
+            <li key={a.key}>
+              <button
+                type="button"
+                disabled={useCases.length === 0}
+                onClick={() => onSelect(active === a.key ? "all" : a.key)}
+                aria-pressed={active === a.key}
+                className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-start hover:bg-paper-deep aria-pressed:bg-paper-deep desk:py-px desk:leading-4"
+              >
+                <span aria-hidden className="w-3 shrink-0 text-center" style={{ color: mark.color }}>{mark.glyph}</span>
+                <span className="min-w-0 flex-1 break-words">{a.key === "NONE" ? tr(lang, "ua.mix.none", "Not assessed") : verdictName(lang, a.key)}</span>
+                <span className="font-mono text-xs text-ink-soft tabular-nums">{a.n}</span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
       <DataTableAlt floating caption={tr(lang, "ua.mix.cap", "Verdict counts")} head={[tr(lang, "ua.col.verdict", "Verdict"), tr(lang, "ua.col.ucs", "Use cases")]} rows={all.map((a) => [a.key === "NONE" ? tr(lang, "ua.mix.none", "Not assessed") : verdictName(lang, a.key), a.n])} />
     </div>
@@ -167,15 +175,17 @@ export function StagePipeline({ byStage }: { byStage: Dashboard["byStage"] }) {
   const max = Math.max(1, ...byStage.map((s) => s.count));
   return (
     <div>
-      <ol className="grid grid-cols-7 items-end gap-1.5">
-        {byStage.map((s) => (
-          <li key={s.stage} className="flex flex-col items-center gap-1.5 desk:gap-1">
-            <span className="font-mono text-xs tabular-nums">{s.count}</span>
-            <span aria-hidden className="bar-grow block w-full rounded-t-md bg-lit [height:var(--h)] desk:[height:var(--hd)] short:[height:var(--hs)]" style={{ ["--h" as string]: `${Math.max(3, (s.count / max) * 72)}px`, ["--hd" as string]: `${Math.max(3, (s.count / max) * 30)}px`, ["--hs" as string]: `${Math.max(3, (s.count / max) * 18)}px`, opacity: s.count ? 1 : 0.25, transformOrigin: "bottom" }} />
-            <span className="w-full border-t border-line pt-1 text-center font-mono text-[10px] break-words text-ink-soft uppercase" title={stageLabel(lang, s.stage)}>{stageLabel(lang, s.stage)}</span>
-          </li>
-        ))}
-      </ol>
+      <div {...scrollRegion("portfolio-stages")} className="overflow-x-auto">
+        <ol className="grid grid-cols-[repeat(7,minmax(max-content,1fr))] items-end gap-1.5">
+          {byStage.map((s) => (
+            <li key={s.stage} className="flex flex-col items-center gap-1.5 desk:gap-1">
+              <span className="font-mono text-xs tabular-nums">{s.count}</span>
+              <span aria-hidden className="bar-grow block w-full rounded-t-md bg-lit [height:var(--h)] desk:[height:var(--hd)] short:[height:var(--hs)]" style={{ ["--h" as string]: `${Math.max(3, (s.count / max) * 72)}px`, ["--hd" as string]: `${Math.max(3, (s.count / max) * 30)}px`, ["--hs" as string]: `${Math.max(3, (s.count / max) * 18)}px`, opacity: s.count ? 1 : 0.25, transformOrigin: "bottom" }} />
+              <span className="w-full border-t border-line px-0.5 pt-1 text-center font-mono text-[10px] whitespace-nowrap text-ink-soft uppercase">{stageLabel(lang, s.stage)}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
       <DataTableAlt floating caption={tr(lang, "ua.stage.cap", "Use cases by lifecycle stage")} head={[tr(lang, "ua.col.stage", "Stage"), tr(lang, "ua.col.ucs", "Use cases")]} rows={byStage.map((s) => [stageLabel(lang, s.stage), s.count])} />
     </div>
   );
@@ -231,26 +241,26 @@ export function TallyList({
 export function QuadrantVerdictMatrix({ useCases, tallies = [] }: { useCases: UnUseCaseState[]; tallies?: Tally[] }) {
   const lang = useLang();
   const cell = (q: string, v: Verdict | null) => useCases.filter((u) => u.quadrant === q && (u.verdict ?? null) === v).length;
-  const cols = [...VERDICTS, null] as (Verdict | null)[];
-  const max = Math.max(1, ...QUADRANTS.flatMap((q) => cols.map((v) => cell(q, v))));
+  const cols = ([...VERDICTS, null] as const).map((verdict) => ({
+    verdict,
+    label: verdict ? verdictName(lang, verdict) : tr(lang, "ua.mix.none", "Not assessed"),
+    ...(verdict ? VERDICT_META[verdict] : UNASSESSED_MARK),
+  }));
+  const max = Math.max(1, ...QUADRANTS.flatMap((q) => cols.map(({ verdict }) => cell(q, verdict))));
   return (
-    <div {...scrollRegion("qvm-cap")} className="relative overflow-x-auto">
-      <table className="w-full min-w-[34rem] border-separate border-spacing-1 text-sm desk:min-w-0 desk:border-spacing-0.5">
+    <div {...scrollRegion("qvm-cap")} className="min-w-0 overflow-x-auto">
+      <table className="w-full min-w-max border-separate border-spacing-0.5 text-sm">
         <caption id="qvm-cap" className="sr-only">{tr(lang, "ua.qvm.cap", "Number of use cases per quadrant and verdict")}</caption>
         <thead>
           <tr>
-            <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">{tr(lang, "ua.col.quad", "Quadrant")}</th>
-            {cols.map((v) => (
-              <th key={v ?? "none"} scope="col" className="px-1 pb-1 text-center align-bottom">
-                {/* One screen: the column head is the verdict's glyph (its name is on hover, to a screen reader, and in the verdict key beside the register). */}
-                <span className="desk:hidden"><VerdictBadge verdict={v} /></span>
-                <span className="hidden desk:inline" title={v ? verdictName(lang, v) : tr(lang, "ua.mix.none", "Not assessed")}>
-                  <span aria-hidden style={{ color: v ? VERDICT_META[v].color : "var(--color-ink-soft)" }}>{v ? VERDICT_META[v].glyph : "–"}</span>
-                  <span className="sr-only">{v ? verdictName(lang, v) : tr(lang, "ua.mix.none", "Not assessed")}</span>
-                </span>
+            <th scope="col" className="text-start font-mono text-[10px] font-normal whitespace-nowrap text-ink-soft uppercase">{tr(lang, "ua.col.quad", "Quadrant")}</th>
+            {cols.map(({ verdict, label, glyph, color }) => (
+              <th key={verdict ?? "none"} scope="col" className="w-[9%] min-w-7 px-1 pb-1 text-center whitespace-nowrap" title={label}>
+                <span aria-hidden style={{ color }}>{glyph}</span>
+                <span className="sr-only">{label}</span>
               </th>
             ))}
-            <th scope="col" className="text-end font-mono text-[10px] font-normal text-ink-soft uppercase">{tr(lang, "ua.col.total", "Total")}</th>
+            <th scope="col" className="ps-2 text-end font-mono text-[10px] font-normal whitespace-nowrap text-ink-soft uppercase">{tr(lang, "ua.col.total", "Total")}</th>
           </tr>
         </thead>
         <tbody>
@@ -262,14 +272,13 @@ export function QuadrantVerdictMatrix({ useCases, tallies = [] }: { useCases: Un
                 {quadLabel(lang, q)}
                 {t && <span className="hidden font-mono text-[10px] leading-3 text-ink-soft desk:block" title={fmt(tr(lang, "ua.tally.row", "{d}/{t} deployed · {c} compliant"), { d: t.deployed, t: t.total, c: t.compliant })}><bdi dir="ltr">{t.deployed}/{t.total}</bdi> · <bdi dir="ltr">{t.compliant}</bdi> ✓</span>}
               </th>
-              {cols.map((v) => {
-                const n = cell(q, v);
-                const c = v ? VERDICT_META[v].color : "var(--color-ink-soft)";
+              {cols.map(({ verdict, color }) => {
+                const n = cell(q, verdict);
                 return (
                   <td
-                    key={v ?? "none"}
-                    className="h-10 rounded-md text-center font-mono text-sm tabular-nums desk:h-7 desk:text-xs"
-                    style={{ background: n ? `color-mix(in srgb, ${c} ${15 + (n / max) * 55}%, transparent)` : "var(--color-paper-deep)", color: n ? "var(--color-ink)" : "var(--color-ink-soft)" }}
+                    key={verdict ?? "none"}
+                    className="h-10 rounded-md text-center font-mono text-sm tabular-nums desk:h-6 desk:text-xs"
+                    style={{ background: n ? `color-mix(in srgb, ${color} ${15 + (n / max) * 55}%, transparent)` : "var(--color-paper-deep)", color: n ? "var(--color-ink)" : "var(--color-ink-soft)" }}
                   >
                     {n || "·"}
                   </td>
@@ -379,6 +388,7 @@ export function EntityStrip({
         </p>
       </div>
       <ul {...scrollFocus} aria-label={tr(lang, "pf.q.entity", "Which entities are furthest along?")} className="flex flex-wrap gap-2 desk:flex-nowrap desk:overflow-x-auto desk:pb-1">
+        {!chips.length && <li className="w-full rounded-lg border border-line bg-paper-deep px-2.5 py-2 text-xs text-ink-soft">{tr(lang, "ua.pg.empty.ent", "No entities with visible use cases")}</li>}
         {chips.map((r) => <li key={r.key} className={li}><EntityChip r={r} active={active} onSelect={onSelect} /></li>)}
         {pinned && <li key={pinned.key} className={li}><EntityChip r={pinned} active={active} onSelect={onSelect} /></li>}
         {many && (
@@ -393,7 +403,7 @@ export function EntityStrip({
           </li>
         )}
       </ul>
-      {!many && <DataTableAlt floating caption={fmt(tr(lang, "ua.tally.cap", "Deployment by {noun}"), { noun: nounT })} head={[tr(lang, "ua.col.name", "Name"), tr(lang, "ua.col.total", "Total"), tr(lang, "hl.deployed", "Deployed"), tr(lang, "hl.compliant", "Compliant")]} rows={sorted.map((r) => [r.key, r.total, r.deployed, r.compliant])} />}
+      {!many && sorted.length > 0 && <DataTableAlt floating caption={fmt(tr(lang, "ua.tally.cap", "Deployment by {noun}"), { noun: nounT })} head={[tr(lang, "ua.col.name", "Name"), tr(lang, "ua.col.total", "Total"), tr(lang, "hl.deployed", "Deployed"), tr(lang, "hl.compliant", "Compliant")]} rows={sorted.map((r) => [r.key, r.total, r.deployed, r.compliant])} />}
     </div>
   );
 }

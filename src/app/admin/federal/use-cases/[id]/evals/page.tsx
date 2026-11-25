@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { mayReadUseCase } from "@/lib/un/federal-read-access";
 import { getUserAndProfile } from "@/lib/auth";
 import { permissionsFor } from "@/lib/un/permissions-server";
 import { activeCases, evalSetFor } from "@/lib/un/evalset";
@@ -56,6 +57,7 @@ export default async function EvalsPage({ params }: { params: Promise<{ id: stri
   if (!user) redirect(`/login?next=/admin/federal/use-cases/${id}/evals`);
   if (!profile?.org_id) redirect("/login");
   if (!isUuid(id)) notFound();
+  if (!(await mayReadUseCase(profile.org_id, user.id, profile.role, id))) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
   const [runs, log] = await Promise.all([

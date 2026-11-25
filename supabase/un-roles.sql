@@ -1,6 +1,5 @@
 -- Role assignments: who holds which role, for the whole organisation or for one use case.
--- Run after supabase/un-federal.sql. WRITTEN, NOT APPLIED to any database, and not tested against Supabase: the
--- code is tested with the offline store and with pure functions (src/lib/un/authz.ts).
+-- Run after supabase/un-federal.sql, then apply supabase/un-single-process-owner.sql.
 --
 -- Until assignments exist, access works as before: profiles.role = 'admin' holds every role at organisation scope
 -- and 'viewer' can only read (see LEGACY in src/lib/un/authz.ts). An assignment adds to that; it never removes it.

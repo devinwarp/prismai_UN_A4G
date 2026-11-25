@@ -42,6 +42,14 @@ const BOB = "u-bob", CAL = "u-cal";
 const owner = (o: Partial<AssignmentRow> = {}) => row({ id: "po1", user_id: ANA, role: "process_owner", use_case_id: UC, ...o });
 const ctx3 = (rows: AssignmentRow[]) => ({ rows, knownUsers: [ME, ANA, BOB, CAL], knownUseCases: [UC], by: ME });
 
+test("grant: a use case with an active process owner requires replacement", () => {
+  const grant = { type: "grant", user_id: BOB, role: "process_owner", use_case_id: UC } as const;
+  assert.match(err(planGrant(grant, ctx3([owner()]))), /Use Replace/);
+  assert.equal(planGrant(grant, ctx3([owner({ revoked_at: "2026-11-21T11:00:00Z" })])).ok, true);
+  assert.equal(planGrant(grant, ctx3([owner({ use_case_id: "uc-other" })])).ok, true);
+  assert.equal(planGrant({ ...grant, role: "operator" }, ctx3([owner()])).ok, true);
+});
+
 test("the process owner is never just removed: a bare revoke is refused, whoever asks", () => {
   assert.match(err(planGrant({ type: "revoke", assignment_id: "po1" }, ctx3([owner()]))), /process owner cannot be removed on their own: replace them/);
   assert.match(err(planGrant({ type: "revoke", assignment_id: "po1" }, ctx3([owner({ use_case_id: null })]))), /cannot be removed on their own/, "for the whole organisation too");

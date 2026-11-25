@@ -96,7 +96,7 @@ export default function QuestionsPanel({ state, canEdit }: { state: TuningState;
     if (d) setNote(d.id ? tv("tn.fix.done", "Proposed: {s}. It is under Versions for a person to approve.", { s: String(d.summary) }) : t("tn.fix.none", "No verified fix found: nothing the proposer tried fixed this question without breaking another tuning question. Edit the glossary or settings by hand."));
   };
   return (
-    <section id="questions" aria-labelledby="h-questions" className="mt-10">
+    <section id="questions" aria-labelledby="h-questions">
       <h2 id="h-questions" className="font-display text-2xl font-medium">{t("tn.q.title", "Questions")}</h2>
       <p className="mt-2 max-w-[68ch] text-sm text-ink-soft">{tv("tn.q.lede", "Each question names the passage that answers it, or says the SOP does not and it should go outside. {t} are for tuning; {h} are held out: the proposer never reads them, so they show whether a change generalises.", { t: tuneN, h: state.questions.length - tuneN })}</p>
       <div className="mt-4 flex flex-wrap items-center gap-3">

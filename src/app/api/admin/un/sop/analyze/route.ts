@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad, requireAdmin } from "@/lib/api-auth";
+import { loadCountrySop } from "@/lib/un/federal-country";
 import { inputFromBody } from "@/lib/un/sop/data";
 import { llmAnalyzer } from "@/lib/un/sop/llm";
 import { ruleAnalyzer } from "@/lib/un/sop/reference";
@@ -16,7 +17,8 @@ export async function POST(request: Request) {
   } catch {
     return bad("Invalid JSON");
   }
-  const input = inputFromBody(body);
+  const context = await loadCountrySop(who.org_id!, body?.country, true);
+  const input = inputFromBody(body, context.country.currency ?? null, !context.uc02);
   if (typeof input === "string") return bad(input);
   const analysis = await (body.use_model === true ? llmAnalyzer() : ruleAnalyzer).analyze(input, request.signal);
   return NextResponse.json({ input: { sop_id: input.sop_id, title: input.title, text: input.text }, analysis });

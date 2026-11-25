@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { createClient } from "./supabase/server";
 import { can, type ActionId, type Assignment, type Decision } from "./un/authz";
 import { loadAssignments } from "./un/roles-store";
+import { mayReadUseCase } from "./un/federal-read-access";
 
 // Session + role helpers shared by the /api/admin/un routes.
 export interface Caller {
@@ -58,6 +59,7 @@ export async function requirePermission(actions: ActionId | ActionId[], ctx: { u
   const who = await caller();
   if (!who) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
   if (!who.org_id) return forbidden("Forbidden");
+  if (ctx.useCaseId && !(await mayReadUseCase(who.org_id, who.id, who.role, ctx.useCaseId))) return forbidden("This use case is outside your assignments.");
   const assignments = await loadAssignments(who.org_id, who.id);
   const decide = (action: ActionId) => can({ legacyRole: who.role, assignments }, action, { use_case_id: ctx.useCaseId });
   const list = Array.isArray(actions) ? actions : [actions];

@@ -11,6 +11,7 @@ export default function AdminHeader({
   orgName,
   viewer,
   country,
+  previewCountry,
   dense,
 }: {
   active: "federal";
@@ -19,6 +20,7 @@ export default function AdminHeader({
   viewer?: boolean;
   /** Show the country switch in the top right: the admin dashboard only. */
   country?: boolean;
+  previewCountry?: string;
   /** One-screen desktop dashboard: full width and a shorter bar (only at the `desk` size; phones keep the usual header). */
   dense?: boolean;
 }) {
@@ -63,7 +65,7 @@ export default function AdminHeader({
                 </Link>
               </>
             )}
-            <HeaderTools country={country} />
+            <HeaderTools country={country} previewCountry={previewCountry} />
             {/* One-screen desktop: the palette picker sits in the bar instead of floating over the corner of the register. */}
             {dense && <span className="hidden desk:inline-flex"><ThemeSwitcher variant="inline" /></span>}
             <form action="/auth/signout" method="post">

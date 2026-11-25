@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { ROLES, type Assignment, type RoleId } from "./authz";
-import type { AssignmentRow } from "./role-admin";
+import { OWNER_EXISTS, type AssignmentRow } from "./role-admin";
 
 /** The live role assignments of one person (supabase/un-roles.sql, not applied yet). Empty if the table is absent
  * or the person has none; their stored profile role still applies (see authz.ts). */
@@ -15,12 +15,12 @@ export async function loadAssignments(orgId: string, userId: string): Promise<As
     .map((r): Assignment => ({ role: r.role as RoleId, scope: r.use_case_id ? { kind: "use_case", use_case_id: r.use_case_id } : { kind: "org" } }));
 }
 
-export interface Person { id: string; email: string | null; job_title: string | null; legacy_role: string | null }
+export interface Person { id: string; email: string | null; full_name?: string | null; job_title: string | null; legacy_role: string | null }
 
 /** Everyone in the organisation, with the role stored on their profile. */
 export async function loadPeople(orgId: string): Promise<Person[]> {
-  const { data } = await createAdminClient().from("profiles").select("id, email, job_title, role").eq("org_id", orgId);
-  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({ id: String(r.id), email: (r.email as string | null) ?? null, job_title: (r.job_title as string | null) ?? null, legacy_role: (r.role as string | null) ?? null }));
+  const { data } = await createAdminClient().from("profiles").select("id, email, full_name, job_title, role").eq("org_id", orgId);
+  return ((data ?? []) as Record<string, unknown>[]).map((r) => ({ id: String(r.id), email: (r.email as string | null) ?? null, full_name: (r.full_name as string | null) ?? null, job_title: (r.job_title as string | null) ?? null, legacy_role: (r.role as string | null) ?? null }));
 }
 
 /** Every assignment of the organisation, live and revoked, oldest first. */
@@ -34,6 +34,13 @@ export async function loadAssignmentRows(orgId: string): Promise<AssignmentRow[]
 /** Returns an error message, or null. */
 export async function insertAssignment(orgId: string, row: { user_id: string; role: RoleId; use_case_id: string | null; granted_by: string }): Promise<string | null> {
   const { error } = await createAdminClient().from("un_role_assignments").insert({ org_id: orgId, ...row, granted_at: new Date().toISOString() });
+  return error?.message.includes("un_role_assignments_one_process_owner_idx") ? OWNER_EXISTS : error?.message ?? null;
+}
+
+export async function replaceProcessOwner(orgId: string, assignmentId: string, successorId: string, actorId: string): Promise<string | null> {
+  const { error } = await createAdminClient().rpc("un_replace_process_owner", {
+    p_org_id: orgId, p_assignment_id: assignmentId, p_user_id: successorId, p_actor_id: actorId,
+  });
   return error?.message ?? null;
 }
 

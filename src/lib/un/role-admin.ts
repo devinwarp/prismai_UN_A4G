@@ -10,6 +10,7 @@ import { ROLES, type RoleId } from "./authz.ts";
 //    process owner for the same scope in one step, so a process is never left without one.
 
 export const ORG_ONLY: readonly RoleId[] = ["platform_admin", "governance_admin"];
+export const OWNER_EXISTS = "This use case already has a process owner. Use Replace to transfer ownership.";
 
 export interface AssignmentRow {
   id: string;
@@ -68,6 +69,9 @@ export function planGrant(a: GrantAction, o: { rows: AssignmentRow[]; knownUsers
   }
   if (o.rows.some((x) => !x.revoked_at && x.user_id === a.user_id && x.role === role && (x.use_case_id ?? null) === a.use_case_id)) {
     return bad("That person already holds this role at this scope");
+  }
+  if (role === "process_owner" && a.use_case_id && o.rows.some((x) => !x.revoked_at && x.role === role && x.use_case_id === a.use_case_id)) {
+    return bad(OWNER_EXISTS);
   }
   return { ok: true, type: "grant", row: { user_id: a.user_id, role, use_case_id: a.use_case_id, granted_by: o.by } };
 }

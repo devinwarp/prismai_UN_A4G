@@ -1,5 +1,5 @@
 // Seeds the fictitious business process owners (data/un-process-owners.json): for each use case, a person (a profile with a job title)
-// and a live `process_owner` role on that use case. Safe to run again: a person found by email is reused, and a role that is already live is skipped.
+// and a live `process_owner` role on that use case. Use cases with an active owner are skipped.
 //
 //   node scripts/seed-process-owners.mts                    OFFLINE demo store (OFFLINE_DB or .data/offline-db.json): writes it.
 //   node scripts/seed-process-owners.mts --hosted           HOSTED Supabase (.env.local): DRY RUN, prints what it would do.
@@ -30,10 +30,11 @@ if (!hosted) {
   for (const o of owners) {
     const uc = (db.un_use_cases ?? []).find((u) => u.ext_id === o.use_case && u.org_id === org);
     if (!uc) { missing.push(o.use_case); continue; }
+    if (db.un_role_assignments.some((a) => a.role === "process_owner" && a.use_case_id === uc.id && !a.revoked_at)) continue;
     let p = db.profiles.find((x) => x.email === o.email);
     if (!p) { p = { id: randomUUID(), email: o.email, full_name: o.name, job_title: o.job_title, role: "employee", org_id: org, created_at: now }; db.profiles.push(p); people++; }
-    const live = db.un_role_assignments.some((a) => a.user_id === p!.id && a.role === "process_owner" && a.use_case_id === uc.id && !a.revoked_at);
-    if (!live) { db.un_role_assignments.push({ id: randomUUID(), created_at: now, org_id: org, user_id: p.id, role: "process_owner", use_case_id: uc.id, granted_by: null, granted_at: now, revoked_at: null, revoked_by: null }); roles++; }
+    db.un_role_assignments.push({ id: randomUUID(), created_at: now, org_id: org, user_id: p.id, role: "process_owner", use_case_id: uc.id, granted_by: null, granted_at: now, revoked_at: null, revoked_by: null });
+    roles++;
   }
   writeFileSync(file, JSON.stringify(db));
   console.log(`offline store ${file}: ${people} people created, ${roles} process-owner roles granted${missing.length ? `; no use case found for ${missing.join(", ")}` : ""}.`);
@@ -58,16 +59,17 @@ console.log(`${apply ? "APPLYING" : "DRY RUN"} against ${new URL(url).host}, org
 for (const o of owners) {
   const uc = ucs.find((u) => u.ext_id === o.use_case);
   if (!uc) { console.log(`${o.use_case}: no such use case, skipped`); continue; }
+  const active = (await api("GET", `/rest/v1/un_role_assignments?select=id&role=eq.process_owner&use_case_id=eq.${uc.id}&revoked_at=is.null&limit=1`)) as unknown[];
+  if (active.length) { console.log(`${o.use_case}: active owner exists, skipped`); continue; }
   const found = (await api("GET", `/rest/v1/profiles?select=id&email=eq.${encodeURIComponent(o.email)}`)) as { id: string }[];
   let id = found[0]?.id;
-  const live = id ? ((await api("GET", `/rest/v1/un_role_assignments?select=id&user_id=eq.${id}&role=eq.process_owner&use_case_id=eq.${uc.id}&revoked_at=is.null`)) as unknown[]).length > 0 : false;
-  console.log(`${o.use_case}  ${o.name.padEnd(30)} ${o.job_title.padEnd(46)} ${id ? "person exists" : "new person"}, ${live ? "role already live" : "role to grant"}`);
+  console.log(`${o.use_case}  ${o.name.padEnd(30)} ${o.job_title.padEnd(46)} ${id ? "person exists" : "new person"}, role to grant`);
   if (!apply) continue;
   if (!id) {
     const u = (await api("POST", "/auth/v1/admin/users", { email: o.email, email_confirm: true, password: randomBytes(24).toString("base64url"), user_metadata: { full_name: o.name } })) as { id: string };
     id = u.id;
   }
   await api("POST", "/rest/v1/profiles", { id, email: o.email, full_name: o.name, job_title: o.job_title, role: "employee", org_id: org }, { Prefer: "resolution=merge-duplicates" });
-  if (!live) await api("POST", "/rest/v1/un_role_assignments", { org_id: org, user_id: id, role: "process_owner", use_case_id: uc.id });
+  await api("POST", "/rest/v1/un_role_assignments", { org_id: org, user_id: id, role: "process_owner", use_case_id: uc.id });
 }
 console.log(apply ? "done." : "Nothing was written. Run again with --apply to create them.");

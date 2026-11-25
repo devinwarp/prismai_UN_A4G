@@ -26,8 +26,10 @@ const group = (rows: Row[] | null): Map<string, Row[]> => {
 const asLog = <T,>(rows: Row[] = []): T[] =>
   rows.map((r) => ({ seq: Number(r.seq), kind: r.kind, at: new Date(String(r.at)).toISOString(), actor: String(r.actor), payload: r.payload, prev_hash: String(r.prev_hash), hash: String(r.hash) }) as T).sort((a, b) => (a as { seq: number }).seq - (b as { seq: number }).seq);
 
-/** Journey for each given use case, derived from the stored records (one query per table for the whole org). */
-export async function loadJourneys(orgId: string, ucs: Pick<UnUseCaseState, "id" | "ext_id" | "verdict" | "verdict_run_id" | "client_facing" | "affects_rights" | "irreversible">[]): Promise<Map<string, Journey>> {
+type JourneyUseCase = Pick<UnUseCaseState, "id" | "ext_id" | "verdict" | "verdict_run_id" | "client_facing" | "affects_rights" | "irreversible">;
+
+/** Journeys and attached SOP IDs for the given use cases, using the same bulk reads. */
+export async function loadJourneyDetails(orgId: string, ucs: JourneyUseCase[]): Promise<{ journeys: Map<string, Journey>; attachedSopIds: Map<string, string> }> {
   const db = createAdminClient();
   const [sops, profiles, evals, tuning, watch, testLog, paramLog, pilots] = await Promise.all([
     db.from("un_use_case_sops").select("*").eq("org_id", orgId),
@@ -45,10 +47,12 @@ export async function loadJourneys(orgId: string, ucs: Pick<UnUseCaseState, "id"
   const forProfile = (rows: Row[] | undefined, profile: string) => asLog<never>((rows ?? []).filter((r) => r.profile === profile));
   const kb = new Map<string, boolean>();
   const out = new Map<string, Journey>();
+  const attachedSopIds = new Map<string, string>();
   const profilesAt = await profileIndex(orgId).catch(() => null);
   const versionOf = new Map((sops.data ?? []).map((r: Row) => [String(r.use_case_id), Number(r.version ?? 1) || 1]));
   for (const u of ucs) {
     const sopId = sopOf.get(u.id) ?? null;
+    if (sopId) attachedSopIds.set(u.id, sopId);
     const all = sopId && profilesAt ? profilesAt(sopId, versionOf.get(u.id) ?? 1) : null;
     const on = (ticks.get(u.id) ?? []).filter((r) => r.sop_id === sopId && all?.some((p) => p.name === r.profile));
     if (sopId && !kb.has(sopId)) kb.set(sopId, checkSopKb(sopId).ok);
@@ -75,5 +79,9 @@ export async function loadJourneys(orgId: string, ucs: Pick<UnUseCaseState, "id"
       ...(ucs.length === 1 && sopId ? { release: await loadReleaseCached(orgId, u.id).then((x) => ({ ready: x.ok, blockers: x.blockers.length })).catch(() => undefined) } : {}),
     }));
   }
-  return out;
+  return { journeys: out, attachedSopIds };
+}
+
+export async function loadJourneys(orgId: string, ucs: JourneyUseCase[]): Promise<Map<string, Journey>> {
+  return (await loadJourneyDetails(orgId, ucs)).journeys;
 }

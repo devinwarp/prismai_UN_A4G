@@ -24,19 +24,25 @@ test("goal ids use the first word of the entity name; kept ids stay, new ones ta
   assert.equal(normalizeGoals("X", [{ text: "x".repeat(301) }]).ok, false);
 });
 
-test("adding an entity: a unique name of 3 to 120 characters, optional sector and goals", () => {
+test("adding an entity requires a unique name and measured goals and allows an empty sector", () => {
   const o = { known, hidden: [] as string[] };
   for (const name of ["ab", "", "x".repeat(121), "marsa public services authority", "  Marsa   Public Services  Authority "]) {
     assert.equal(planEntity({ type: "add", name }, o).ok, false, name);
   }
-  const p = planEntity({ type: "add", name: "  Nour   Digital Agency ", sector: " Digital ", goals: [{ text: "Answer within four hours", criterion: null }] }, o);
+  const measurement = { criterion: "Hours until the first substantive reply", comparison: "at_most", value: 4, unit: "hours" };
+  const goals = [{ text: "Respond promptly to incoming requests", criterion: null, measurement }];
+  const p = planEntity({ type: "add", name: "  Nour   Digital Agency ", sector: " Digital ", goals }, o);
   assert.ok(p.ok && p.type === "add");
   assert.equal(p.row.name, "Nour Digital Agency");
   assert.equal(p.row.sector, "Digital");
   assert.equal(p.row.goals[0].id, "NOUR-G1");
+  assert.deepEqual(p.row.goals[0].measurement, measurement);
   assert.equal(p.row.hidden, false);
-  const bare = planEntity({ type: "add", name: "Bare Entity" }, o);
-  assert.ok(bare.ok && bare.type === "add" && bare.row.goals.length === 0 && bare.row.sector === null);
+  const bare = planEntity({ type: "add", name: "Bare Entity", goals }, o);
+  assert.ok(bare.ok && bare.type === "add" && bare.row.sector === null);
+  for (const invalid of [undefined, [], [{ text: "Answer within four hours" }], [{ ...goals[0], measurement: { ...measurement, value: null } }], [{ ...goals[0], measurement: { ...measurement, value: 101, unit: "%" } }]]) {
+    assert.equal(planEntity({ type: "add", name: "Another Entity", goals: invalid }, o).ok, false);
+  }
   assert.equal(planEntity({ type: "add", name: "Bad Goals", goals: [{ text: "no" }] }, o).ok, false);
 });
 
@@ -47,6 +53,7 @@ test("editing goals and hiding: only a known entity; hiding is a switch that rep
   assert.equal(planEntity({ type: "set_goals", name: known[0], goals: [] }, o).ok, false, "at least one goal");
   const g = planEntity({ type: "set_goals", name: known[0], goals: [{ id: "MARSA-G9", text: "Reply to every citizen within a day", criterion: "accuracy" }] }, o);
   assert.ok(g.ok && g.type === "set_goals" && g.goals[0].id === "MARSA-G9");
+  assert.equal(planEntity({ type: "set_goals", name: known[0], goals: [{ text: "Reply to every citizen within a day" }] }, { ...o, measured: [known[0]] }).ok, false);
   const h = planEntity({ type: "set_hidden", name: known[0], hidden: true }, o);
   assert.ok(h.ok && h.type === "set_hidden" && h.hidden && !h.noop);
   const again = planEntity({ type: "set_hidden", name: known[1], hidden: true }, o);
@@ -114,7 +121,7 @@ test("the entity and people routes are admin-gated and write to the hash-chained
     assert.ok(keys.length > 5, f);
     for (const k of keys) assert.ok(AR[k], `no Arabic for ${k}`);
   }
-  assert.match(readFileSync("src/app/admin/federal/page.tsx", "utf8"), /loadHiddenEntities/, "the dashboard leaves hidden entities out");
+  assert.match(readFileSync("src/app/admin/federal/page.tsx", "utf8"), /!hiddenEntities\.has\(u\.entity\)/, "the dashboard leaves hidden entities out");
   const sql = readFileSync("supabase/un-entities-admin.sql", "utf8");
   assert.match(sql, /add column if not exists hidden/);
   assert.match(sql, /create table if not exists public\.un_federal_members/);

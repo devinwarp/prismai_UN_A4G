@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { mayReadUseCase } from "@/lib/un/federal-read-access";
 import { getUserAndProfile } from "@/lib/auth";
 import { permissionsFor } from "@/lib/un/permissions-server";
 import { evalSetFor } from "@/lib/un/evalset";
@@ -87,6 +88,7 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
   if (!user) redirect(`/login?next=/admin/federal/use-cases/${id}/production`);
   if (!profile?.org_id) redirect("/login");
   if (!isUuid(id)) notFound();
+  if (!(await mayReadUseCase(profile.org_id, user.id, profile.role, id))) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
   const [tuning, watch] = await Promise.all([

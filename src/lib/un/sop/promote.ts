@@ -35,7 +35,7 @@ export function toUseCase(a: SopAnalysis, input: Pick<SopInput, "title" | "metad
     hitl_rule: null,
     description:
       `Derived from the SOP "${input.title}" (${a.steps.length} steps). Against a synthetic baseline of ${t.baseline_hours_per_year} h a year, ` +
-      `about ${t.hours_saved_per_year} h (${t.vs_baseline_pct}%, ${t.cost_saved_per_year} ${t.currency}) could be saved; ${stay} steps stay with people. ` +
+      `about ${t.hours_saved_per_year} h (${t.vs_baseline_pct}%${t.currency ? ", " + t.cost_saved_per_year + " " + t.currency : ""}) could be saved; ${stay} steps stay with people. ` +
       `${flagNote.length ? `Risk flags: ${flagNote.join("; ")}. ` : "No risk flags found. "}Fictitious figures, synthetic data.`,
   };
 }

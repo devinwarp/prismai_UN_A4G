@@ -1,3 +1,4 @@
+import { currencyCode, regionalCurrency } from "./country-context.ts";
 import { createHash } from "node:crypto";
 import { buildPolicy, type Embed, type StagedFile } from "./country-build.ts";
 import type { CountryStore } from "./country-store.ts";
@@ -24,6 +25,7 @@ import type { VectorFile } from "./vector.ts";
 
 export interface Deps {
   store: CountryStore;
+  registeredEntityCountries?: () => Promise<Record<string, string>>;
   now: () => string;
   clock: () => number;
   /** kb/chunks.json and kb/vectors.json (precomputed). */
@@ -50,8 +52,10 @@ export const SAMPLE_NAME = "Marina Bay Licensing Authority (synthetic)";
 // ---- state and the log ------------------------------------------------------------------------
 
 export async function loadState(d: Deps) {
-  const entries = await d.store.log();
-  return { entries, state: replayCountry(entries), verified: verifyCountry(entries) };
+  const [entries, registered] = await Promise.all([d.store.log(), d.registeredEntityCountries?.()]);
+  const state = replayCountry(entries);
+  if (registered) state.entityCountries = { ...registered, ...state.entityCountries };
+  return { entries, state, verified: verifyCountry(entries) };
 }
 
 /** Appends entries to the chain. Refuses if the stored log does not verify. */
@@ -71,24 +75,27 @@ const policyCache = new Map<string, Chunk[]>();
 /** Chunks of a live-built scope: rebuilt from the staged files (deterministic), so any instance can serve it. */
 async function stagedChunks(d: Deps, c: Country): Promise<Chunk[]> {
   const files = c.custom ? (((await d.store.getBlob(`policydocs:${c.id}`)) as { files?: StagedFile[] } | null)?.files ?? []) : d.staged(c.stage!);
-  const key = `${c.id}:${files.map((f) => f.source_sha256).join(",")}`;
+  const key = JSON.stringify([c.id, files.map(({ text: _text, ...meta }) => meta)]);
   const hit = policyCache.get(key);
   if (hit) return hit;
   const { chunks } = await buildPolicy(files, { embed: null });
   policyCache.set(key, chunks);
   return chunks;
 }
-const scopeCache = new Map<string, Chunk[]>();
 /** The country's scoped knowledge base, or null if it has not been built (an on-demand scope before the admin adds it). */
 export async function scopeOf(d: Deps, state: CountryState, id: string): Promise<Chunk[] | null> {
   const c = countryIn(state, id);
   if (!c) return null;
   if (c.built === "on_demand" && !state.policies[id]) return null;
   const extra = c.built === "on_demand" ? await stagedChunks(d, c) : [];
-  const key = `${id}:${d.corpus.length}:${extra.length}`;
-  let s = scopeCache.get(key);
-  if (!s) { s = scopeChunks(d.corpus, c, extra); scopeCache.set(key, s); }
-  return s;
+  return scopeChunks(d.corpus, c, extra);
+}
+
+/** A country must have a recognized rule set and its own indexed policy sources. */
+export async function entityRegistrationReady(d: Deps, state: CountryState, country: Country): Promise<boolean> {
+  if (country.hidden || !rulesetOf(country)?.gates.length) return false;
+  const chunks = await scopeOf(d, state, country.id);
+  return chunks?.some((chunk) => country.home.includes(chunk.jurisdiction)) ?? false;
 }
 
 interface CompanyCtx { id: string; name: string; sop_id: string; ext_id: string; facts: HitlFacts; entity: string; sop: Chunk[] }
@@ -190,7 +197,10 @@ export async function switchCountry(d: Deps, actor: string, to: string, company 
 }
 
 /** Step A: build the EU scope live from the staged policy files, register it with its rule set, and run the process under it. */
-export async function addPolicy(d: Deps, actor: string, id: string, onStage?: (t: Timing) => void): Promise<Ok<{ timings: Timing[]; total_ms: number; run: RunResult; chunks: number; vectors: boolean }> | Fail> {
+type PolicyBuild<T> = Promise<Ok<{ timings: Timing[]; total_ms: number; run: T; chunks: number; vectors: boolean }> | Fail>;
+export function addPolicy(d: Deps, actor: string, id: string, onStage?: (t: Timing) => void): PolicyBuild<RunResult>;
+export function addPolicy(d: Deps, actor: string, id: string, onStage: ((t: Timing) => void) | undefined, setupOnly: boolean): PolicyBuild<RunResult | null>;
+export async function addPolicy(d: Deps, actor: string, id: string, onStage?: (t: Timing) => void, setupOnly = false): PolicyBuild<RunResult | null> {
   const { entries, state } = await loadState(d);
   const c = countryIn(state, id);
   if (!c || c.built !== "on_demand") return fail(400, "That country's index is precomputed; there is nothing to add");
@@ -203,13 +213,15 @@ export async function addPolicy(d: Deps, actor: string, id: string, onStage?: (t
   if (built.vectors) await d.store.putBlob(`vectors:${id}`, built.vectors);
   const reg0 = d.clock();
   const next = { ...state, policies: { ...state.policies, [id]: rec } };
-  const run = await runFor(d, next, "marsa", id);
+  const run = setupOnly ? null : await runFor(d, next, "marsa", id);
   if (isFail(run)) return run;
-  const regTiming: Timing = { stage: "register scope and rule set", ms: Math.round(d.clock() - reg0), detail: `${c.ruleset} registered; the process re-run under it: ${run.final}` };
+  const regTiming: Timing = { stage: "register scope and rule set", ms: Math.round(d.clock() - reg0), detail: `${c.ruleset} registered${run ? `; demo verdict: ${run.final}` : ""}` };
   onStage?.(regTiming);
   rec.timings = [...rec.timings, regTiming];
   rec.total_ms += regTiming.ms;
-  const w = await commit(d, entries, [{ kind: "policy_added", payload: { policy: rec } }, { kind: "run", payload: { result: run } }], actor);
+  const drafts: { kind: CountryKind; payload: Record<string, unknown> }[] = [{ kind: "policy_added", payload: { policy: rec } }];
+  if (run) drafts.push({ kind: "run", payload: { result: run } });
+  const w = await commit(d, entries, drafts, actor);
   if (isFail(w)) return w;
   return { ok: true, timings: rec.timings, total_ms: rec.total_ms, run, chunks: rec.chunks, vectors: !!built.vectors };
 }
@@ -221,7 +233,7 @@ const MAX_DOCS = 10, MAX_DOC_CHARS = 120_000, MIN_DOC_CHARS = 200;
 
 /** Creates a country profile: an id, a name and the rule set that judges its verdicts. It exists (and shows in the country switch) from this
  * point, marked as needing its policy documents until `addPolicyDocs` builds its knowledge base. Admin only (the route checks); logged. */
-export async function addCountry(d: Deps, actor: string, b: { id?: unknown; name?: unknown; ruleset?: unknown }): Promise<Ok<{ country: Country }> | Fail> {
+export async function addCountry(d: Deps, actor: string, b: { id?: unknown; name?: unknown; ruleset?: unknown; currency?: unknown }): Promise<Ok<{ country: Country }> | Fail> {
   const id = typeof b.id === "string" ? b.id.trim().toUpperCase() : "";
   const name = typeof b.name === "string" ? b.name.trim() : "";
   const ruleset = typeof b.ruleset === "string" ? b.ruleset : "";
@@ -231,14 +243,18 @@ export async function addCountry(d: Deps, actor: string, b: { id?: unknown; name
   const { entries, state } = await loadState(d);
   if (countryIn(state, id)) return fail(409, `A country with the code ${id} already exists.`);
   if (allCountries(state).some((c) => c.name.toLowerCase() === name.toLowerCase())) return fail(409, `A country named ${name} already exists.`);
-  const country: Country = { id, name, ruleset, home: [id], international: ["international"], built: "on_demand", custom: true };
+  const currency = b.currency === undefined || b.currency === "" ? regionalCurrency(id) : currencyCode(b.currency);
+  if (!currency) return fail(400, "Enter a valid three-letter currency code, for example AED.");
+  const country: Country = { id, name, ruleset, currency, home: [id], international: ["international"], built: "on_demand", custom: true };
   const w = await commit(d, entries, [{ kind: "country_added", payload: { country } }], actor);
   if (isFail(w)) return w;
   return { ok: true, country };
 }
 
 /** Builds the knowledge base of a country an admin created, from policy documents pasted in, and runs the process under its rule set. */
-export async function addPolicyDocs(d: Deps, actor: string, id: string, docs: PolicyDocIn[], onStage?: (t: Timing) => void): Promise<Ok<{ timings: Timing[]; total_ms: number; run: RunResult; chunks: number; vectors: boolean }> | Fail> {
+export function addPolicyDocs(d: Deps, actor: string, id: string, docs: PolicyDocIn[], onStage?: (t: Timing) => void): PolicyBuild<RunResult>;
+export function addPolicyDocs(d: Deps, actor: string, id: string, docs: PolicyDocIn[], onStage: ((t: Timing) => void) | undefined, setupOnly: boolean): PolicyBuild<RunResult | null>;
+export async function addPolicyDocs(d: Deps, actor: string, id: string, docs: PolicyDocIn[], onStage?: (t: Timing) => void, setupOnly = false): PolicyBuild<RunResult | null> {
   const { entries, state } = await loadState(d);
   const c = countryIn(state, id);
   if (!c || !c.custom) return fail(400, "Policy documents can be added to a country created on the screen. The built-in countries have their own sources.");
@@ -266,13 +282,15 @@ export async function addPolicyDocs(d: Deps, actor: string, id: string, docs: Po
   if (built.vectors) await d.store.putBlob(`vectors:${id}`, built.vectors); else await d.store.delBlob(`vectors:${id}`);
   const replaced = !!state.policies[id];
   const next = { ...state, policies: { ...state.policies, [id]: rec } };
-  const run = await runFor(d, next, "marsa", id);
+  const run = setupOnly ? null : await runFor(d, next, "marsa", id);
   if (isFail(run)) { await restore(); return run; }
   // First build: the run is logged, so the country can be switched to. Replacing the documents of a built country logs only the new documents: the
   // stored results and the deployed agents stay as they were until an admin reruns them (the use cases are marked out of date).
-  const w = await commit(d, entries, replaced ? [{ kind: "policy_added", payload: { policy: rec, replaced } }] : [{ kind: "policy_added", payload: { policy: rec, replaced } }, { kind: "run", payload: { result: run } }], actor);
+  const drafts: { kind: CountryKind; payload: Record<string, unknown> }[] = [{ kind: "policy_added", payload: { policy: rec, replaced } }];
+  if (run && !replaced) drafts.push({ kind: "run", payload: { result: run } });
+  const w = await commit(d, entries, drafts, actor);
   if (isFail(w)) { await restore(); return w; }
-  scopeCache.clear(); // the cache key is the chunk count, which a replacement can leave unchanged
+
   return { ok: true, timings: rec.timings, total_ms: rec.total_ms, run, chunks: rec.chunks, vectors: !!built.vectors };
 }
 
@@ -294,7 +312,7 @@ export async function policyDocsOf(d: Deps, id: string): Promise<{ title: string
 /** Changes a country's name, the rule set that judges its verdicts, or whether it is hidden. Works on built-in and created countries (the
  * change is a log entry applied over the country's own data). Changing the rule set re-runs the process under the new one when the country is
  * built. Hiding takes a country out of the country switch and the pickers and keeps everything else; the active country cannot be hidden. Admin only; logged. */
-export async function updateCountry(d: Deps, actor: string, id: string, b: { name?: unknown; ruleset?: unknown; hidden?: unknown }): Promise<Ok<{ country: Country; changed: string[]; stale?: boolean }> | Fail> {
+export async function updateCountry(d: Deps, actor: string, id: string, b: { name?: unknown; ruleset?: unknown; currency?: unknown; hidden?: unknown }): Promise<Ok<{ country: Country; changed: string[]; stale?: boolean }> | Fail> {
   const { entries, state } = await loadState(d);
   const c = countryIn(state, id);
   if (!c) return fail(404, "Unknown country");
@@ -311,6 +329,11 @@ export async function updateCountry(d: Deps, actor: string, id: string, b: { nam
     if (typeof b.ruleset !== "string" || !RULESETS.some((r) => r.id === b.ruleset)) return fail(400, "Choose one of the available rule sets.");
     if (b.ruleset !== c.ruleset) patch.ruleset = b.ruleset;
   }
+  if (b.currency !== undefined) {
+    const currency = currencyCode(b.currency);
+    if (!currency) return fail(400, "Enter a valid three-letter currency code, for example AED.");
+    if (currency !== c.currency) patch.currency = currency;
+  }
   if (b.hidden !== undefined) {
     if (typeof b.hidden !== "boolean") return fail(400, "Hidden is true or false.");
     if (b.hidden !== !!c.hidden) {
@@ -320,7 +343,7 @@ export async function updateCountry(d: Deps, actor: string, id: string, b: { nam
   }
   const changed = Object.keys(patch);
   if (!changed.length) return { ok: true, country: c, changed };
-  const drafts: { kind: CountryKind; payload: Record<string, unknown> }[] = [{ kind: "country_updated", payload: { id, patch, from: { name: c.name, ruleset: c.ruleset, hidden: !!c.hidden } } }];
+  const drafts: { kind: CountryKind; payload: Record<string, unknown> }[] = [{ kind: "country_updated", payload: { id, patch, from: { name: c.name, ruleset: c.ruleset, currency: c.currency ?? null, hidden: !!c.hidden } } }];
   // Nothing is re-run here. A rule set change leaves every stored result and every deployed agent as it was; the use cases of this country are marked
   // out of date on the dashboard (rerun.ts) and an admin reruns them from there, a deployed one after its process owner has asked.
   const w = await commit(d, entries, drafts, actor);
@@ -421,7 +444,7 @@ export async function onboardCompany(d: Deps, actor: string, b: OnboardIn, onSta
   step("parse SOP", t, `${words} words, document ${meta.sopId} v${meta.version}`);
 
   t = d.clock();
-  const analysis = await ruleAnalyzer.analyze({ sop_id: meta.sopId, title: title.slice(0, 120), text: body, baseline: d.baseline(), metadata: { entity: name, entity_sector: "Public services", departments: [] } });
+  const analysis = await ruleAnalyzer.analyze({ sop_id: meta.sopId, title: title.slice(0, 120), text: body, baseline: { ...d.baseline(), currency: c.currency ?? null }, metadata: { entity: name, entity_sector: "Public services", departments: [] } });
   if (!analysis.steps.length) return fail(400, "No steps were found in this SOP.");
   const profiles = deriveProfiles(analysis, body);
   step("analyse (steps, profiles, baseline and volume)", t, `${analysis.steps.length} steps, ${profiles.length} job profiles, ${analysis.totals.hours_saved_per_year} h/year could be saved of ${analysis.totals.baseline_hours_per_year} h (synthetic baseline)`);
@@ -451,7 +474,7 @@ export async function onboardCompany(d: Deps, actor: string, b: OnboardIn, onSta
     sop: { title: title.slice(0, 120), chunks: chunks.length, words, sha256: chunks[0]?.sha256 ?? "", vectors: !!vecs },
     steps: analysis.steps.map((s) => ({ id: s.id, text: s.text, actor: s.actor })),
     profiles: profiles.map((p) => ({ name: p.name, tasks: p.tasks.map((x) => x.id) })),
-    figures: { baseline_hours: analysis.totals.baseline_hours_per_year, hours_saved: analysis.totals.hours_saved_per_year, vs_baseline_pct: analysis.totals.vs_baseline_pct, cases_per_year: analysis.totals.cases_per_year, currency: analysis.totals.currency },
+    figures: { baseline_hours: analysis.totals.baseline_hours_per_year, hours_saved: analysis.totals.hours_saved_per_year, vs_baseline_pct: analysis.totals.vs_baseline_pct, cases_per_year: analysis.totals.cases_per_year, currency: analysis.totals.currency ?? "" },
     flags: { client_facing: analysis.flags.client_facing, affects_rights: analysis.flags.affects_rights, irreversible: analysis.flags.irreversible },
     timings, total_ms: 0,
   };
@@ -505,7 +528,6 @@ async function doReset(d: Deps, actor: string): Promise<ResetResult> {
   const w = await commit(d, entries, [{ kind: "reset", payload: { removed: { blobs, use_cases: ucs } } }], actor);
   if (isFail(w)) return w;
   policyCache.clear();
-  scopeCache.clear();
   return { ok: true, removed: { blobs, use_cases: ucs } };
 }
 

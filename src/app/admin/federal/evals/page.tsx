@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
+import { requireFederalToolAccess } from "@/lib/un/federal-read-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { evalSetFor } from "@/lib/un/evalset";
 import { alignment } from "@/lib/un/eval-run";
@@ -20,6 +21,7 @@ export default async function EvalsOverview() {
   const { user, profile } = await getUserAndProfile();
   if (!user) redirect("/login?next=/admin/federal/evals");
   if (!profile?.org_id) redirect("/login");
+  await requireFederalToolAccess(profile.org_id, user.id, profile.role);
   const [{ data: org }, ucs] = await Promise.all([
     createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle(),
     loadUnUseCases(profile.org_id),

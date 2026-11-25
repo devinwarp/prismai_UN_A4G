@@ -1,17 +1,22 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import type { CountryQuery } from "@/lib/un/country-context";
+import { loadCountryUseCases, loadFederalCountry } from "@/lib/un/federal-country";
 import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
+import { requireFederalToolAccess } from "@/lib/un/federal-read-access";
 import { permissionsFor } from "@/lib/un/permissions-server";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { governanceApprovers } from "@/lib/un/approvers";
 import { catalogOf, replayGov, verifyGov } from "@/lib/un/gates";
+import { rulesetOf } from "@/lib/un/country";
 import { loadGovLog } from "@/lib/un/gates-store";
 import { GATES } from "@/lib/un/policy";
 import { RULESETS } from "@/lib/un/rulesets";
-import AdminHeader from "../../AdminHeader";
-import LangShell, { T, TV } from "../_components/Lang";
-import { card, scrollRegion, Section } from "../_components/ui";
+import ToolWorkspace from "../_components/ToolWorkspace";
+import WorkspaceSections from "../_components/WorkspaceSections";
+import { T, TV } from "../_components/Lang";
+import { scrollRegion, Section } from "../_components/ui";
 import { GateForm } from "./GateForm";
 import { Flag, Ltr, Role, Rs } from "../_components/b-bits";
 
@@ -21,33 +26,44 @@ const DUBAI = { timeZone: "Asia/Dubai" } as const;
 const chip = "inline-flex items-center rounded-md bg-paper-deep px-1.5 py-0.5 font-mono text-[11px]";
 const KIND_EN = { gate_added: "Gate added", gate_changed: "Gate changed", use_case_gate: "Gate added to a use case", waiver: "Waiver", rerun: "Verdicts re-run" } as const;
 
-export default async function GatesPage() {
+export default async function GatesPage({ searchParams }: { searchParams: Promise<CountryQuery> }) {
   const { user, profile } = await getUserAndProfile();
   if (!user) redirect("/login?next=/admin/federal/gates");
   if (!profile?.org_id) redirect("/login");
+  const { browseCountries } = await requireFederalToolAccess(profile.org_id, user.id, profile.role);
+  const { country, state: countryState } = await loadFederalCountry(profile.org_id, (await searchParams).country, browseCountries);
   const { data: org } = await createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle();
-  const entries = await loadGovLog(profile.org_id);
-  const ok = verifyGov(entries);
-  const gov = replayGov(entries);
-  const catalog = catalogOf(gov);
+  const [log, cases] = await Promise.all([loadGovLog(profile.org_id), loadCountryUseCases(profile.org_id, countryState, country.id)]);
+  const ok = verifyGov(log);
+  const gov = replayGov(log);
+  const ruleSet = rulesetOf(country);
+  const ids = new Set(cases.map((u) => u.ext_id));
+  const gateIds = new Set([
+    ...ruleSet.gates, ...(ruleSet.highRisk?.gates ?? []),
+    ...Object.entries(gov.custom).filter(([, c]) => c.def.rulesets?.includes(ruleSet.id)).map(([id]) => id),
+    ...cases.flatMap((u) => (gov.added[u.ext_id] ?? []).map((g) => g.gate)),
+  ]);
+  const catalog = Object.fromEntries(Object.entries(catalogOf(gov)).filter(([id]) => gateIds.has(id)));
+  const shippedCount = Object.keys(GATES).filter((id) => gateIds.has(id)).length;
+  const customCount = Object.keys(catalog).length - shippedCount;
+  const reruns = (value: unknown) => ((value ?? []) as { ext_id: string; run_id: string }[]).filter((r) => ids.has(r.ext_id));
+  const entries = log.filter(({ kind, payload }) => {
+    if (kind === "rerun") return reruns(payload.runs).length > 0;
+    if (kind === "use_case_gate" || kind === "waiver") return ids.has(String(payload.ext_id));
+    return gateIds.has(String(payload.gate));
+  });
   const canEdit = (await permissionsFor(profile, user.id)).can("gate.catalogue.change");
   const requiredBy = (id: string) =>
     RULESETS.filter((r) => r.gates.includes(id) || r.highRisk?.gates.includes(id) || gov.custom[id]?.def.rulesets?.includes(r.id)).map((r) => r.id);
 
   return (
-    <div className="conduit-bg min-h-dvh">
-      <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
-      <LangShell>
-        <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-          <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase">{canEdit ? <T k="gt.eyebrow" en="Governance" /> : <T k="gt.readonly" en="Read-only" />}</p>
-          <h1 className="font-display mt-2 text-3xl font-medium tracking-tight sm:text-4xl"><T k="gt.title" en="Gates and rule sets" /></h1>
-          <p className="mt-3 max-w-[68ch] text-base text-ink-soft">
-            <T k="gt.lede" en="A gate is a check a use case must clear before it can go live. The nine shipped gates and three rule sets are defaults. An administrator can add gates, functional or non-functional, and a use case can take on gates of its own. A use case can add gates but never drop one its rule set requires. Every change is signed off by an administrator, written to a hash-chained log, and re-runs the affected verdicts as new runs." />{" "}
-            <Link href="/admin/federal" className="underline"><T k="sop.back" en="Back to the dashboard" /></Link>
-          </p>
+    <ToolWorkspace country={country} orgName={org?.name} viewer={profile.role === "viewer"}
+      title={<T k="gt.title" en="Gates and rule sets" />}
+      description={<T k="workspace.gates.description" en="Review the checks for the selected rule set and the changes recorded in its gate log." />}>
 
-          <div className="mt-10 space-y-12">
-            <Section id="gates" eyebrow={<T k="gt.s.gates" en="Gates" />} title={<T k="gt.s.cat" en="The gate catalogue" />}>
+      <WorkspaceSections key={country.id} sections={[
+        { id: "gates", label: <T k="gt.s.cat" en="Gate catalogue" />, content: (
+            <Section id="gates" title={<T k="gt.s.cat" en="The gate catalogue" />}>
               <div {...scrollRegion("gt-cap")} className="overflow-x-auto rounded-2xl border border-line bg-card">
                 <table className="w-full min-w-[52rem] text-sm">
                   <caption id="gt-cap" className="sr-only"><T k="gt.cap" en="Gates with category, owner, evidence source and the rule sets that require them" /></caption>
@@ -88,21 +104,19 @@ export default async function GatesPage() {
                   </tbody>
                 </table>
               </div>
-              <p className="mt-2 text-xs text-ink-soft"><TV k="gt.count" en="{n} shipped gates, {m} added by administrators." v={{ n: Object.keys(GATES).length, m: Object.keys(gov.custom).length }} /></p>
+              <p className="mt-2 text-xs text-ink-soft"><TV k="gt.count" en="{n} shipped gates, {m} added by administrators." v={{ n: shippedCount, m: customCount }} /></p>
             </Section>
-
-            <Section id="add" eyebrow={<T k="gt.eyebrow" en="Governance" />} title={<T k="gt.s.add" en="Add or change a gate" />}>
-              {canEdit ? (
-                <div className={card}><GateForm custom={Object.fromEntries(Object.entries(gov.custom).map(([id, c]) => [id, c.def]))} approvers={governanceApprovers()} /></div>
-              ) : (
-                <p className="text-sm text-ink-soft"><T k="gt.viewer" en="Adding and changing gates needs an administrator. Viewers and judges can read everything here." /></p>
-              )}
+          ) },
+        ...(canEdit ? [{ id: "add", label: <T k="gt.s.add" en="Add or change a gate" />, content: (
+            <Section id="add" title={<T k="gt.s.add" en="Add or change a gate" />}>
+              <GateForm custom={Object.fromEntries(Object.entries(gov.custom).filter(([id]) => gateIds.has(id)).map(([id, c]) => [id, c.def]))} approvers={governanceApprovers()} ruleset={ruleSet.id} />
             </Section>
-
-            <Section id="log" eyebrow={<T k="gt.s.log" en="Log" />} title={<T k="gt.s.logt" en="Gate log" />}>
+          ) }] : []),
+        { id: "log", label: <T k="gt.s.logt" en="Gate log" />, content: (
+            <Section id="log" title={<T k="gt.s.logt" en="Gate log" />}>
               <p className="text-sm text-ink-soft" role="status">
                 {ok.ok
-                  ? <TV k="gt.log.ok" en="Chain verified: {n} entries, intact." v={{ n: entries.length }} />
+                  ? <TV k="workspace.gates.log" en="Chain verified. Entries for this country: {count}." v={{ count: entries.length }} />
                   : <TV k="gt.log.bad" en="Chain broken at entry {n}: {why}" v={{ n: ok.broken_seq, why: ok.reason }} />}
               </p>
               {entries.length === 0 ? (
@@ -110,7 +124,7 @@ export default async function GatesPage() {
               ) : (
                 <ol className="mt-3 space-y-2">
                   {[...entries].reverse().map((e) => {
-                    const runs = (e.payload.runs as { ext_id: string; run_id: string }[] | undefined) ?? [];
+                    const runs = reruns(e.payload.runs);
                     return (
                       <li key={e.seq} className="rounded-2xl border border-line bg-card p-4 text-sm">
                         <p className="font-mono text-[11px] tracking-wide text-ink-soft uppercase">#{e.seq} · <T k={`gt.k.${e.kind}`} en={KIND_EN[e.kind]} /> · <Ltr>{new Date(e.at).toLocaleString("en-GB", DUBAI)}</Ltr> · <Ltr>{e.actor}</Ltr></p>
@@ -125,9 +139,8 @@ export default async function GatesPage() {
                 </ol>
               )}
             </Section>
-          </div>
-        </main>
-      </LangShell>
-    </div>
+          ) }
+      ]} />
+    </ToolWorkspace>
   );
 }

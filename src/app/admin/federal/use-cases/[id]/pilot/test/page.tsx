@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { mayReadUseCase } from "@/lib/un/federal-read-access";
 import { getUserAndProfile } from "@/lib/auth";
 import { replayReviews } from "@/lib/un/goal-judge";
 import { loadTargetLog } from "@/lib/un/target-store";
@@ -40,6 +41,7 @@ export default async function TestDrillPage({ params, searchParams }: { params: 
   if (!user) redirect(`/login?next=/admin/federal/use-cases/${id}/pilot`);
   if (!profile?.org_id) redirect("/login");
   if (!isUuid(id)) notFound();
+  if (!(await mayReadUseCase(profile.org_id, user.id, profile.role, id))) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc || !q.profile || !q.pilot || !q.test) notFound();
   const back = `/admin/federal/use-cases/${id}/pilot?profile=${encodeURIComponent(q.profile)}`;

@@ -32,7 +32,7 @@ export default function SettingsPanel({ active, version, canEdit }: { active: Re
   const changed = JSON.stringify(d) !== JSON.stringify(active);
   const num = (k: keyof typeof RANGES, v: string) => setD({ ...d, [k]: Number(v) });
   return (
-    <section id="settings" aria-labelledby="h-settings" className="mt-12">
+    <section id="settings" aria-labelledby="h-settings">
       <h2 id="h-settings" className="font-display text-2xl font-medium">{t("tn.s.title", "Settings, glossary and routing")}</h2>
       <p className="mt-2 max-w-[68ch] text-sm text-ink-soft">{tv("tn.s.lede", "These steer how the agent searches the SOP. You are editing a draft of settings v{v}. Nothing changes for the agent until you propose the draft and a person approves it.", { v: version })}</p>
 

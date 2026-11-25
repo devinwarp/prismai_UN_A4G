@@ -1,21 +1,24 @@
 import { NextResponse } from "next/server";
 import { bad, forbidden, requirePermission } from "@/lib/api-auth";
-import { planGrant, type GrantAction } from "@/lib/un/role-admin";
-import { insertAssignment, loadAssignmentRows, loadPeople, loadUseCaseChoices, revokeAssignment } from "@/lib/un/roles-store";
+import { OWNER_EXISTS, planGrant, type GrantAction } from "@/lib/un/role-admin";
+import { insertAssignment, loadAssignmentRows, loadPeople, loadUseCaseChoices, replaceProcessOwner, revokeAssignment } from "@/lib/un/roles-store";
+import { loadMembers } from "@/lib/un/entity-store";
+import { scopePeople } from "@/lib/un/people-directory";
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
-/** GET → everyone in the organisation with their role assignments (live and revoked). Read-only: any signed-in role. */
+/** GET → the profiles and role assignments visible to the signed-in caller. */
 export async function GET() {
   const who = await requirePermission("view");
   if (who instanceof NextResponse) return who;
-  const [people, rows, use_cases] = await Promise.all([loadPeople(who.org_id!), loadAssignmentRows(who.org_id!), loadUseCaseChoices(who.org_id!)]);
-  return NextResponse.json({ people, assignments: rows, use_cases });
+  const orgId = who.org_id!;
+  const [people, rows, useCases, federal] = await Promise.all([loadPeople(orgId), loadAssignmentRows(orgId), loadUseCaseChoices(orgId), loadMembers(orgId)]);
+  const scoped = scopePeople({ people, rows, useCases, federal }, who.id, who.role);
+  return NextResponse.json({ people: scoped.people, assignments: scoped.rows, use_cases: scoped.useCases });
 }
 
 /** POST { action: "grant", user_id, role, use_case_id? }, { action: "revoke", assignment_id } or { action: "replace_process_owner", assignment_id, user_id } → needs users.manage.
- * The process owner is never just removed: "replace_process_owner" gives the role to a new person for the same scope and then takes it from
- * the old one, so the process is never without one.
+ * A use case may have one active process owner. Replacement transfers ownership atomically.
  * A role is held for the whole organisation (no use_case_id) or for one use case. Nobody changes their own roles. A
  * revoked assignment stays in the history. */
 export async function POST(request: Request) {
@@ -32,16 +35,13 @@ export async function POST(request: Request) {
       : { type: "revoke", assignment_id: text(b.assignment_id, 80) };
   const [people, rows, ucs] = await Promise.all([loadPeople(who.org_id!), loadAssignmentRows(who.org_id!), loadUseCaseChoices(who.org_id!)]);
   const p = planGrant(action, { rows, knownUsers: people.map((x) => x.id), knownUseCases: ucs.map((x) => x.id), by: who.id });
-  if (!p.ok) return bad(p.error);
+  if (!p.ok) return p.error === OWNER_EXISTS ? NextResponse.json({ error: p.error }, { status: 409 }) : bad(p.error);
   if (p.type === "replace") {
-    // the new owner first, then the old one: if the second step failed there would be two owners, never none
-    const granted = await insertAssignment(who.org_id!, p.grant);
-    if (granted) return NextResponse.json({ error: granted }, { status: 500 });
-    const revoked = await revokeAssignment(who.org_id!, p.revoke.assignment_id, p.revoke.revoked_by);
-    if (revoked) return NextResponse.json({ error: `The new process owner was given the role, but the previous one could not be removed: ${revoked}` }, { status: 500 });
+    const error = await replaceProcessOwner(who.org_id!, p.revoke.assignment_id, p.grant.user_id, who.id);
+    if (error) return NextResponse.json({ error }, { status: 500 });
     return NextResponse.json({ ok: true, type: "replace" });
   }
   const err = p.type === "grant" ? await insertAssignment(who.org_id!, p.row) : await revokeAssignment(who.org_id!, p.assignment_id, p.revoked_by);
-  if (err) return NextResponse.json({ error: err }, { status: 500 });
+  if (err) return NextResponse.json({ error: err }, { status: err === OWNER_EXISTS ? 409 : 500 });
   return NextResponse.json({ ok: true, type: p.type });
 }

@@ -12,10 +12,11 @@ import { Flag, Rs } from "../_components/b-bits";
 const blank = { gate: "", label: "", owner: "compliance", category: "functional", evidence: "reviewer", requires: [] as string[], rulesets: [] as string[], reason: "", approver: "", mname: "", mop: "<=", mthreshold: "", munit: "" };
 
 /** Add an administrator-defined gate, or change one added earlier. Admin only: the API refuses everyone else. */
-export function GateForm({ custom, approvers }: { custom: Record<string, GateDef>; approvers: Approver[] }) {
+export function GateForm({ custom, approvers, ruleset }: { custom: Record<string, GateDef>; approvers: Approver[]; ruleset: string }) {
   const lang = useLang();
   const router = useRouter();
-  const [f, setF] = useState(blank);
+  const initial = { ...blank, rulesets: [ruleset] };
+  const [f, setF] = useState(initial);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<string | null>(null);
@@ -24,7 +25,7 @@ export function GateForm({ custom, approvers }: { custom: Record<string, GateDef
   const toggle = (k: "requires" | "rulesets", v: string) => set(k, f[k].includes(v) ? f[k].filter((x) => x !== v) : [...f[k], v]);
   const load = (id: string) => {
     const g = custom[id];
-    setF(g ? { gate: id, label: g.label, owner: g.owner, category: g.category, evidence: g.evidence, requires: g.requires ?? [], rulesets: g.rulesets ?? [], reason: "", approver: "", mname: g.metric?.name ?? "", mop: g.metric?.op ?? "<=", mthreshold: g.metric ? String(g.metric.threshold) : "", munit: g.metric?.unit ?? "" } : blank);
+    setF(g ? { gate: id, label: g.label, owner: g.owner, category: g.category, evidence: g.evidence, requires: g.requires ?? [], rulesets: g.rulesets ?? [], reason: "", approver: "", mname: g.metric?.name ?? "", mop: g.metric?.op ?? "<=", mthreshold: g.metric ? String(g.metric.threshold) : "", munit: g.metric?.unit ?? "" } : initial);
   };
   const submit = async () => {
     setBusy(true); setError(null); setDone(null);
@@ -37,7 +38,7 @@ export function GateForm({ custom, approvers }: { custom: Record<string, GateDef
     setBusy(false);
     if (!res.ok) return setError(d.error ?? tr(lang, "gt.failed", "The request failed."));
     setDone(tr(lang, "gt.saved", "Signed off and written to the log. Affected verdicts were re-run as new runs:") + ` ${d.reruns?.length ?? 0}`);
-    setF(blank);
+    setF(initial);
     router.refresh();
   };
   const lbl = "block text-sm font-medium";

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { mayReadUseCase } from "@/lib/un/federal-read-access";
 import { getUserAndProfile } from "@/lib/auth";
 import { permissionsFor } from "@/lib/un/permissions-server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -69,6 +70,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
   const { user, profile } = await getUserAndProfile();
   if (!user) redirect(`/login?next=/admin/federal/use-cases/${id}`);
   if (!profile?.org_id) redirect("/login");
+  if (!(await mayReadUseCase(profile.org_id, user.id, profile.role, id))) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
   const [goals, runs, reports] = await Promise.all([
