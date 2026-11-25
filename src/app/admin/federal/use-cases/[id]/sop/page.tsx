@@ -5,14 +5,17 @@ import { getUserAndProfile } from "@/lib/auth";
 import { isUuid } from "@/lib/un/model";
 import { loadGov } from "@/lib/un/gates-store";
 import { loadAttachedSop, loadProfileRows } from "@/lib/un/profiles-store";
+import { latestOf, loadAttachment, loadChangeRequests, profilesForUseCase } from "@/lib/un/sop-version-store";
+import { permissionsFor } from "@/lib/un/permissions-server";
 import { RULESETS } from "@/lib/un/rulesets";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { checkSopKb } from "@/lib/un/skill-extract";
-import { SAMPLES, profilesOf } from "@/lib/un/sop/data";
+import { SAMPLES } from "@/lib/un/sop/data";
 import { assessProfiles, EVIDENCE_KEYS } from "@/lib/un/sop/profiles";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { btnGhost, card, scrollRegion, VerdictBadge } from "../../../_components/ui";
 import { AttachButton, AutomateBox } from "./ProfileControls";
+import { SopEditor } from "./SopEditor";
 
 export const metadata: Metadata = { title: "SOP and job profiles", robots: { index: false, follow: false } };
 
@@ -32,7 +35,13 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
   if (!uc) notFound();
   const canEdit = profile.role === "admin";
   const sopId = await loadAttachedSop(profile.org_id, id);
-  const profiles = (sopId && profilesOf(sopId)) || [];
+  // the SOP is read by version: this use case is on one, a deployed one is frozen on it, and a newer one may be waiting
+  const att = await loadAttachment(profile.org_id, id).catch(() => null);
+  const latest = sopId ? await latestOf(profile.org_id, sopId).catch(() => null) : null;
+  const profiles = (sopId && (await profilesForUseCase(profile.org_id, id, sopId))) || [];
+  const frozen = uc.stage === "deployed";
+  const open = (await loadChangeRequests(profile.org_id).catch(() => [])).filter((r) => r.use_case_id === id && r.status === "open").at(-1) ?? null;
+  const perms = await permissionsFor(profile, user.id);
   const rows = sopId ? await loadProfileRows(profile.org_id, id, sopId) : [];
   const ticked = new Set(rows.filter((r) => r.automate).map((r) => r.profile));
   const rs = RULESETS.find((r) => KEY[r.id] === j) ?? RULESETS[0];
@@ -58,9 +67,17 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
             <p className="text-sm font-medium"><T k="pf.noattach" en="No SOP is attached to this use case." /></p>
           )}
           <p className="mt-3 flex flex-wrap gap-2">
-            {SAMPLES.filter((s) => s.sop_id !== sopId).map((s) => <AttachButton key={s.sop_id} ucId={id} sopId={s.sop_id} canEdit={canEdit} className={btnGhost} />)}
+            {SAMPLES.filter((s) => s.sop_id !== sopId).map((s) => <AttachButton key={s.sop_id} ucId={id} sopId={s.sop_id} canEdit={canEdit && !frozen} className={btnGhost} />)}
           </p>
           {!canEdit && <p className="mt-2 text-xs text-ink-soft"><T k="pf.attach.admin" en="Attaching a SOP needs an admin." /></p>}
+          {(canEdit || sopId) && (
+            <SopEditor
+              ucId={id} attached={sopId} version={att?.version ?? (sopId ? 1 : null)} latest={latest?.version ?? null} frozen={frozen} changes={latest?.changes ?? null}
+              openRequest={open ? { by: open.requested_email ?? open.requested_by, at: open.requested_at, reason: open.reason, plan: open.plan, from: open.from_version, to: open.to_version } : null}
+              canEdit={canEdit} canRequest={perms.can("sop.change.request", id)} canApply={perms.can("sop.change.apply", id)}
+              profiles={profiles.map((p) => ({ name: p.name, tasks: p.tasks.map((t) => t.title) }))}
+            />
+          )}
         </section>
 
         {sopId && (

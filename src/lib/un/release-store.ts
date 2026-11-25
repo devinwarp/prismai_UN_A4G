@@ -2,7 +2,7 @@ import { replayReviews } from "./goal-judge";
 import { loadReviewLog, loadPilots } from "./pilot-store";
 import { loadAttachedSop, loadProfileRows } from "./profiles-store";
 import { releaseReadiness, type ProfileEvidence, type Readiness } from "./release-gate";
-import { profilesOf } from "./sop/data";
+import { profilesForUseCase } from "./sop-version-store";
 import { loadTargetLog } from "./target-store";
 import { replayTargets, type Target } from "./targets";
 import { loadTestLog } from "./test-set-store";
@@ -23,7 +23,7 @@ export interface Release extends Readiness {
  * cannot be read (for example a table not applied yet) counts as nothing recorded, never as met. */
 export async function loadRelease(orgId: string, useCaseId: string): Promise<Release> {
   const sopId = await loadAttachedSop(orgId, useCaseId);
-  const known = new Set(((sopId && profilesOf(sopId)) || []).map((p) => p.name));
+  const known = new Set(((sopId && (await profilesForUseCase(orgId, useCaseId, sopId))) || []).map((p) => p.name));
   const names = sopId ? (await loadProfileRows(orgId, useCaseId, sopId)).filter((r) => r.automate && known.has(r.profile)).map((r) => r.profile) : [];
   const targets = await loadTargetLog(orgId, useCaseId).then((l) => replayTargets(l).approved?.targets ?? null).catch(() => null);
   const profiles: ProfileEvidence[] = await Promise.all(names.map(async (profile) => {

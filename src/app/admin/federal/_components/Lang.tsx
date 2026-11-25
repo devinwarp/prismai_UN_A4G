@@ -23,8 +23,31 @@ export function TV({ k, en, v, one }: { k: string; en: string; v: Record<string,
   return <>{(n === undefined ? tr(lang, k, en) : trN(lang, k, en, n, one)).replace(/\{(\w+)\}/g, (_, n: string) => String(v[n] ?? ""))}</>;
 }
 
+const PickCtx = createContext<(l: Lang) => void>(() => {});
+
+/** The "synthetic data" badge and the language toggle. LangShell draws it on its own row; a page that passes `bare` draws it itself, in its own toolbar. */
+export function LangBar() {
+  const lang = useLang();
+  const pick = useContext(PickCtx);
+  return (
+    <>
+      <span title={tr(lang, "sim.hint", "Every use case, run and attestation here is fictitious. Sijil is simulated.")} className="rounded-full border border-line px-2.5 py-0.5 font-mono text-[10px] tracking-[0.14em] text-ink-soft uppercase">
+        <span aria-hidden>◇</span> {tr(lang, "sim.badge", "Synthetic data · simulated Sijil")}
+      </span>
+      <button
+        type="button"
+        onClick={() => pick(lang === "en" ? "ar" : "en")}
+        className="rounded-lg border border-line bg-paper px-3 py-1 text-xs font-medium text-ink hover:border-ink-soft"
+        aria-label={lang === "en" ? "Switch to Arabic" : "التبديل إلى الإنجليزية"}
+      >
+        {lang === "en" ? "العربية" : "English"}
+      </button>
+    </>
+  );
+}
+
 /** Wraps a federal page: language toggle (remembered per browser), dir and font. */
-export default function LangShell({ children }: { children: ReactNode }) {
+export default function LangShell({ children, bare = false }: { children: ReactNode; /** Skip the badge/toggle row: the page renders <LangBar /> itself. */ bare?: boolean }) {
   const [lang, setLang] = useState<Lang>("en");
   useEffect(() => {
     try {
@@ -39,26 +62,20 @@ export default function LangShell({ children }: { children: ReactNode }) {
   };
   return (
     <Ctx.Provider value={lang}>
-      <div
-        dir={DIR[lang]}
-        lang={lang}
-        className={`fed ${arabic.variable} ${lang === "ar" ? "[&_*]:font-[family-name:var(--font-arabic)]" : ""}`}
-      >
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 pt-3 sm:px-6">
-          <span title={tr(lang, "sim.hint", "Every use case, run and attestation here is fictitious. Sijil is simulated.")} className="rounded-full border border-line px-2.5 py-0.5 font-mono text-[10px] tracking-[0.14em] text-ink-soft uppercase">
-            <span aria-hidden>◇</span> {tr(lang, "sim.badge", "Synthetic data · simulated Sijil")}
-          </span>
-          <button
-            type="button"
-            onClick={() => pick(lang === "en" ? "ar" : "en")}
-            className="rounded-lg border border-line bg-paper px-3 py-1 text-xs font-medium text-ink hover:border-ink-soft"
-            aria-label={lang === "en" ? "Switch to Arabic" : "التبديل إلى الإنجليزية"}
-          >
-            {lang === "en" ? "العربية" : "English"}
-          </button>
+      <PickCtx.Provider value={pick}>
+        <div
+          dir={DIR[lang]}
+          lang={lang}
+          className={`fed ${arabic.variable} ${lang === "ar" ? "[&_*]:font-[family-name:var(--font-arabic)]" : ""} ${bare ? "flex min-h-0 flex-1 flex-col" : ""}`}
+        >
+          {!bare && (
+            <div className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 pt-3 sm:px-6">
+              <LangBar />
+            </div>
+          )}
+          {children}
         </div>
-        {children}
-      </div>
+      </PickCtx.Provider>
     </Ctx.Provider>
   );
 }

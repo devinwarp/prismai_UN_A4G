@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
 import { bad, requireAdmin } from "@/lib/api-auth";
-import { addCountry, addPolicy, addPolicyDocs, linkEntity, onboardCompany, recordRun, resetDemo, switchCountry, type Fail } from "@/lib/un/country-actions";
+import { addCountry, addPolicy, addPolicyDocs, linkEntity, onboardCompany, recordRun, resetDemo, setCountryTarget, switchCountry, updateCountry, type Fail } from "@/lib/un/country-actions";
 import { appCountryDeps } from "@/lib/un/country-app";
 import type { Timing } from "@/lib/un/country";
 
-/** POST { action: "switch", country, company? } | { action: "add_policy", country } | { action: "onboard", name?, country?, sample? | sop_text?, title? }
+/** POST { action: "update_country", country, name?, ruleset?, hidden? } | { action: "set_target", country, target_percent?, deadline?, counting_verdicts?, name?, jurisdiction?, source_url? }
+ * | { action: "switch", country, company? } | { action: "add_policy", country } | { action: "onboard", name?, country?, sample? | sop_text?, title? }
  * | { action: "run", company, country } | { action: "reset" }, optionally with `stream: true` (add_policy and onboard then answer with
  * newline-delimited JSON: one {stage} line per finished stage with its real count and time, then {done}). Admin only: viewers and judges
  * get 403 and can only read the stored result on the page. Every action is written to the hash-chained country log. */
@@ -21,6 +22,8 @@ export async function POST(request: Request) {
       case "switch": return switchCountry(d, actor, str("country"), str("company") || "marsa");
       case "add_policy": return addPolicy(d, actor, str("country"), onStage);
       case "add_country": return addCountry(d, actor, b);
+      case "update_country": return updateCountry(d, actor, str("country"), b);
+      case "set_target": return setCountryTarget(d, actor, str("country"), b);
       case "link_entity": return linkEntity(d, actor, b.entity, b.country);
       case "add_policy_docs": return addPolicyDocs(d, actor, str("country"), Array.isArray(b.docs) ? (b.docs as never[]) : [], onStage);
       case "onboard": return onboardCompany(d, actor, b, onStage);

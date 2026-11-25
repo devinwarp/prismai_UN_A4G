@@ -41,6 +41,10 @@ export const ACTIONS = {
   "deploy": def("Deploy an approved agent version", true, ["operator"], true),
   "watchdog.window": def("Run a production monitoring window", true, ["operator"], true),
   "reinstate": def("Reinstate a taken-down agent, with a comment", true, ["process_owner"], true),
+  "sop.change.request": def("Ask to move a use case that is in production to a newer SOP version, with a reason and a plan", true, ["process_owner"], true),
+  "sop.change.apply": def("Apply or decline a change of SOP version for a use case that is in production", true, ["operator", "governance_admin"], true),
+  "rerun.request": def("Request a rerun of a use case that is in production, with a reason", true, ["process_owner"], true),
+  "rerun.run": def("Rerun a use case's verdict as a new run (one in production only after its process owner has requested it)", true, ["operator", "governance_admin"], true),
   // tests and scenarios (the editor is not built yet)
   "scenario.propose": def("Propose a scenario", true, ["test_author", "process_owner"], true),
   "scenario.edit": def("Add, edit or retire a scenario", true, ["process_owner"], true),

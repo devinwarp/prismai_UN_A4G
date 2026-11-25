@@ -11,6 +11,7 @@ export default function AdminHeader({
   orgName,
   viewer,
   country,
+  dense,
 }: {
   active: "federal";
   orgName?: string | null;
@@ -18,6 +19,8 @@ export default function AdminHeader({
   viewer?: boolean;
   /** Show the country switch in the top right: the admin dashboard only. */
   country?: boolean;
+  /** One-screen desktop dashboard: full width and a shorter bar (only at the `desk` size; phones keep the usual header). */
+  dense?: boolean;
 }) {
   // The switcher sits outside <header>: backdrop-blur makes the header the
   // containing block for fixed children, which pinned it over "Sign out".
@@ -25,7 +28,7 @@ export default function AdminHeader({
     <>
       <header className="safe-top border-b border-line bg-paper/80 backdrop-blur">
         <DevDbBanner />
-        <HeaderRow className="mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6">
+        <HeaderRow className={`mx-auto flex max-w-6xl items-center justify-between gap-3 px-4 py-4 sm:px-6 ${dense ? "desk:max-w-[120rem] desk:py-2" : ""}`}>
           <div className="flex min-w-0 shrink-0 items-center gap-2.5">
             <PrismMark />
             {/* Wordmark hides at phone width so the nav never meets the logo. */}
@@ -61,13 +64,15 @@ export default function AdminHeader({
               </>
             )}
             <HeaderTools country={country} />
+            {/* One-screen desktop: the palette picker sits in the bar instead of floating over the corner of the register. */}
+            {dense && <span className="hidden desk:inline-flex"><ThemeSwitcher variant="inline" /></span>}
             <form action="/auth/signout" method="post">
               <SignOut />
             </form>
           </nav>
         </HeaderRow>
       </header>
-      <ThemeSwitcher />
+      {dense ? <div className="desk:hidden"><ThemeSwitcher /></div> : <ThemeSwitcher />}
     </>
   );
 }

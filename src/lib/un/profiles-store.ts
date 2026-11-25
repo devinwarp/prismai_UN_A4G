@@ -10,10 +10,11 @@ export async function loadAttachedSop(orgId: string, ucId: string): Promise<stri
   return (data?.sop_id as string | undefined) ?? null;
 }
 
-export async function attachSop(orgId: string, ucId: string, sopId: string, by: string): Promise<string | null> {
+/** Attaches an SOP to a use case at one version (1 for a shipped sample, or the version a use case is moved to). */
+export async function attachSop(orgId: string, ucId: string, sopId: string, by: string, version = 1): Promise<string | null> {
   const { error } = await createAdminClient()
     .from("un_use_case_sops")
-    .upsert({ org_id: orgId, use_case_id: ucId, sop_id: sopId, attached_by: by, attached_at: new Date().toISOString() }, { onConflict: "org_id,use_case_id" });
+    .upsert({ org_id: orgId, use_case_id: ucId, sop_id: sopId, version, attached_by: by, attached_at: new Date().toISOString() }, { onConflict: "org_id,use_case_id" });
   return error?.message ?? null;
 }
 

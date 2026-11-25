@@ -50,17 +50,23 @@ export function StartHere({ steps, onTour }: { steps: StartStep[]; onTour: () =>
 
 export interface TourStep { target: string; k: string; title: string; body: string }
 
+/** The first element for a tour target that is actually on screen: a target may exist twice, once per layout, with one of them hidden. */
+function findTarget(target: string): Element | null {
+  for (const el of document.querySelectorAll(`[data-tour="${target}"]`)) if (el.getClientRects().length > 0) return el;
+  return null;
+}
+
 /** Lightweight coach marks: ring + popover anchored to [data-tour=target]. Esc closes, arrows move, focus follows. */
 export function Tour({ steps, open, onClose }: { steps: TourStep[]; open: boolean; onClose: () => void }) {
   const lang = useLang();
   const [i, setI] = useState(0);
   const [box, setBox] = useState<{ r: DOMRect; top: number; left: number } | null>(null);
   const pop = useRef<HTMLDivElement>(null);
-  const live = steps.filter((s) => typeof document !== "undefined" && document.querySelector(`[data-tour="${s.target}"]`));
+  const live = steps.filter((s) => typeof document !== "undefined" && findTarget(s.target));
   const s = live[Math.min(i, live.length - 1)];
 
   const place = useCallback(() => {
-    const el = s && document.querySelector(`[data-tour="${s.target}"]`);
+    const el = s && findTarget(s.target);
     if (!el) return;
     const r = el.getBoundingClientRect();
     const h = pop.current?.offsetHeight ?? 180;
@@ -73,7 +79,7 @@ export function Tour({ steps, open, onClose }: { steps: TourStep[]; open: boolea
 
   useLayoutEffect(() => {
     if (!open || !s) return;
-    const el = document.querySelector(`[data-tour="${s.target}"]`);
+    const el = findTarget(s.target);
     const calm = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el?.scrollIntoView({ block: "center", behavior: calm ? "auto" : "smooth" });
     const t = window.setTimeout(place, calm ? 0 : 350);

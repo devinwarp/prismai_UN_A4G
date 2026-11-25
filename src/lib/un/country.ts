@@ -6,6 +6,7 @@ import { warmIndex, type Chunk } from "./kb.ts";
 import { nextStep, startRun } from "./scenario.ts";
 import { S1 } from "./scenarios.ts";
 import { appendEntry, verifyChain, type ChainEntry } from "./tuning.ts";
+import type { Policy } from "./model.ts";
 import type { VectorFile } from "./vector.ts";
 
 // Country and knowledge base. A country is DATA (data/un-countries.json): the knowledge-base jurisdictions its
@@ -16,20 +17,32 @@ import type { VectorFile } from "./vector.ts";
 
 export interface Country { id: string; name: string; ruleset: string; home: string[]; international: string[]; built: "precomputed" | "on_demand"; stage?: string;
   /** Created by an admin on the screen (not in data/un-countries.json): its policy documents are stored, not staged on disk. */
-  custom?: boolean }
+  custom?: boolean;
+  /** Hidden by an admin: out of the country switch and the pickers, with all its data and history kept. Reversible. */
+  hidden?: boolean }
+/** What an admin can change on any country, built-in or created. Applied over the country's own data when the log is replayed. */
+export interface CountryPatch { name?: string; ruleset?: string; hidden?: boolean }
+/** A country's own deployment target. The UAE's lives in the organisation's policy row; every other country's is in the log. */
+export type CountryTarget = Policy;
 export interface BuiltinCompany { id: string; name: string; country: string; sop_id: string; sop_file: string }
 export const COUNTRIES = data.countries as Country[];
 export const BUILTIN_COMPANIES = data.companies as BuiltinCompany[];
 export const countryOf = (id: string) => COUNTRIES.find((c) => c.id === id);
 /** A country by id, including the ones an admin created (they live in the replayed state). */
-export const countryIn = (state: { countries: Record<string, Country> }, id: string): Country | undefined => countryOf(id) ?? state.countries[id];
+export const countryIn = (state: { countries: Record<string, Country>; overrides?: Record<string, CountryPatch> }, id: string): Country | undefined => {
+  const base = countryOf(id) ?? state.countries[id];
+  return base && state.overrides?.[id] ? { ...base, ...state.overrides[id] } : base;
+};
 /** The country every entity belongs to unless an admin links it elsewhere: all the entities the app ships with are UAE federal entities. */
 export const DEFAULT_ENTITY_COUNTRY = "UAE";
 export const entityCountryOf = (state: { entityCountries: Record<string, string> }, entity: string): string => state.entityCountries[entity] ?? DEFAULT_ENTITY_COUNTRY;
 /** The use cases of the entities linked to one country: what that country's dashboard counts. */
 export const entityUseCases = <T extends { entity: string }>(state: { entityCountries: Record<string, string> }, ucs: T[], country: string): T[] => ucs.filter((u) => entityCountryOf(state, u.entity) === country);
 /** Every country: the built-in ones, then the ones an admin created. */
-export const allCountries = (state: { countries: Record<string, Country> }): Country[] => [...COUNTRIES, ...Object.values(state.countries)];
+export const allCountries = (state: { countries: Record<string, Country>; overrides?: Record<string, CountryPatch> }): Country[] =>
+  [...COUNTRIES, ...Object.values(state.countries)].map((c) => countryIn(state, c.id)!);
+/** The countries an admin has not hidden: what the country switch and the pickers offer. */
+export const visibleCountries = (state: { countries: Record<string, Country>; overrides?: Record<string, CountryPatch> }): Country[] => allCountries(state).filter((c) => !c.hidden);
 export const rulesetOf = (c: Country) => RULESETS.find((r) => r.id === c.ruleset)!;
 
 /** Runs are deterministic in their inputs: the clock inside a run is fixed, so the same country, rule set,
@@ -136,7 +149,9 @@ export async function runProcess(i: RunInput): Promise<RunResult> {
 
 // ---- the hash-chained log and the state replayed from it -------------------------------------
 
-export type CountryKind = "switch" | "policy_added" | "company_onboarded" | "run" | "reset" | "country_added" | "entity_country";
+export type CountryKind = "switch" | "policy_added" | "company_onboarded" | "run" | "reset" | "country_added" | "entity_country" | "country_updated" | "country_target"
+  // an admin's changes to entities and people: the data is in its own tables, the log is the tamper-evident record of who changed what and when
+  | "entity_added" | "entity_goals" | "entity_hidden" | "federal_member" | "person_title" | "sop_changed" | "profile_changed" | "rerun_requested" | "rerun_done" | "sop_version" | "sop_change_requested" | "sop_change_applied" | "sop_change_declined";
 export type CountryEntry = ChainEntry<CountryKind>;
 
 export interface Timing { stage: string; ms: number; detail: string }
@@ -160,13 +175,17 @@ export interface CountryState {
   countries: Record<string, Country>;
   /** The country each entity is linked to, where an admin set it. An entity with no link is in the default country (UAE). */
   entityCountries: Record<string, string>;
+  /** What an admin changed on a country (name, rule set, hidden), by id. */
+  overrides: Record<string, CountryPatch>;
+  /** The deployment target an admin set for a country other than the UAE, by id. */
+  targets: Record<string, CountryTarget>;
   policies: Record<string, PolicyRec>;
   companies: Record<string, CompanyRec>;
   runs: Record<string, RunResult & { at: string; by: string }>;
   switches: { at: string; by: string; company: string; from: string; to: string }[];
   resets: number;
 }
-export const START_STATE = (): CountryState => ({ active: { company: BUILTIN_COMPANIES[0].id, country: BUILTIN_COMPANIES[0].country }, policies: {}, companies: {}, runs: {}, switches: [], resets: 0, countries: {}, entityCountries: {} });
+export const START_STATE = (): CountryState => ({ active: { company: BUILTIN_COMPANIES[0].id, country: BUILTIN_COMPANIES[0].country }, policies: {}, companies: {}, runs: {}, switches: [], resets: 0, countries: {}, entityCountries: {}, overrides: {}, targets: {} });
 
 /** Replays the log. A `reset` entry returns the state to the start (the log itself is never edited or shortened). */
 export function replayCountry(entries: CountryEntry[]): CountryState {
@@ -178,6 +197,8 @@ export function replayCountry(entries: CountryEntry[]): CountryState {
       const sw = { at: e.at, by: e.actor, company: String(p.company), from: String(p.from), to: String(p.to) };
       s = { ...s, active: { company: sw.company, country: sw.to }, switches: [...s.switches, sw] };
     } else if (e.kind === "entity_country") { s = { ...s, entityCountries: { ...s.entityCountries, [String(p.entity)]: String(p.country) } }; }
+    else if (e.kind === "country_updated") { const id = String(p.id); s = { ...s, overrides: { ...s.overrides, [id]: { ...s.overrides[id], ...(p.patch as CountryPatch) } } }; }
+    else if (e.kind === "country_target") { s = { ...s, targets: { ...s.targets, [String(p.id)]: p.policy as CountryTarget } }; }
     else if (e.kind === "country_added") { const c = p.country as Country; s = { ...s, countries: { ...s.countries, [c.id]: c } }; }
     else if (e.kind === "policy_added") { const r = p.policy as PolicyRec; s = { ...s, policies: { ...s.policies, [r.country]: r } }; }
     else if (e.kind === "company_onboarded") { const c = p.company as CompanyRec; s = { ...s, companies: { ...s.companies, [c.id]: c }, active: { company: c.id, country: c.country } }; }
