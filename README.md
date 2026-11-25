@@ -139,6 +139,16 @@ finished task, and repeat pulls only add new tasks.
 
 Not yet run against a real node; the adapter is tested with a mocked `fetch`.
 
+### Seal every pilot run (live node)
+
+With `SIJIL_BASE_URL`, `SIJIL_AGENT_ID`, `SIJIL_AGENT_KEY` and `SIJIL_AGENT_TOKEN` all set (server side only), each pilot run is sealed into the node: one Sijil task per run, the agent's tool calls in order, then the deliverable it produced (a hash of the exact text, with whether it carried an AI disclosure). Register the agent once with `scripts/sijil_register.ts`; check the wire format with `scripts/sijil_smoke.ts` (see `docs/sijil-wire-format.md`).
+
+- Runs are **sealed after each run**, not before each call. Prism's own gate still decides allow or reject; the node attests the record, keeps the hash chain, and applies its halt switch (with the node halted, every record seals as blocked and the pilot shows rejected calls).
+- A client-facing deliverable without an AI disclosure is sealed flagged and counts against the AI-disclosure gate. Disclosure is **checked, never added**: nothing here edits the agent's text.
+- If the node is unset or unreachable, the run falls back to the simulated gate and the page says so ("Simulated Sijil gate"); a fallback is never counted as sealed.
+- Our agent's model calls do not go through the node, so its tool calls have no recorded model call behind them. The node's verifier flags such calls unless run in orphan-tolerant mode, so the chain check on the Pilot page can read "not verified" until the node supports that mode over HTTP.
+- The hosted site cannot reach a node on a laptop. The live demo runs from a local build next to the node.
+
 ## Honest limits
 
 - Sijil is simulated unless `SIJIL_BASE_URL` is set; the live adapter is untested against a real node, and accuracy, hallucination and goal alignment stay simulated either way.
