@@ -53,7 +53,7 @@ const TOUR: TourStep[] = [
   { target: "entities", k: "tour.dash.entities", title: "Which entities are furthest along", body: "One card per entity with its deployed and aligned counts. Select a card to see only that entity." },
   { target: "filters", k: "tour.dash.filters", title: "Find a use case", body: "Search, or filter by entity, verdict and stage. Clear filters returns to the full register." },
   { target: "risk", k: "tour.dash.risk", title: "Risk levels and AI disclosure", body: "Client-facing, rights or fees, and irreversible are Yes/No switches in the register. People with permission can change them and save; each change is logged. AI disclosure is a rule on every use case that cannot be removed." },
-  { target: "register", k: "tour.dash.register", title: "The register", body: "Every use case with its SOP, risk levels, stage, verdict, journey and alignment. The verdict comes only from a signed scenario run. Alignment is assumed for every use case until Sijil is integrated." },
+  { target: "register", k: "tour.dash.register", title: "The register", body: "Every use case with its SOP, risk levels, stage, verdict, journey and alignment. The verdict comes only from a signed scenario run. Alignment is assumed for every use case until the Sijil attestation is integrated." },
   { target: "vkey", k: "tour.dash.vkey", title: "Reading a verdict", body: "The key explains each verdict in words, so a colour or symbol is never the only signal." },
 ];
 
@@ -330,7 +330,7 @@ export default function FederalPanel({
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 border-t border-line pt-3 text-sm text-ink-soft">{tr(lang, "ua.reg.lede", "Stage and verdict are read from the database and cannot be edited here. The verdict comes only from a signed scenario run. Alignment is assumed for every use case until Sijil is integrated.")}</p>
+              <p className="mt-3 border-t border-line pt-3 text-sm text-ink-soft">{tr(lang, "ua.reg.lede", "Stage and verdict are read from the database and cannot be edited here. The verdict comes only from a signed scenario run. Alignment is assumed for every use case until the Sijil attestation is integrated.")}</p>
             </Pop>
           </div>
         </div>
@@ -341,7 +341,7 @@ export default function FederalPanel({
           </button>}
           {riskResult && <p role={riskResult.error ? "alert" : "status"} className={`whitespace-pre-line ${riskResult.error ? "text-ember" : "text-lit-deep"}`}>{riskResult.text}</p>}
         </div>
-        <p className="mt-3 max-w-[68ch] text-sm leading-relaxed text-ink-soft desk:hidden">{tr(lang, "ua.reg.lede", "Stage and verdict are read from the database and cannot be edited here. The verdict comes only from a signed scenario run. Alignment is assumed for every use case until Sijil is integrated.")}</p>
+        <p className="mt-3 max-w-[68ch] text-sm leading-relaxed text-ink-soft desk:hidden">{tr(lang, "ua.reg.lede", "Stage and verdict are read from the database and cannot be edited here. The verdict comes only from a signed scenario run. Alignment is assumed for every use case until the Sijil attestation is integrated.")}</p>
 
         {noVerdicts && (
           <p className="mt-4 max-w-[68ch] rounded-xl border border-dashed border-line p-3 text-sm text-ink-soft desk:mt-0 desk:max-w-none desk:px-2.5 desk:py-1 desk:text-xs">
@@ -416,7 +416,7 @@ export default function FederalPanel({
                   </td>
                   <td className="px-2 whitespace-nowrap">{journeys[u.id] ? <JourneyLine journey={journeys[u.id]} compact /> : null}</td>
                   <td className="px-2 text-center">
-                    <span aria-label={fill(tr(lang, "ua.row.compl", "Aligned {id}: {yn}"), { id: ltr(u.ext_id), yn: u.compliant ? tr(lang, "ua.yes", "yes") : tr(lang, "ua.no", "no") })} title={tr(lang, "ua.row.compl.h", "Assumed until Sijil is integrated")}>{u.compliant ? "✓" : "–"}</span>
+                    <span aria-label={fill(tr(lang, "ua.row.compl", "Aligned {id}: {yn}"), { id: ltr(u.ext_id), yn: u.compliant ? tr(lang, "ua.yes", "yes") : tr(lang, "ua.no", "no") })} title={tr(lang, "ua.row.compl.h", "Assumed until the Sijil attestation is integrated")}>{u.compliant ? "✓" : "–"}</span>
                   </td>
                   <td className="px-2 pe-4 text-center desk:pe-3">{rerun[u.id] ? <RerunControl ucId={u.id} ext={u.ext_id} ui={rerun[u.id]} /> : null}</td>
                 </tr>

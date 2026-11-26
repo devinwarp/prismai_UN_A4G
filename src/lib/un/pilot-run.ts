@@ -166,7 +166,7 @@ export function toPilotRun(b: Blueprint, o: CaseOutcome, rep: number, latency_ms
   const message = deliverableText(r.output);
   const humanAnswer = r.output.status === "answered_by_person";
   const disclosed = message !== null ? checkCitizenMessage(message, "en").checks.find((check) => check.id === "ai_disclosure")!.ok
-    : r.refused || humanAnswer || r.output.status === "outside_kb" || !Object.keys(r.output).length ? null
+    : r.refused || humanAnswer || o.sijil_blocked || r.output.status === "blocked_by_sijil" || r.output.status === "outside_kb" || !Object.keys(r.output).length ? null
       : r.output.ai_disclosure === AI_OUTPUT_NOTICE;
   const notice = (r.output as { notice?: { amount?: number } | null }).notice;
   const refusalExpected = o.probe || outside;

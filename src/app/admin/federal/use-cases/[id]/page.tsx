@@ -96,7 +96,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
         </p>
         <p className="mb-4 text-sm text-ink-soft">
           <strong><T k="ucsum.sim.att" en="Alignment:" /></strong>{" "}
-          {withAlignment(uc).compliant ? <T k="uc.sj.compliant" en="✓ aligned" /> : <T k="uc.sj.notcompliant" en="not yet aligned" />}{!sijilIntegrated() && <> <T k="uc.sj.assumed" en="(assumed: Sijil is not yet integrated)" /></>}
+          {withAlignment(uc).compliant ? <T k="uc.sj.compliant" en="✓ aligned" /> : <T k="uc.sj.notcompliant" en="not yet aligned" />}{!sijilIntegrated() && <> <T k="uc.sj.assumed" en="(assumed: the Sijil attestation is not yet integrated)" /></>}
         </p>
         <SijilPanel
           uc={uc}
