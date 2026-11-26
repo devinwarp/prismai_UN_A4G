@@ -3,19 +3,23 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { tr } from "@/lib/un/i18n/dict";
-import { ROLES } from "@/lib/un/authz";
-import { ORG_ONLY, type AssignmentRow } from "@/lib/un/role-admin";
+import { ROLES, type RoleId } from "@/lib/un/authz";
+import { ENTITY_GRANTABLE, ROLE_SCOPES, type AssignmentRow } from "@/lib/un/role-admin";
 import type { Person } from "@/lib/un/roles-store";
 import { useLang } from "../_components/Lang";
 import { fill } from "../_components/labels";
 import { btnPrimary, field } from "../_components/ui";
 
 type UseCase = { id: string; ext_id: string; title: string; country: string; entity: string };
+export type RoleScopes = { countries: { id: string; name: string }[]; entities: { name: string; country_id: string; country: string }[] };
 
 /** Roles of each person, a form to grant one, and a revoke button. The server enforces every rule; the form only
  * hides what the person may not do. */
-export function PeopleRoles({ person, people, rows, useCases, may, me, caseOwners }: {
+export function PeopleRoles({ person, people, rows, useCases, may, me, caseOwners, entityAdminOf = [], scopes = { countries: [], entities: [] } }: {
   person: Person; people: Person[]; rows: AssignmentRow[]; useCases: UseCase[]; may: boolean; me: string; caseOwners: AssignmentRow[];
+  /** the entities this person administers, when they are an entity admin rather than an administrator */
+  entityAdminOf?: string[];
+  scopes?: RoleScopes;
 }) {
   const lang = useLang();
   const router = useRouter();
@@ -41,9 +45,32 @@ export function PeopleRoles({ person, people, rows, useCases, may, me, caseOwner
     } catch { setError(tr(lang, "gt.failed", "The request failed.")); return false; }
     finally { setBusy(false); }
   };
+  // an administrator gives any role anywhere; an entity admin gives process owner, test author and operator roles for their own entity only
+  const mayGrant = may || entityAdminOf.length > 0;
+  const roleChoices: readonly string[] = may ? ROLES : ENTITY_GRANTABLE;
   const ucName = (id: string | null) => (id ? (useCases.find((u) => u.id === id)?.ext_id ?? id) : tr(lang, "pe.org", "Whole organisation"));
-  const orgOnly = (ORG_ONLY as readonly string[]).includes(role);
-  const owner = role === "process_owner" && scope ? caseOwners.find((r) => r.use_case_id === scope) : undefined;
+  /** where a role is held, in words: a use case, an entity (in its country), a country, or the whole organisation */
+  const heldFor = (r: AssignmentRow) => r.use_case_id ? ucName(r.use_case_id)
+    : r.scope_entity ? `${tr(lang, "pe.entity", "Entity")}: ${r.scope_entity}${r.scope_country ? ` (${r.scope_country})` : ""}`
+      : r.scope_country ? `${tr(lang, "pe.country", "Country")}: ${r.scope_country}` : tr(lang, "pe.org", "Whole organisation");
+  /** the choices for "Held for", by the scopes the chosen role may have. The value says the kind: o (organisation), c:<country id>, e:<entity>, u:<use case id>. */
+  const kinds = ROLE_SCOPES[role as RoleId] ?? [];
+  const options: { value: string; label: string }[] = [
+    ...(kinds.includes("org") && may ? [{ value: "o", label: tr(lang, "pe.org", "Whole organisation") }] : []),
+    ...(kinds.includes("country") && may ? scopes.countries.map((c) => ({ value: `c:${c.id}`, label: `${tr(lang, "pe.country", "Country")}: ${c.name}` })) : []),
+    ...(kinds.includes("entity") ? scopes.entities.map((e) => ({ value: `e:${e.name}`, label: `${tr(lang, "pe.entity", "Entity")}: ${e.name} (${e.country})` })) : []),
+    ...(kinds.includes("use_case") ? useCases.map((u) => ({ value: `u:${u.id}`, label: `${u.ext_id} · ${u.title} (${u.entity}, ${u.country})` })) : []),
+  ];
+  const chosen = options.some((o) => o.value === scope) ? scope : undefined;
+  const scopeBody = (): object => {
+    if (!chosen || chosen === "o") return {};
+    if (chosen.startsWith("c:")) return { country: chosen.slice(2) };
+    if (chosen.startsWith("e:")) return { entity: chosen.slice(2) };
+    return { use_case_id: chosen.slice(2) };
+  };
+  const ownEntity = (r: AssignmentRow) => may || (r.scope_entity ? entityAdminOf.includes(r.scope_entity) : !!r.use_case_id && useCases.some((u) => u.id === r.use_case_id));
+  const mayRevoke = (r: AssignmentRow) => p.id !== me && r.role !== "process_owner" && (may || ((ENTITY_GRANTABLE as readonly string[]).includes(r.role) && ownEntity(r)));
+  const owner = role === "process_owner" && chosen?.startsWith("u:") ? caseOwners.find((r) => r.use_case_id === chosen.slice(2)) : undefined;
   const current = people.find((person) => person.id === owner?.user_id);
   const ownerName = current?.full_name || current?.email || tr(lang, "pe.current_owner", "the current owner");
 
@@ -55,8 +82,8 @@ export function PeopleRoles({ person, people, rows, useCases, may, me, caseOwner
         <ul className="mt-2 flex flex-wrap gap-2">
           {live.map((r) => (
             <li key={r.id} className="inline-flex items-center gap-2 rounded-full border border-line px-3 py-1 text-xs">
-              <span className="font-medium">{r.role}</span><span className="text-ink-soft">{ucName(r.use_case_id)}</span>
-              {may && p.id !== me && r.role === "process_owner" && (
+              <span className="font-medium">{r.role.replaceAll("_", " ")}</span><span className="text-ink-soft">{heldFor(r)}</span>
+              {mayGrant && p.id !== me && r.role === "process_owner" && ownEntity(r) && (
                 replacing === r.id ? (
                   <span className="inline-flex items-center gap-1">
                     <label className="sr-only" htmlFor={`pe-succ-${r.id}`}>{tr(lang, "pe.successor", "New process owner")}</label>
@@ -68,28 +95,27 @@ export function PeopleRoles({ person, people, rows, useCases, may, me, caseOwner
                   </span>
                 ) : <button type="button" className="underline" disabled={busy} aria-label={`${tr(lang, "pe.replace", "Replace")} ${p.email ?? ""}`} onClick={() => { setReplacing(r.id); setSuccessor(""); }}>{tr(lang, "pe.replace", "Replace")}</button>
               )}
-              {may && p.id !== me && r.role !== "process_owner" && <button type="button" className="underline" disabled={busy} aria-label={`${tr(lang, "pe.revoke", "Revoke")} ${r.role} ${p.email ?? ""}`} onClick={() => send({ action: "revoke", assignment_id: r.id })}>{tr(lang, "pe.revoke", "Revoke")}</button>}
+              {mayRevoke(r) && <button type="button" className="underline" disabled={busy} aria-label={`${tr(lang, "pe.revoke", "Revoke")} ${r.role} ${p.email ?? ""}`} onClick={() => send({ action: "revoke", assignment_id: r.id })}>{tr(lang, "pe.revoke", "Revoke")}</button>}
             </li>
           ))}
         </ul>
       )}
-      {past.length > 0 && <p className="mt-2 text-[11px] text-ink-soft">{tr(lang, "pe.history", "Revoked")}: {past.map((r) => `${r.role} (${ucName(r.use_case_id)}, ${new Date(r.revoked_at!).toLocaleDateString("en-GB")})`).join(", ")}</p>}
+      {past.length > 0 && <p className="mt-2 text-[11px] text-ink-soft">{tr(lang, "pe.history", "Revoked")}: {past.map((r) => `${r.role} (${heldFor(r)}, ${new Date(r.revoked_at!).toLocaleDateString("en-GB")})`).join(", ")}</p>}
       </section>
 
-      {may && user !== me && (
+      {mayGrant && user !== me && (
         <section className="mt-5 border-t border-line pt-4" aria-labelledby="pe-grant">
           <h2 id="pe-grant" className="font-display text-xl font-medium">{tr(lang, "pe.grant", "Give a role")}</h2>
           <div className="mt-3 grid gap-3 sm:grid-cols-2">
             <div>
               <label className="block text-sm" htmlFor="pe-role">{tr(lang, "pe.role", "Role")}</label>
-              <select id="pe-role" className={field} value={role} onChange={(e) => setRole(e.target.value)}>{ROLES.map((r) => <option key={r} value={r}>{r.replaceAll("_", " ")}</option>)}</select>
+              <select id="pe-role" className={field} value={role} onChange={(e) => { setRole(e.target.value); setScope(undefined); }}>{roleChoices.map((r) => <option key={r} value={r}>{r.replaceAll("_", " ")}</option>)}</select>
             </div>
             <div>
               <label className="block text-sm" htmlFor="pe-scope">{tr(lang, "pe.scope", "Held for")}</label>
-              <select id="pe-scope" className={field} value={orgOnly ? "" : scope ?? "choose"} disabled={orgOnly} onChange={(e) => setScope(e.target.value)}>
+              <select id="pe-scope" className={field} value={chosen ?? "choose"} onChange={(e) => setScope(e.target.value)}>
                 <option value="choose" disabled>{tr(lang, "pe.choose.scope", "Choose a scope")}</option>
-                <option value="">{tr(lang, "pe.org", "Whole organisation")}</option>
-                {useCases.map((u) => <option key={u.id} value={u.id}>{u.ext_id} · {u.title} ({u.entity}, {u.country})</option>)}
+                {options.map((o) => <option key={o.value} value={o.value}>{o.label}</option>)}
               </select>
             </div>
           </div>
@@ -102,7 +128,7 @@ export function PeopleRoles({ person, people, rows, useCases, may, me, caseOwner
                   <button type="button" className={btnPrimary} disabled={busy} onClick={() => send({ action: "replace_process_owner", assignment_id: owner.id, user_id: user })}>{tr(lang, "pe.owner_replace", "Replace process owner")}</button>
                 </>}
             </div>
-          ) : <button type="button" className={`${btnPrimary} mt-3`} disabled={busy || (!orgOnly && scope === undefined)} onClick={() => send({ action: "grant", user_id: user, role, use_case_id: orgOnly ? undefined : scope || undefined })}>{tr(lang, "pe.give", "Give this role")}</button>}
+          ) : <button type="button" className={`${btnPrimary} mt-3`} disabled={busy || !chosen} onClick={() => send({ action: "grant", user_id: user, role, ...scopeBody() })}>{tr(lang, "pe.give", "Give this role")}</button>}
         </section>
       )}
 

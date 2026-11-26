@@ -20,7 +20,7 @@ export async function GET() {
 }
 
 /** POST { action: "grant", user_id, role, use_case_id?, entity?, country? }, { action: "revoke", assignment_id } or { action: "replace_process_owner", assignment_id, user_id }
- * → needs users.manage, or (for the people of one entity: process owner, test author, operator and viewer roles) entity.people for that entity.
+ * → needs users.manage, or (for the people of one entity: process owner, test author and operator roles) entity.people for that entity.
  * A use case may have one active process owner. Replacement transfers ownership atomically.
  * A role is held for the whole organisation (no use_case_id) or for one use case. Nobody changes their own roles. A
  * revoked assignment stays in the history. */

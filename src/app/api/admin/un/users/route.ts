@@ -15,7 +15,7 @@ const EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 /**
  * POST { email, name, job_title, entity, use_case_id?, role?, item_id? } → creates a user for an entity. Needs user.create for that entity (its entity admin, or
  * an administrator). A person makes the account; an agent only stages one (the item the form is prefilled from). The new person may be given a role at once:
- * an entity admin may give process owner, test author, operator or viewer for their own entity only. Online, the account is made in the sign-in service with
+ * an entity admin may give process owner, test author or operator for their own entity only. Online, the account is made in the sign-in service with
  * a random password that is returned ONCE here and kept nowhere; offline there is no password (use the sign-in-as picker).
  */
 export async function POST(request: Request) {

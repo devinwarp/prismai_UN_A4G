@@ -51,7 +51,7 @@ function StagedUser({ item, onDone }: { item: InboxItem; onDone: (msg: string) =
         <label className="text-xs font-medium">{tr(lang, "ib.role", "Role")}
           <select className={field} value={role} onChange={(e) => setRole(e.target.value)}>
             <option value="">{tr(lang, "ib.role.none", "No role yet")}</option>
-            {["operator", "process_owner", "test_author", "viewer"].map((r) => <option key={r} value={r}>{r.replace("_", " ")}</option>)}
+            {["operator", "process_owner", "test_author"].map((r) => <option key={r} value={r}>{r.replace("_", " ")}</option>)}
           </select>
         </label>
       </div>

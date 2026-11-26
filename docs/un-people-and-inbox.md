@@ -15,7 +15,7 @@ This is for whoever applies the database changes and creates the test accounts o
 |---|---|---|
 | `platform_admin` | the organisation | assigns roles anywhere; informed of everything; takes a request when no one else can |
 | `governance_admin` | the organisation, a country or an entity | approves targets, test sets and verdict parameters; its job title must be exactly **Head of AI governance** |
-| `entity_admin` | one entity (in its country) | sets up the entity (goals and criteria, use case list, SOPs), creates users and gives process owner, test author, operator and viewer roles for its own entity, runs everything under it; approves nothing |
+| `entity_admin` | one entity (in its country) | sets up the entity (goals and criteria, use case list, SOPs), creates users and gives process owner, test author and operator roles for its own entity, runs everything under it; approves nothing |
 | `process_owner` | the organisation or one use case | proposes targets and test sets; approves the agent version, goal judgments, verdicts, deployment (people decide) |
 | `operator` | the organisation, an entity or one use case | runs pilots, tuning, deployment steps |
 | `test_author` | the organisation, an entity or one use case | proposes scenarios and tuning changes |

@@ -119,7 +119,7 @@ test("the same role at the same country or entity is held once", () => {
   assert.equal(planGrant({ type: "grant", user_id: ANA, role: "governance_admin", use_case_id: null, country: "SG" }, scoped(live)).ok, true);
 });
 
-test("an entity admin gives and takes back process owner, test author, operator and viewer roles, for their own entity only", () => {
+test("an entity admin gives and takes back process owner, test author and operator roles, for their own entity only", () => {
   const useCases = [{ id: UC, entity: "Marsa" }, { id: "uc-w", entity: "Wahat" }];
   const rows = [row({ id: "r-op", role: "operator", use_case_id: UC }), row({ id: "r-gov", role: "governance_admin", scope_country: "UAE" }), row({ id: "r-w", role: "operator", use_case_id: "uc-w" })];
   const o = { rows, useCases };
@@ -129,7 +129,7 @@ test("an entity admin gives and takes back process owner, test author, operator 
   assert.equal(entityOfAction({ type: "grant", user_id: ANA, role: "viewer", use_case_id: null }, o), null, "the whole organisation concerns no single entity");
   assert.equal(entityAdminMay({ type: "grant", user_id: ANA, role: "operator", use_case_id: UC }, "Marsa", o), null);
   assert.match(entityAdminMay({ type: "grant", user_id: ANA, role: "operator", use_case_id: "uc-w" }, "Marsa", o) ?? "", /outside your entity/);
-  for (const role of ["governance_admin", "platform_admin", "entity_admin"]) assert.match(entityAdminMay({ type: "grant", user_id: ANA, role, use_case_id: null, entity: "Marsa" }, "Marsa", o) ?? "", /process owner, test author, operator and viewer/);
+  for (const role of ["governance_admin", "platform_admin", "entity_admin"]) assert.match(entityAdminMay({ type: "grant", user_id: ANA, role, use_case_id: null, entity: "Marsa" }, "Marsa", o) ?? "", /process owner, test author and operator/);
   assert.equal(entityAdminMay({ type: "revoke", assignment_id: "r-op" }, "Marsa", o), null);
   assert.match(entityAdminMay({ type: "revoke", assignment_id: "r-gov" }, "Marsa", o) ?? "", /outside your entity/);
   assert.match(entityAdminMay({ type: "revoke", assignment_id: "r-w" }, "Marsa", o) ?? "", /outside your entity/);

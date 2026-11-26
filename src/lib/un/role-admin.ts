@@ -23,7 +23,7 @@ export const ROLE_SCOPES: Record<RoleId, readonly ScopeKind[]> = {
   viewer: ["org"],
 };
 /** Roles an entity admin may give, and only for their own entity's people: never a role that approves or administers. */
-export const ENTITY_GRANTABLE: readonly RoleId[] = ["process_owner", "test_author", "operator", "viewer"];
+export const ENTITY_GRANTABLE: readonly RoleId[] = ["process_owner", "test_author", "operator"];
 export const OWNER_EXISTS = "This use case already has a process owner. Use Replace to transfer ownership.";
 
 export interface AssignmentRow {
@@ -62,17 +62,17 @@ export function entityOfAction(a: GrantAction, o: { rows: AssignmentRow[]; useCa
   return r ? r.scope_entity ?? ofUseCase(r.use_case_id) : null;
 }
 
-/** What an entity admin may do with people: give or take back process owner, test author, operator and viewer roles, for use cases of their own entity
+/** What an entity admin may do with people: give or take back process owner, test author and operator roles, for use cases of their own entity
  * or for their entity as a whole. Never a role that approves or administers, and nothing for another entity. Returns an error, or null. */
 export function entityAdminMay(a: GrantAction, entity: string, o: { rows: AssignmentRow[]; useCases: { id: string; entity: string }[] }): string | null {
   if (entityOfAction(a, o) !== entity) return "That is outside your entity";
   if (a.type === "grant") {
-    if (!(ENTITY_GRANTABLE as readonly string[]).includes(a.role)) return "An entity admin can give process owner, test author, operator and viewer roles only";
+    if (!(ENTITY_GRANTABLE as readonly string[]).includes(a.role)) return "An entity admin can give process owner, test author and operator roles only";
     if (a.country && !a.entity) return "An entity admin cannot give a role for a whole country";
     return null;
   }
   const r = o.rows.find((x) => x.id === a.assignment_id);
-  if (!r || !(ENTITY_GRANTABLE as readonly string[]).includes(r.role)) return "An entity admin can take back process owner, test author, operator and viewer roles only";
+  if (!r || !(ENTITY_GRANTABLE as readonly string[]).includes(r.role)) return "An entity admin can take back process owner, test author and operator roles only";
   return null;
 }
 

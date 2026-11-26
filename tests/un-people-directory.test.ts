@@ -55,3 +55,30 @@ test("a read-only viewer (the judge account) can compare countries like the supe
   assert.equal(canCompareCountries("someone", "employee", "designated"), false);
   assert.equal(canCompareCountries("someone", "admin", "designated"), false);
 });
+
+// ---- an entity admin sees everyone assigned in their own entity ----------------------------------------------------------------------------------------
+
+test("an entity admin sees the people assigned in their entity, by an entity role or one of its use cases, and nothing of other entities", () => {
+  const row = (id: string, user_id: string, role: string, extra: Partial<AssignmentRow> = {}): AssignmentRow => ({ id, user_id, role, use_case_id: null, granted_at: "2026-11-26", granted_by: null, revoked_at: null, revoked_by: null, ...extra });
+  const entityData = {
+    people: ["ea", "op-m", "author-m", "op-w", "gov", "root"].map((id) => ({ id, email: null, job_title: null, legacy_role: id === "root" ? "admin" : "employee" })),
+    rows: [
+      row("r1", "ea", "entity_admin", { scope_entity: "Marsa", scope_country: "UAE" }),
+      row("r2", "op-m", "operator", { use_case_id: "UC02" }),
+      row("r3", "author-m", "test_author", { scope_entity: "Marsa", scope_country: "UAE" }),
+      row("r4", "op-w", "operator", { use_case_id: "UC05" }),
+      row("r5", "gov", "governance_admin", { scope_country: "UAE" }),
+      row("r6", "root", "operator", { use_case_id: "UC02" }),
+    ],
+    useCases: [{ id: "UC02", entity: "Marsa" }, { id: "UC05", entity: "Wahat" }],
+    federal: [],
+  };
+  const view = scopePeople(entityData, "ea", "employee");
+  assert.deepEqual(view.people.map((p) => p.id).sort(), ["author-m", "ea", "op-m"], "Marsa's people only: no Wahat operator, no governance admin, no administrator");
+  assert.deepEqual(view.useCases.map((u) => u.id), ["UC02"]);
+  assert.deepEqual(view.entityAdminOf, ["Marsa"]);
+  assert.equal(view.mayManage, false);
+  assert.deepEqual(view.rows.map((r) => r.id).sort(), ["r1", "r2", "r3"]);
+  // an administrator is not an entity admin: they manage everyone
+  assert.deepEqual(scopePeople(entityData, "root", "admin").entityAdminOf, []);
+});

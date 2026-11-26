@@ -9,7 +9,8 @@ import { tr } from "@/lib/un/i18n/dict";
 import { useLang } from "../_components/Lang";
 import { field, scrollRegion } from "../_components/ui";
 import { PeopleEntities } from "./PeopleEntities";
-import { PeopleRoles } from "./PeopleRoles";
+import { AgentSwitch } from "./AgentSwitch";
+import { PeopleRoles, type RoleScopes } from "./PeopleRoles";
 
 type UseCase = { id: string; ext_id: string; title: string; entity: string; country: string };
 
@@ -21,8 +22,11 @@ const scopeGuide = [
   ["case", "Use-case team", "Work on assigned use cases and their job profiles."],
 ] as const;
 
-export default function PeopleDashboard({ people, federal, rows, useCases, me, may, superUserId }: {
+export default function PeopleDashboard({ people, federal, rows, useCases, me, may, superUserId, entityAdminOf = [], scopes }: {
   people: Person[]; federal: MemberRow[]; rows: AssignmentRow[]; useCases: UseCase[]; me: string; may: boolean; superUserId?: string;
+  /** the entities this person administers (an entity admin, who may give roles for their own entity) */
+  entityAdminOf?: string[];
+  scopes?: RoleScopes;
 }) {
   const lang = useLang();
   const t = (key: string, english: string) => tr(lang, key, english);
@@ -78,12 +82,15 @@ export default function PeopleDashboard({ people, federal, rows, useCases, me, m
         <div {...scrollRegion("pe-profile")} className="min-w-0 p-4 desk:min-h-0 desk:overflow-auto">
           {person && <div key={person.id} className="grid min-w-0 gap-5 xl:grid-cols-2">
             <PeopleEntities person={person} federal={federal} entities={entities} may={may} me={me} />
-            <PeopleRoles person={person} people={people} rows={personRows} useCases={useCases} may={may} me={me}
-              caseOwners={rows.filter((row) => row.role === "process_owner" && row.use_case_id && !row.revoked_at)} />
+            <div className="min-w-0">
+              <PeopleRoles person={person} people={people} rows={personRows} useCases={useCases} may={may} me={me} entityAdminOf={entityAdminOf} scopes={scopes}
+                caseOwners={rows.filter((row) => row.role === "process_owner" && row.use_case_id && !row.revoked_at)} />
+              {may && <AgentSwitch userId={person.id} name={name(person)} />}
+            </div>
           </div>}
           <details className="mt-5 border-t border-line pt-3">
             <summary className="cursor-pointer text-sm font-medium underline underline-offset-4">{t("pe.access.reference", "Access reference")}</summary>
-            <p className="mt-2 text-sm text-ink-soft">{t("pe.access.limit", "Role assignments currently cover an organisation or use case. Country and entity administrators and per-page restrictions require additional access rules.")}</p>
+            <p className="mt-2 text-sm text-ink-soft">{t("pe.access.limit", "A role is held for the whole organisation, a country, an entity (in its country) or one use case. A country governance admin covers every entity of the country; an entity admin covers one entity. Per-page restrictions require additional access rules.")}</p>
             <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-2">
               {scopeGuide.map(([id, label, description]) => <div key={id} className="rounded-lg border border-line p-3"><dt className="font-medium">{t(`pe.scope.${id}`, label)}</dt><dd className="text-ink-soft">{t(`pe.scope.${id}.detail`, description)}</dd></div>)}
             </dl>
