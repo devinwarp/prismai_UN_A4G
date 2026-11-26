@@ -120,6 +120,10 @@ If a country has entities and no governance admin, the Country screen shows "app
 - The agents are deterministic: they stage a user, draft a consult reply from the item's context, and hand over what they cannot do. No model call is made by the inbox yet (so the cost ledger does not move); a model-written draft can replace the template later.
 - Production, Sijil attestation and the pilot agent remain as before (simulated where they were simulated).
 
-## 9. Not built yet
+## 9. RACI by use case
 
-RACI overrides screen, the People page options for a country or entity scope and the agent switch for other people, consult items from real events, and more events (pilots, goal judgments, rerun requests, tuning proposals). The description of the pull request lists them in order.
+`/admin/federal/raci` shows, for one use case, who does the work (R), who answers for it and decides (A, always a person), who is asked first (C) and who is told (I), for each step. The defaults come from people's roles. An administrator, or the entity admin of the use case's entity, can change one person's letter on one use case (an **override**, stored in `un_raci_overrides`; the old row stays, revoked). An override can also bring in someone who holds no position there (a test author who should be consulted on the targets): the agent drafts their reply and they send it. A step must always keep someone Responsible and exactly one Accountable, and for process targets and test sets the Accountable must be someone who may approve them (a governance admin of the country). Letters decide who is told and asked; what each person may do still comes from their role.
+
+## 10. Not built yet
+
+Consult items from more real events, and more events (pilots, goal judgments, rerun requests, tuning proposals). The description of the pull request lists them in order.

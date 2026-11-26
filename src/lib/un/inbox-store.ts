@@ -99,7 +99,26 @@ export function verifyAgentLog(log: AgentLogEntry[]): { ok: true } | { ok: false
 
 // ---- RACI overrides ---------------------------------------------------------------------------------------------------------------------------
 
-export async function loadRaciOverrides(orgId: string): Promise<{ user_id: string; step: string; letter: Letter; entity: string | null; use_case_id: string | null }[]> {
+export interface RaciOverride { id: string; user_id: string; step: string; letter: Letter; entity: string | null; use_case_id: string | null; set_by: string | null; set_at: string }
+
+export async function loadRaciOverrides(orgId: string): Promise<RaciOverride[]> {
   const { data } = await db().from("un_raci_overrides").select("*").eq("org_id", orgId);
-  return ((data ?? []) as Row[]).filter((r) => !r.revoked_at).map((r) => ({ user_id: String(r.user_id), step: String(r.step), letter: r.letter as Letter, entity: (r.entity as string | null) ?? null, use_case_id: (r.use_case_id as string | null) ?? null }));
+  return ((data ?? []) as Row[]).filter((r) => !r.revoked_at).map((r) => ({
+    id: String(r.id), user_id: String(r.user_id), step: String(r.step), letter: r.letter as Letter, entity: (r.entity as string | null) ?? null, use_case_id: (r.use_case_id as string | null) ?? null,
+    set_by: (r.set_by as string | null) ?? null, set_at: String(r.set_at ?? r.created_at ?? ""),
+  }));
+}
+
+/** Sets a person's letter for one step of one use case, replacing the one they had (the old row stays, revoked). Returns an error message, or null. */
+export async function setRaciOverride(orgId: string, o: { user_id: string; step: string; letter: Letter; use_case_id: string; entity: string | null; by: string }, now = new Date()): Promise<string | null> {
+  const live = (await loadRaciOverrides(orgId)).filter((x) => x.user_id === o.user_id && x.step === o.step && x.use_case_id === o.use_case_id);
+  for (const x of live) { const e = await clearRaciOverride(orgId, x.id, now); if (e) return e; }
+  const { error } = await db().from("un_raci_overrides").insert({ org_id: orgId, user_id: o.user_id, step: o.step, letter: o.letter, entity: o.entity, use_case_id: o.use_case_id, set_by: o.by, set_at: now.toISOString() });
+  return error?.message ?? null;
+}
+
+/** Takes an override away: the person goes back to the default for their position. The row stays, revoked. */
+export async function clearRaciOverride(orgId: string, id: string, now = new Date()): Promise<string | null> {
+  const { error } = await db().from("un_raci_overrides").update({ revoked_at: now.toISOString() }).eq("org_id", orgId).eq("id", id);
+  return error?.message ?? null;
 }

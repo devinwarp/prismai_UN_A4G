@@ -79,15 +79,40 @@ export interface Recipient { user_id: string; letter: Letter; escalated_from?: P
  * that is Accountable (for targets and test sets, the governance admin of the country), the item goes to the platform holders as an action (and
  * `escalated_from` says whose it was), so a request is never left with no one.
  */
-export function route(step: Step, holders: Holder[], overrides: { user_id: string; letter: Letter }[] = []): Recipient[] {
-  const rank: Record<Letter, number> = { AR: 5, R: 4, A: 3, C: 2, I: 1 };
-  const out = new Map<string, Recipient>();
+const RANK: Record<Letter, number> = { AR: 5, R: 4, A: 3, C: 2, I: 1 };
+
+/** The letter a position gives by default for a step (the strongest, when a person holds several positions), or null when they are not involved. */
+export const defaultLetter = (step: Step, positions: Position[]): Letter | null =>
+  positions.map((p) => DEFAULT_RACI[step][p]).filter((l): l is Letter => l !== null).sort((a, b) => RANK[b] - RANK[a])[0] ?? null;
+
+/** Each person's letter for a step: an override replaces the default, and an override can bring in a person who holds no position here (a test author who is
+ * consulted, say). Before any escalation. */
+export function effectiveLetters(step: Step, holders: Holder[], overrides: { user_id: string; letter: Letter }[] = []): Map<string, Letter> {
+  const out = new Map<string, Letter>();
   for (const h of holders) {
-    const defaults = h.positions.map((p) => DEFAULT_RACI[step][p]).filter((l): l is Letter => l !== null);
-    const over = overrides.find((o) => o.user_id === h.user_id)?.letter;
-    const letter = over ?? defaults.sort((a, b) => rank[b] - rank[a])[0];
-    if (letter) out.set(h.user_id, { user_id: h.user_id, letter });
+    const letter = overrides.find((o) => o.user_id === h.user_id)?.letter ?? defaultLetter(step, h.positions);
+    if (letter) out.set(h.user_id, letter);
   }
+  for (const o of overrides) if (!out.has(o.user_id)) out.set(o.user_id, o.letter);
+  return out;
+}
+
+/** Would this override leave the step sensible? Every step needs someone Responsible and an Accountable, and a second Accountable is refused (exactly one
+ * answers for a step). Returns the problem, or null. */
+export function checkOverride(step: Step, holders: Holder[], overrides: { user_id: string; letter: Letter }[], next: { user_id: string; letter: Letter }): string | null {
+  const before = effectiveLetters(step, holders, overrides.filter((o) => o.user_id !== next.user_id));
+  const after = effectiveLetters(step, holders, [...overrides.filter((o) => o.user_id !== next.user_id), next]);
+  const count = (m: Map<string, Letter>, want: (l: Letter) => boolean) => [...m.values()].filter(want).length;
+  const acc = (l: Letter) => l === "A" || l === "AR";
+  const resp = (l: Letter) => l === "R" || l === "AR";
+  if (acc(next.letter) && count(before, acc) >= 1) return `${STEP_LABELS[step]} already has someone Accountable: give that person another letter first, so exactly one answers for it`;
+  if (count(after, acc) < 1) return `${STEP_LABELS[step]} would have nobody Accountable`;
+  if (count(after, resp) < 1) return `${STEP_LABELS[step]} would have nobody Responsible`;
+  return null;
+}
+
+export function route(step: Step, holders: Holder[], overrides: { user_id: string; letter: Letter }[] = []): Recipient[] {
+  const out = new Map<string, Recipient>([...effectiveLetters(step, holders, overrides)].map(([user_id, letter]) => [user_id, { user_id, letter }]));
   const covered = (want: (l: Letter) => boolean) => [...out.values()].some((r) => want(r.letter));
   const held = (p: Position) => holders.some((h) => h.positions.includes(p));
   const needs = POSITIONS.filter((p) => DEFAULT_RACI[step][p] === "AR" || DEFAULT_RACI[step][p] === "R");

@@ -3,6 +3,7 @@ import test from "node:test";
 import { addWorkingDays, countsOf, blockToHuman, dueForEscalation, escalateAtFor, failAttempt, handlerFor, MAX_ATTEMPTS, newItem } from "../src/lib/un/inbox.ts";
 import { countriesNeedingGovernanceAdmin, missingPositions } from "../src/lib/un/people-agent.ts";
 import { holdersOf } from "../src/lib/un/inbox-routing.ts";
+import { checkOverride, defaultLetter, effectiveLetters } from "../src/lib/un/raci.ts";
 import { DEFAULT_RACI, HUMAN_DECISIONS, isHumanDecision, modeOf, POSITIONS, route, STEPS, validateRaci, type Holder, type Step } from "../src/lib/un/raci.ts";
 
 const NOW = new Date("2026-11-26T08:00:00Z"); // a Thursday
@@ -136,4 +137,23 @@ test("with no governance admin, a request for approval goes to the platform admi
   assert.equal(rs.find((r) => r.user_id === "super")?.escalated_from, "governance_admin");
   assert.equal(letterOf(route("targets", holders), "super"), "I", "with a governance admin the platform admin is only told");
   assert.equal(letterOf(route("deploy", noGov), "super"), "I", "a step that does not need the governance admin is unaffected");
+});
+
+test("an override replaces the default, and can bring in someone who holds no position here", () => {
+  const eff = effectiveLetters("targets", holders, [{ user_id: "op", letter: "I" }, { user_id: "author", letter: "C" }]);
+  assert.equal(eff.get("op"), "I", "replaced the operator's default C");
+  assert.equal(eff.get("author"), "C", "an outsider consulted by override");
+  assert.equal(eff.get("gov"), "A");
+  assert.equal(letterOf(route("targets", holders, [{ user_id: "author", letter: "C" }]), "author"), "C", "and it is routed to them");
+  assert.equal(defaultLetter("targets", ["owner", "operator"]), "R", "a person with two positions gets the strongest letter");
+  assert.equal(defaultLetter("people", ["owner"]), null);
+});
+
+test("an override must leave the step sensible: someone Responsible, exactly one Accountable", () => {
+  assert.match(checkOverride("targets", holders, [], { user_id: "owner", letter: "A" }) ?? "", /already has someone Accountable/);
+  assert.match(checkOverride("targets", holders, [], { user_id: "gov", letter: "I" }) ?? "", /nobody Accountable/);
+  assert.match(checkOverride("targets", holders, [], { user_id: "owner", letter: "I" }) ?? "", /nobody Responsible/);
+  assert.equal(checkOverride("targets", holders, [], { user_id: "op", letter: "C" }), null, "no change in who answers or does the work");
+  assert.equal(checkOverride("targets", holders, [{ user_id: "gov", letter: "I" }], { user_id: "owner", letter: "AR" }), null, "after the old Accountable steps aside, the owner may both do the work and answer for it");
+  assert.equal(checkOverride("targets", holders, [], { user_id: "author", letter: "C" }), null, "an outsider may be consulted");
 });

@@ -42,7 +42,8 @@ export async function notify(orgId: string, n: Notice, now = new Date()): Promis
     kind: r.letter === "A" || r.escalated_from === "governance_admin" ? n.decisionKind ?? n.kind : n.kind,
     user_id: r.user_id,
     letter: r.letter,
-    subject: n.subject,
+    // a person who is asked for input, not to decide, is told so
+    subject: r.letter === "C" ? `Your input is asked: ${n.subject.replace(/: approval needed/, "")}` : n.subject,
     body: r.escalated_from ? `${n.body}\n\nThis came to you because nobody holds the position of ${r.escalated_from.replace("_", " ")} here. Appoint one, or decide it yourself if you may.` : n.body,
     entity: n.place.entity ?? null, country: n.place.country ?? null, use_case_id: n.place.use_case_id ?? null, link: n.link ?? null,
     payload: { ...(n.payload ?? {}), step: n.step }, dedupe_key: n.dedupe, escalated_from: r.escalated_from ?? null, created_by: n.created_by ?? "system",

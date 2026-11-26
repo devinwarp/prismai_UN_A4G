@@ -184,6 +184,7 @@ export default function InboxView() {
       <details className="rounded-2xl border border-line bg-card p-5">
         <summary className="cursor-pointer font-display text-xl font-medium">{tr(lang, "ib.raci", "How items reach people")}</summary>
         <p className="mt-2 text-sm text-ink-soft">{tr(lang, "ib.raci.lede", "The default for each step, by position. It can be changed for one person on one use case.")} {tr(lang, "ib.raci.legend", "R responsible, A accountable (decides), C consulted, I informed.")}</p>
+        <p className="mt-2 text-sm"><Link href="/admin/federal/raci" className="underline underline-offset-4">{tr(lang, "rc.edit", "See and change it for one use case")}</Link></p>
         <div className="mt-3 overflow-x-auto">
           <table className="w-full min-w-[34rem] text-sm">
             <thead className="text-start font-mono text-[11px] tracking-wide text-ink-soft uppercase"><tr><th scope="col" className="py-2 text-start font-normal">{tr(lang, "ib.raci.step", "Step")}</th>{POSITIONS.map((p) => <th key={p} scope="col" className="px-2 py-2 text-center font-normal">{tr(lang, `ib.pos.${p}`, p.replace("_", " "))}</th>)}</tr></thead>
