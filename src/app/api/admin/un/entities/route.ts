@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bad, requireAdmin } from "@/lib/api-auth";
+import { bad, requireAdmin, requirePermission } from "@/lib/api-auth";
 import { entityRegistrationReady, loadState, recordChange } from "@/lib/un/country-actions";
 import { countryIn } from "@/lib/un/country";
 import { appCountryDeps } from "@/lib/un/country-app";
@@ -10,10 +10,11 @@ import { loadKnownEntities, registerEntity, saveEntity } from "@/lib/un/entity-s
  * Hiding is reversible: a hidden entity's use cases leave the dashboard counts and the lists, nothing is deleted. Every change is also written
  * to the hash-chained country log, which records who changed what and when. */
 export async function POST(request: Request) {
-  const who = await requireAdmin();
-  if (who instanceof NextResponse) return who;
   const b = (await request.json().catch(() => null)) as Record<string, unknown> | null;
   if (!b || typeof b !== "object") return bad("Invalid JSON");
+  // the goals and criteria of an entity are set by its entity admin (for that entity only); adding or hiding an entity is an administrator's
+  const who = b.action === "set_goals" && typeof b.name === "string" ? await requirePermission("entity.setup", { entity: b.name }) : await requireAdmin();
+  if (who instanceof NextResponse) return who;
   if (b.action !== "add" && b.action !== "set_goals" && b.action !== "set_hidden") return bad("Unknown action");
   const orgId = who.org_id!;
   const { rows, known } = await loadKnownEntities(orgId);

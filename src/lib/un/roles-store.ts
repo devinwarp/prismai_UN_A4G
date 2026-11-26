@@ -1,18 +1,29 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import { ROLES, type Assignment, type RoleId } from "./authz";
+import { ROLES, type Assignment, type RoleId, type Scope } from "./authz";
 import { OWNER_EXISTS, type AssignmentRow } from "./role-admin";
 
+interface ScopeColumns { use_case_id?: string | null; scope_country?: string | null; scope_entity?: string | null }
+
+/** The scope a stored assignment is held at. The country and entity columns (supabase/un-scoped-roles.sql) may not exist yet: then every row is an
+ * organisation or use-case assignment, as before. */
+export function scopeOfRow(r: ScopeColumns): Scope {
+  if (r.use_case_id) return { kind: "use_case", use_case_id: r.use_case_id };
+  if (r.scope_entity) return { kind: "entity", entity: r.scope_entity, ...(r.scope_country ? { country: r.scope_country } : {}) };
+  if (r.scope_country) return { kind: "country", country: r.scope_country };
+  return { kind: "org" };
+}
+
 /** The live role assignments of one person (supabase/un-roles.sql, not applied yet). Empty if the table is absent
- * or the person has none; their stored profile role still applies (see authz.ts). */
+ * or the person has none; their stored profile role still applies (see authz.ts). Reads every column, so it works before and after the scope columns exist. */
 export async function loadAssignments(orgId: string, userId: string): Promise<Assignment[]> {
   const { data } = await createAdminClient()
     .from("un_role_assignments")
-    .select("role, use_case_id, revoked_at")
+    .select("*")
     .eq("org_id", orgId)
     .eq("user_id", userId);
-  return ((data ?? []) as { role: string; use_case_id: string | null; revoked_at: string | null }[])
+  return ((data ?? []) as ({ role: string; revoked_at: string | null } & ScopeColumns)[])
     .filter((r) => !r.revoked_at && (ROLES as readonly string[]).includes(r.role))
-    .map((r): Assignment => ({ role: r.role as RoleId, scope: r.use_case_id ? { kind: "use_case", use_case_id: r.use_case_id } : { kind: "org" } }));
+    .map((r): Assignment => ({ role: r.role as RoleId, scope: scopeOfRow(r) }));
 }
 
 export interface Person { id: string; email: string | null; full_name?: string | null; job_title: string | null; legacy_role: string | null }
@@ -27,12 +38,12 @@ export async function loadPeople(orgId: string): Promise<Person[]> {
 export async function loadAssignmentRows(orgId: string): Promise<AssignmentRow[]> {
   const { data } = await createAdminClient().from("un_role_assignments").select("*").eq("org_id", orgId);
   return ((data ?? []) as Record<string, unknown>[])
-    .map((r) => ({ id: String(r.id), user_id: String(r.user_id), role: String(r.role), use_case_id: (r.use_case_id as string | null) ?? null, granted_by: (r.granted_by as string | null) ?? null, granted_at: new Date(String(r.granted_at ?? r.created_at ?? Date.now())).toISOString(), revoked_at: r.revoked_at ? new Date(String(r.revoked_at)).toISOString() : null, revoked_by: (r.revoked_by as string | null) ?? null }))
+    .map((r) => ({ id: String(r.id), user_id: String(r.user_id), role: String(r.role), use_case_id: (r.use_case_id as string | null) ?? null, scope_country: (r.scope_country as string | null) ?? null, scope_entity: (r.scope_entity as string | null) ?? null, granted_by: (r.granted_by as string | null) ?? null, granted_at: new Date(String(r.granted_at ?? r.created_at ?? Date.now())).toISOString(), revoked_at: r.revoked_at ? new Date(String(r.revoked_at)).toISOString() : null, revoked_by: (r.revoked_by as string | null) ?? null }))
     .sort((a, b) => (a.granted_at < b.granted_at ? -1 : 1));
 }
 
 /** Returns an error message, or null. */
-export async function insertAssignment(orgId: string, row: { user_id: string; role: RoleId; use_case_id: string | null; granted_by: string }): Promise<string | null> {
+export async function insertAssignment(orgId: string, row: { user_id: string; role: RoleId; use_case_id: string | null; granted_by: string; scope_country?: string; scope_entity?: string }): Promise<string | null> {
   const { error } = await createAdminClient().from("un_role_assignments").insert({ org_id: orgId, ...row, granted_at: new Date().toISOString() });
   return error?.message.includes("un_role_assignments_one_process_owner_idx") ? OWNER_EXISTS : error?.message ?? null;
 }
