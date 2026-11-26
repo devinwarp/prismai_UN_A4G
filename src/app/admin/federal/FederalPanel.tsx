@@ -6,6 +6,8 @@ import Link, { useLinkStatus } from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import { LangBar, T, TV, useLang } from "./_components/Lang";
+import WorkIcon from "./_components/WorkIcon";
+import type { Automation } from "@/lib/un/automation";
 import { tr } from "@/lib/un/i18n/dict";
 import { StartHere, Tour, TourButton, type StartStep, type TourStep } from "./_components/Coach";
 import { JourneyLine } from "./_components/JourneyBar";
@@ -74,7 +76,7 @@ function SopLinkStatus() {
 }
 
 export default function FederalPanel({
-  lead, emptyState, policy, dashboard: d, useCases, canEdit, editableRisks, asOf, gatesAdded = {}, journeys = {}, sops, intakeSummaries, rerun = {}, noTarget = false, countryId, hasLicenceDemo, canCompare, showFederalTools, countryReady, setupEntities, initialEntity,
+  lead, emptyState, policy, dashboard: d, useCases, canEdit, editableRisks, asOf, gatesAdded = {}, journeys = {}, work = {}, sops, intakeSummaries, rerun = {}, noTarget = false, countryId, hasLicenceDemo, canCompare, showFederalTools, countryReady, setupEntities, initialEntity,
 }: {
   /** The rerun icon of each use case, by id (see page.tsx). */
   rerun?: Record<string, RerunUi>;
@@ -103,6 +105,8 @@ export default function FederalPanel({
   editableRisks: string[];
   asOf: string;
   journeys?: Record<string, Journey>;
+  /** Who is doing the work on each use case: people, an agent being set up, or an agent in production. */
+  work?: Record<string, Automation>;
 }) {
   const lang = useLang();
   const router = useRouter();
@@ -360,6 +364,7 @@ export default function FederalPanel({
                 <th scope="col" className={th}>{tr(lang, "ua.col.quad", "Quadrant")}</th>
                 {RISK_FIELDS.map((field) => <th key={field} scope="col" className={`${th} whitespace-nowrap text-center`}>{tr(lang, RISK_LABELS[field][0], RISK_LABELS[field][1])}</th>)}
                 <th scope="col" className={th}>{tr(lang, "ua.col.stage", "Stage")}</th>
+                <th scope="col" className={th}>{tr(lang, "wk.col", "Work by")}</th>
                 <th scope="col" className={th}>{tr(lang, "ua.col.verdict", "Verdict")}</th>
                 <th scope="col" className={th}><T k="jb.col" en="Journey" /></th>
                 <th scope="col" className="px-2 text-center font-normal">{tr(lang, "hl.compliant", "Aligned")}</th>
@@ -406,6 +411,7 @@ export default function FederalPanel({
                   <td className="px-2">
                     <span className="inline-flex items-center rounded-md border border-line px-2 py-0.5 font-mono text-[11px]">{stageLabel(lang, u.stage)}</span>
                   </td>
+                  <td className="px-2"><WorkIcon kind={work[u.id] ?? "human"} /></td>
                   <td className="px-2">
                     <VerdictBadge verdict={u.verdict} />
                     {(gatesAdded[u.ext_id] ?? 0) > 0 && (

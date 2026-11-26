@@ -126,9 +126,6 @@ export default function Landing({ signedIn, judgeHref }: { signedIn: boolean; ju
           </Link>
           <div className="flex flex-wrap items-center justify-end gap-2">
             {stuck && <a href={href} onClick={cta("header")} className={`${primary} min-h-10 px-4 text-sm`}>{label}</a>}
-            {!signedIn && (
-              <a href="/login" onClick={signIn("header")} className="inline-flex min-h-10 items-center rounded-lg px-2 text-sm font-medium text-ink underline-offset-4 hover:underline sm:px-3">{c.signIn}</a>
-            )}
             <div className={stuck ? "hidden sm:block" : ""}><ThemeSwitcher variant="inline" /></div>
             <button type="button" onClick={pick} aria-label={c.langAria} className="min-h-10 rounded-lg border border-line px-3 text-sm font-medium text-ink hover:border-ink-soft">{c.langSwitch}</button>
           </div>

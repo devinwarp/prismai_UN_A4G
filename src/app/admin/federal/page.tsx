@@ -86,7 +86,7 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
   const hasTarget = active.id === "UAE" || !!own;
   const shown = active.id === "UAE" ? policy : own ? { ...policy, ...own } : { ...policy, name: `${active.name}: agentic AI deployment`, jurisdiction: active.name, source_url: null, deadline: null };
   const dashboard = computeDashboard(shown, scoped);
-  const [{ journeys, attachedSopIds }, intakeSummaries] = await Promise.all([
+  const [{ journeys, attachedSopIds, automation }, intakeSummaries] = await Promise.all([
     loadJourneyDetails(profile.org_id, scoped),
     access.allCases ? loadSopIntakeSummaries(profile.org_id, scoped.map((entry) => entry.id)) : {},
   ]);
@@ -161,6 +161,7 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
             editableRisks={scoped.filter((uc) => perms.can("risk.edit", uc.id)).map((uc) => uc.id)}
             gatesAdded={gatesAdded}
             journeys={Object.fromEntries(journeys)}
+            work={Object.fromEntries(automation)}
             sops={sops}
             intakeSummaries={intakeSummaries}
             rerun={rerun}
