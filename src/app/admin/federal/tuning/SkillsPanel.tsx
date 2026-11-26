@@ -35,7 +35,7 @@ function Profile({ profile, base, active, canEdit }: { profile: string; base: st
 export default function SkillsPanel({ profiles, canEdit }: { profiles: { name: string; base: string; active: { version: number; lines: string[] } }[]; canEdit: boolean }) {
   const { t } = useT();
   return (
-    <section id="skills" aria-labelledby="h-skills" className="mt-12">
+    <section id="skills" aria-labelledby="h-skills">
       <h2 id="h-skills" className="font-display text-2xl font-medium">{t("tn.k.title", "The agent's own instructions")}</h2>
       <p className="mt-2 max-w-[68ch] text-sm text-ink-soft">{t("tn.k.lede", "Each job profile's skill is copied from the SOP. You can add rule lines after it. Each change is a version a person approves, and it is scored by the per-task evals before and after.")}</p>
       <p className="mt-2 max-w-[68ch] rounded-xl border border-line p-3 text-sm">{t("tn.k.honest", "What these lines do today: the licence-renewal agent is a rule-based executor, not a language model, so it does not read free-text lines. Its behaviour changes through the settings above; the scores for a rule-line version will normally not move. The lines are read when a language-model reasoner is connected. The tuner's suggestions come from the simulated per-use-case optimiser.")}</p>

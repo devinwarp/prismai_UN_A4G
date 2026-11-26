@@ -13,6 +13,7 @@
           "events": [
             { "id": "B-EX1-T0-audit", "recipients": ["security"], "summary": "Audit log covers every action the assistant takes", "gate": "audit_log", "status": "pass" },
             { "id": "B-EX1-T0-dpa", "recipients": ["privacy"], "summary": "Data processing terms cover the internal documents used", "gate": "data_lawful", "status": "pass" },
+            { "id": "B-EX1-T0-disclosure", "recipients": ["compliance"], "summary": "Every sorted queue and every message the assistant produces states that an AI assistant produced it", "gate": "ai_disclosure", "status": "pass" },
             { "id": "B-EX1-T0-context", "recipients": ["innovator", "frontline"], "summary": "The assistant sorts incoming internal documents into queues; staff read every sorted queue" }
           ]
         },

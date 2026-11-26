@@ -34,9 +34,8 @@
    "evidence": "reviewer"
   },
   "ai_disclosure": {
-   "label": "The citizen is told they are dealing with an AI assistant",
+    "label": "AI-generated output is disclosed to its recipient",
    "owner": "compliance",
-   "clientFacingOnly": true,
    "kbQuery": "inform users they are interacting with AI transparency disclosure",
    "category": "functional",
    "evidence": "eval"

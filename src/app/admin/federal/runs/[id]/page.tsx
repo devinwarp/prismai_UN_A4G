@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
+import { requireFederalToolAccess } from "@/lib/un/federal-read-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadChunks } from "@/lib/un/kb";
 import { loadRun, verifyRun } from "@/lib/un/runs";
@@ -16,6 +17,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
   const { user, profile } = await getUserAndProfile();
   if (!user) redirect(`/login?next=/admin/federal/runs/${id}`);
   if (!profile?.org_id) redirect("/login");
+  await requireFederalToolAccess(profile.org_id, user.id, profile.role);
   const row = await loadRun(profile.org_id, id);
   const sc = row && SCENARIOS[row.scenario_id];
   if (!row || !sc) notFound();

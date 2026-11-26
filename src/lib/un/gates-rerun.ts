@@ -15,7 +15,7 @@ export async function rerunAffected(orgId: string, exts: string[], actor: string
   const admin = createAdminClient();
   const [ucs, hitl, { data: rows }] = await Promise.all([
     loadUnUseCases(orgId),
-    loadHitlConfig(orgId),
+    loadHitlConfig(),
     admin.from("un_runs").select("id, scenario_id, state, created_at").eq("org_id", orgId).order("created_at", { ascending: false }),
   ]);
   const out: { ext_id: string; run_id: string }[] = [];

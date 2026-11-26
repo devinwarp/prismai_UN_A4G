@@ -42,13 +42,13 @@ export function GateChip({ gate, status }: { gate: string; status: GateStatus })
 /** Small-caps mono label + serif title, with an optional lede. */
 export function Section({
   id, eyebrow, title, lede, aside, children,
-}: { id?: string; eyebrow: ReactNode; title: ReactNode; lede?: ReactNode; aside?: ReactNode; children: ReactNode }) {
+}: { id?: string; eyebrow?: ReactNode; title: ReactNode; lede?: ReactNode; aside?: ReactNode; children: ReactNode }) {
   return (
     <section aria-labelledby={id ? `${id}-h` : undefined} id={id} className="scroll-mt-6">
       <header className="flex flex-wrap items-end justify-between gap-x-6 gap-y-2 border-b border-line pb-3">
         <div className="min-w-0">
-          <p className="font-mono text-[11px] tracking-[0.22em] text-ink-soft uppercase">{eyebrow}</p>
-          <h2 id={id ? `${id}-h` : undefined} className="font-display mt-1 text-2xl font-medium tracking-tight">{title}</h2>
+          {eyebrow && <p className="font-mono text-[11px] tracking-[0.22em] text-ink-soft uppercase">{eyebrow}</p>}
+          <h2 id={id ? `${id}-h` : undefined} className={`font-display text-2xl font-medium tracking-tight${eyebrow ? " mt-1" : ""}`}>{title}</h2>
         </div>
         {aside}
       </header>

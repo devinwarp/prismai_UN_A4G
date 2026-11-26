@@ -11,6 +11,8 @@ import { COUNTRIES, diffRuns, entityCountryOf, replayCountry, scopeChunks, count
 import type { SupabaseLike } from "../src/lib/un/kb-store-supabase.ts";
 import { loadChunks, type Chunk } from "../src/lib/un/kb.ts";
 import { parseVectors } from "../src/lib/un/vector.ts";
+import { countryHref, knownCountries } from "../src/lib/un/country-context.ts";
+import { loadSamples } from "../src/lib/un/sop/data.ts";
 import { AR } from "../src/lib/un/i18n/dict.ts";
 
 const corpus = loadChunks();
@@ -62,6 +64,41 @@ function mk(store: CountryStore, o: { embed?: typeof fakeEmbed | null } = {}) {
   return { d, ucs };
 }
 
+test("country setup skips the demo run and uses canonical country labels", async () => {
+  const catalog = knownCountries();
+  assert.equal(catalog.find(({ id }) => id === "NZ")?.name, "New Zealand");
+  assert.deepEqual(catalog.filter(({ id }) => id === "UAE"), [{ id: "UAE", name: "United Arab Emirates" }]);
+  assert.equal(catalog.some(({ id }) => id === "AE"), false);
+  const { d } = mk(memoryStore());
+  const result = await A.addPolicy(d, "admin", "EU", undefined, true);
+  assert.ok(result.ok && result.run === null);
+  const { state, entries } = await A.loadState(d);
+  assert.ok(state.policies.EU);
+  assert.deepEqual(entries.map((entry) => entry.kind), ["policy_added"]);
+});
+
+test("entity registration needs country rules and country-specific policy sources", async () => {
+  const { d } = mk(memoryStore());
+  const { state } = await A.loadState(d);
+  const sg = countryOf("SG")!;
+  assert.equal(await A.entityRegistrationReady(d, state, countryOf("UAE")!), true);
+  assert.equal(await A.entityRegistrationReady(d, state, sg), true);
+  assert.equal(await A.entityRegistrationReady(d, state, countryOf("EU")!), false);
+  assert.equal(await A.entityRegistrationReady(d, state, { ...sg, ruleset: "unknown" }), false);
+  assert.equal(await A.entityRegistrationReady(d, state, { ...sg, hidden: true }), false);
+  assert.equal(await A.entityRegistrationReady({ ...d, corpus: d.corpus.filter((c) => c.jurisdiction === "international") }, state, sg), false);
+  assert.ok((await A.addPolicy(d, "admin", "EU")).ok);
+  assert.equal(await A.entityRegistrationReady(d, (await A.loadState(d)).state, countryOf("EU")!), true);
+});
+
+test("a registration's country is the initial link and later moves take precedence", async () => {
+  const { d } = mk(memoryStore());
+  d.registeredEntityCountries = async () => ({ "Test Agency": "SG" });
+  assert.equal(entityCountryOf((await A.loadState(d)).state, "Test Agency"), "SG");
+  assert.ok((await A.linkEntity(d, "admin", "Test Agency", "UAE")).ok);
+  assert.equal(entityCountryOf((await A.loadState(d)).state, "Test Agency"), "UAE");
+});
+
 test("the process under the UAE and Singapore rule sets: different gates, sources and verdicts; deterministic; Singapore cites only Singapore and international sources", async () => {
   const { d } = mk(memoryStore());
   const s0 = (await A.loadState(d)).state;
@@ -70,7 +107,7 @@ test("the process under the UAE and Singapore rule sets: different gates, source
   assert.equal(uae.final, "GO_SUPERVISED");
   assert.equal(sg.final, "ESCALATE"); // hallucination_rate is a Singapore gate and the staged evidence has none: unknown, so escalate
   assert.deepEqual(uae.required.map((g) => g.id).sort(), ["ai_disclosure", "approved_infrastructure", "audit_log", "data_lawful", "human_final_approval"]);
-  assert.deepEqual(sg.required.map((g) => g.id).sort(), ["audit_log", "data_lawful", "hallucination_rate", "human_final_approval"]);
+  assert.deepEqual(sg.required.map((g) => g.id).sort(), ["ai_disclosure", "audit_log", "data_lawful", "hallucination_rate", "human_final_approval"]);
   assert.equal(sg.required.find((g) => g.id === "hallucination_rate")!.status, "unknown");
   assert.equal(sg.steps.length, 5);
   const allowed = new Set(["Singapore", "international"]);
@@ -293,6 +330,24 @@ test("switching re-runs only when there is no stored result yet or what the resu
   assert.equal(await runs(), n + 1);
 });
 
+test("procedure estimates and links inherit the selected country", async () => {
+  for (const [id, code] of [["UAE", "AED"], ["SG", "SGD"], ["EU", "EUR"]]) {
+    assert.equal(countryOf(id)?.currency, code);
+    const samples = loadSamples(code, id !== "UAE");
+    assert.ok(samples.length > 0 && samples.every(({ analysis }) => analysis.totals.currency === code));
+    if (id !== "UAE") assert.ok(samples.every(({ input }) => !/Marsa|SOP-LIC-014/.test(input.text)));
+  }
+  assert.equal(countryHref("/admin/federal/country?setup=EU#step-a", "EU"), "/admin/federal/country?setup=EU&country=EU#step-a");
+  const { d } = mk(memoryStore());
+  const profile = { id: "TEST", name: "Custom profile", ruleset: "eu-ai-act" };
+  assert.equal((await A.addCountry(d, "a", profile)).ok, false);
+  assert.equal((await A.addCountry(d, "a", { ...profile, currency: "XXD" })).ok, false);
+  const created = await A.addCountry(d, "a", { ...profile, currency: "nzd" });
+  assert.ok(created.ok && created.country.currency === "NZD");
+  const updated = await A.updateCountry(d, "a", profile.id, { currency: "AUD" });
+  assert.ok(updated.ok && updated.country.currency === "AUD");
+});
+
 const POLICY = (n: string) => `${n} governs how public bodies may use automated systems that advise citizens. A body must tell citizens when a response was drafted by software, keep a record of every decision for five years, and let a named officer approve any message before it is sent. Fees may only be quoted from the published schedule, and a citizen may always ask for a human review of a decision that affects their rights.`;
 
 test("an admin creates a country: it exists at once but needs its policy, then the knowledge base is built from the pasted documents and it can be switched to", async () => {
@@ -305,7 +360,7 @@ test("an admin creates a country: it exists at once but needs its policy, then t
   assert.ok(made.ok && made.country.id === "NL" && made.country.custom && made.country.built === "on_demand");
   assert.equal((await A.addCountry(d, "a", { id: "NL", name: "Another", ruleset: "eu-ai-act" })).ok, false, "the code is unique");
   let st = (await A.loadState(d)).state;
-  assert.ok(st.countries.NL);
+  assert.equal(st.countries.NL.currency, "EUR");
   assert.equal(await A.indexOfCountry(d, st, "NL"), null, "no knowledge base yet");
   const early = await A.switchCountry(d, "a", "NL");
   assert.ok(!early.ok && /no knowledge-base index/.test(early.error), "it cannot be switched to before its policy is added");

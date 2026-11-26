@@ -4,6 +4,7 @@ import type { GateDef } from "./governance.ts";
 import { GATES, decide, type Decision, type GateId, type GateState, type Requested } from "./policy.ts";
 import { DERIVED_GAPS, RULESETS, UAE_FEDERAL, gateDivergence, hitlConfigFor, resolve, type DerivedGap, type GateDivergence, type RuleSet } from "./rulesets.ts";
 import { S1 } from "./scenarios.ts";
+import { AI_DISCLOSURE_GATE } from "./ai-disclosure.ts";
 
 // Runs decide() for one use case under every rule set. Pure.
 export interface CompareInput { entity: string; facts: HitlFacts; requested: Requested; gates: GateState; hitlUnmet: HitlRuleId[] }
@@ -62,7 +63,7 @@ export interface ProcessRow {
 }
 
 const requiredGates = (rs: RuleSet, clientFacing: boolean): GateId[] =>
-  (Object.keys(GATES) as GateId[]).filter((g) => (clientFacing || !GATES[g].clientFacingOnly) && rs.gates.includes(g));
+  (Object.keys(GATES) as GateId[]).filter((g) => g === AI_DISCLOSURE_GATE || ((clientFacing || !GATES[g].clientFacingOnly) && rs.gates.includes(g)));
 
 function judge(base: RuleSet, p: ProcessInput) {
   const { rs, highRisk } = resolve(base, p.facts);
@@ -78,7 +79,7 @@ export function compareProcesses(base: RuleSet, ps: ProcessInput[]): ProcessRow[
   return ps.map((p) => {
     const { rs, highRisk, decision } = judge(base, p);
     const added = (p.useCaseGates ?? []).filter((g) => !requiredGates(rs, p.facts.client_facing).includes(g));
-    const required = [...requiredGates(rs, p.facts.client_facing), ...added].filter((g) => !p.waived?.includes(g));
+    const required = [...requiredGates(rs, p.facts.client_facing), ...added].filter((g) => g === AI_DISCLOSURE_GATE || !p.waived?.includes(g));
     return {
       input: p, highRisk, required, decision, gatesAdded: added.length,
       addedByAttributes: required.filter((g) => !baseline.includes(g) && !added.includes(g)),

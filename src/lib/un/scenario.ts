@@ -93,7 +93,7 @@ export interface RunEnv {
 }
 
 export const fmt = (d: Dashboard) =>
-  `deployed ${d.deployed}/${d.total} (${d.deployedPct}%), compliant ${d.compliant}/${d.total} (${d.compliantPct}%), target ${d.targetCount}, gap ${d.gap}`;
+  `deployed ${d.deployed}/${d.total} (${d.deployedPct}%), aligned ${d.aligned}/${d.total} (${d.alignedPct}%), target ${d.targetCount}, gap ${d.gap}`;
 
 export function startRun(sc: Scenario, run_id: string, opts: { cases?: UnUseCaseState[]; policy?: Policy } = {}): RunState {
   const base = { run_id, scenario_id: sc.id, next: 0, msg_seq: 0, steps: [], log: [], done: false, trace_rows: true };

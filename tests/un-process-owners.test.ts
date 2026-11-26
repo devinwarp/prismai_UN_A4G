@@ -36,7 +36,8 @@ test("the owner of a use case that has an SOP is the person its SOP names, so th
 test("the seed script is safe to repeat, and writes to the hosted database only when told to", () => {
   const s = readFileSync("scripts/seed-process-owners.mts", "utf8");
   assert.match(s, /if \(!p\) \{/, "a person found by email is reused");
-  assert.match(s, /const live = /, "a live role is not granted twice");
+  assert.match(s, /role === "process_owner" && a\.use_case_id === uc\.id && !a\.revoked_at\)\) continue;/, "offline: a live role is not granted twice");
+  assert.match(s, /revoked_at=is\.null/, "hosted: a live role is not granted twice");
   assert.match(s, /--hosted/);
   assert.match(s, /DRY RUN/);
   assert.match(s, /if \(!apply\) continue;/, "hosted is a dry run unless --apply");

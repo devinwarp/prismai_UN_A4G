@@ -45,7 +45,7 @@ const uc = (id: string, entity: string, verdict: UnUseCaseState["verdict"], comp
   description: null, stage: "intake", verdict, compliant,
 });
 
-test("dashboard: deployed and compliant are separate; target rounds up", () => {
+test("dashboard: deployed and aligned are separate; target rounds up", () => {
   const ucs = [
     uc("1", "A", "GO_SUPERVISED", true),
     uc("2", "A", "GO_AUTONOMOUS", false), // deployed but fails attestation
@@ -56,11 +56,11 @@ test("dashboard: deployed and compliant are separate; target rounds up", () => {
   const d = computeDashboard(DEFAULT_POLICY, ucs);
   assert.equal(d.targetCount, 3); // ceil(5 * 50%)
   assert.equal(d.deployed, 2);
-  assert.equal(d.compliant, 1);
+  assert.equal(d.aligned, 1);
   assert.equal(d.deployedPct, 40);
-  assert.equal(d.compliantPct, 20);
+  assert.equal(d.alignedPct, 20);
   assert.equal(d.gap, 1);
-  assert.deepEqual(d.byEntity.find((t) => t.key === "A"), { key: "A", total: 2, deployed: 2, compliant: 1 });
+  assert.deepEqual(d.byEntity.find((t) => t.key === "A"), { key: "A", total: 2, deployed: 2, aligned: 1 });
 });
 
 test("dashboard: counting rule is configurable", () => {

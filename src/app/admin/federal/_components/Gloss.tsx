@@ -12,7 +12,7 @@ export const GLOSS = {
   oversight: { term: "human oversight", hint: "Technical term: human in the loop (HITL). A person reviews or approves what the AI does before it affects a citizen." },
   sijil: { term: "attestation", hint: "Sijil is the team's simulated attestation service: it records that a use case's evidence was reviewed. Synthetic here." },
   deployed: { term: "deployed", hint: "Counts toward the federal target: the use case has a decision your policy lets count (set under Policy)." },
-  compliant: { term: "compliant", hint: "Has a passing attestation on file (Sijil, simulated here), not only a decision to run." },
+  compliant: { term: "aligned", hint: "Aligned with its goals and rules. Assumed for every use case until the Sijil attestation, which will measure it, is integrated." },
   signature: { term: "sign-off", hint: "A named person approves the decision. It is written as the last record in the logbook." },
 } as const;
 export type GlossId = keyof typeof GLOSS;

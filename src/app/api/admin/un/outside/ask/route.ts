@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { bad, requireAdmin } from "@/lib/api-auth";
+import { loadCountrySop } from "@/lib/un/federal-country";
 import { openAgent } from "@/lib/un/analyst-agent";
 import { adminMemoryStore } from "@/lib/un/case-memory-store";
 import { cachedOcr } from "@/lib/un/doc-ocr";
@@ -19,9 +20,11 @@ const DEMO_CASE = "CASE-DEMO-1";
 export async function POST(req: Request) {
   const who = await requireAdmin();
   if (who instanceof NextResponse) return who;
-  const body = (await req.json().catch(() => ({}))) as { question?: unknown };
+  const body = (await req.json().catch(() => ({}))) as { question?: unknown; country?: unknown };
   const q = typeof body.question === "string" ? body.question.trim() : "";
   if (!q || q.length > 400) return bad("A question of 1 to 400 characters is required");
+  const { uc02 } = await loadCountrySop(who.org_id!, body.country, true);
+  if (!uc02) return bad("No licence-renewal demo is available for this country.");
   // The SOP is English: an Arabic question is translated (LLM, else the offline glossary) and the agent is asked the English form.
   const t = await translateQuery(q);
   const db = createAdminClient();
@@ -35,5 +38,5 @@ export async function POST(req: Request) {
   });
   await agent.openCase({ licence_number: RECORDS.noor.licence_number, declared_activity_code: "4711" });
   const r = await agent.ask(t.query);
-  return NextResponse.json({ status: r.status, citations: r.citations, quotes: r.answer, person_answer: r.person_answer ?? null, ...(t.from ? { query_translated_from: t.from, query_used: t.query, query_translated_via: t.via ?? "llm" } : {}) });
+  return NextResponse.json({ status: r.status, citations: r.citations, quotes: r.answer, person_answer: r.person_answer ?? null, ...(r.ai_disclosure ? { ai_disclosure: r.ai_disclosure } : {}), ...(t.from ? { query_translated_from: t.from, query_used: t.query, query_translated_via: t.via ?? "llm" } : {}) });
 }

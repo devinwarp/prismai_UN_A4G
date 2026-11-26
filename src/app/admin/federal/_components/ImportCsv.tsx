@@ -26,7 +26,7 @@ const COLUMNS: [string, string, string, boolean][] = [
 ];
 
 /** Drop zone with a local preview. Nothing is sent until the file validates and the user confirms. */
-export default function ImportCsv({ existingIds }: { existingIds: string[] }) {
+export default function ImportCsv({ existingIds, scope }: { existingIds: string[]; scope?: { country: string; entity: string } }) {
   const router = useRouter();
   const lang = useLang();
   const input = useRef<HTMLInputElement>(null);
@@ -54,7 +54,16 @@ export default function ImportCsv({ existingIds }: { existingIds: string[] }) {
     if (!staged) return;
     setBusy(true);
     setServerErrors([]);
-    const res = await fetch("/api/admin/un/import", { method: "POST", body: staged.text, headers: { "Content-Type": "text/csv" } });
+    const res = await fetch("/api/admin/un/import", {
+      method: "POST",
+      body: scope ? JSON.stringify({ csv: staged.text, scope }) : staged.text,
+      headers: { "Content-Type": scope ? "application/json" : "text/csv" },
+    }).catch(() => null);
+    if (!res) {
+      setBusy(false);
+      setServerErrors([tr(lang, "ua.csv.failed", "Import failed")]);
+      return;
+    }
     const d = (await res.json().catch(() => ({}))) as { error?: string; errors?: string[]; imported?: number };
     setBusy(false);
     if (res.ok) {
@@ -67,8 +76,10 @@ export default function ImportCsv({ existingIds }: { existingIds: string[] }) {
     } else setServerErrors(d.errors ?? [d.error ?? tr(lang, "ua.csv.failed", "Import failed")]);
   }
 
-  const errors = staged?.parsed.errors ?? [];
   const rows = staged?.parsed.useCases ?? [];
+  const errors = [...(staged?.parsed.errors ?? []),
+    ...(scope && rows.some((row) => row.entity !== scope.entity)
+      ? [fill(tr(lang, "setup.csv_entity", "Every CSV row must use {entity} in the entity column."), { entity: scope.entity })] : [])];
   const ids = new Set(existingIds);
   const updating = rows.filter((r) => ids.has(r.ext_id)).length;
 

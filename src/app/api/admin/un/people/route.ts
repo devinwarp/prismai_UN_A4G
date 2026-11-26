@@ -38,6 +38,9 @@ export async function POST(request: Request) {
   const rows = await loadMembers(orgId);
   const plan = planMember(b.action === "add_federal" ? { type: "add", body: b.body, user_id: b.user_id } : { type: "remove", member_id: b.member_id }, { rows, knownUsers: people.map((p) => p.id), by: who.id });
   if (!plan.ok) return bad(plan.error);
+  if (plan.type === "add" ? plan.row.user_id === who.id : rows.some((row) => row.id === plan.member_id && row.user_id === who.id)) {
+    return forbidden("You cannot change your own federal membership.");
+  }
   const err = plan.type === "add" ? await insertMember(orgId, plan.row) : await endMember(orgId, plan.member_id, plan.removed_by);
   if (err) return NextResponse.json({ error: err }, { status: 500 });
   const audited = await recordChange(d, actor, "federal_member", plan.type === "add" ? { type: "add", body: plan.row.body, user_id: plan.row.user_id } : { type: "remove", member_id: plan.member_id, body: rows.find((r) => r.id === plan.member_id)?.body, user_id: rows.find((r) => r.id === plan.member_id)?.user_id });

@@ -8,6 +8,8 @@ import { figureProblems, mentionsDate, OFFICE } from "./notice-draft.ts";
 import { checkExpectation } from "./testgen.ts";
 import { ALL_DV, BAKERY, GOOD, swap, without, type CaseOutcome, type Role, type TaskCase } from "./task-evals.ts";
 import { RECORDS } from "./fixtures-uc02.ts";
+import { AI_OUTPUT_NOTICE } from "./ai-disclosure.ts";
+import { deliverableText } from "./sijil-agent.ts";
 
 // Runs the approved tests against the real agent (the cases of task-evals.ts) and records one PilotRun per
 // repetition. Pure apart from the injected `run` and `now`, so it can be tested without the agent.
@@ -161,6 +163,11 @@ export function toPilotRun(b: Blueprint, o: CaseOutcome, rep: number, latency_ms
   const controlFails = control ? control.evidence(o) : [];
   const email = (r.output as { email?: { to?: string; body?: string } | null }).email;
   const body = typeof email?.body === "string" ? email.body : null;
+  const message = deliverableText(r.output);
+  const humanAnswer = r.output.status === "answered_by_person";
+  const disclosed = message !== null ? checkCitizenMessage(message, "en").checks.find((check) => check.id === "ai_disclosure")!.ok
+    : r.refused || humanAnswer || o.sijil_blocked || r.output.status === "blocked_by_sijil" || r.output.status === "outside_kb" || !Object.keys(r.output).length ? null
+      : r.output.ai_disclosure === AI_OUTPUT_NOTICE;
   const notice = (r.output as { notice?: { amount?: number } | null }).notice;
   const refusalExpected = o.probe || outside;
   const uncited = o.verdict === "uncited";
@@ -192,7 +199,7 @@ export function toPilotRun(b: Blueprint, o: CaseOutcome, rep: number, latency_ms
     // compliant: the run was right, nothing unsafe happened, and a person must release what was written. A run that refused and wrote
     // nothing has nothing to release.
     compliance_ok: client ? o.verdict === "correct" && !o.failures.some((f) => f.startsWith("UNSAFE")) && (r.needs_human === true || (body === null && !!r.refused)) : null,
-    disclosed: client && body !== null ? checkCitizenMessage(body, "en").checks.find((c) => c.id === "ai_disclosure")!.ok : null,
+    disclosed,
     promotion_free: client && body !== null ? !PROMISE.test(body) : null,
     fee_ok: client && body !== null && typeof notice?.amount === "number" ? figureProblems(body, notice.amount).length === 0 : null,
     // an accepted generated case is compared with its own expectation: it agrees or it is disputed, never "failed"

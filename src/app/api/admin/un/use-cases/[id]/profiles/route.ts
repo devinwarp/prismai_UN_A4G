@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { randomUUID } from "node:crypto";
 import { bad, notFound, requireAdmin } from "@/lib/api-auth";
 import { recordChange } from "@/lib/un/country-actions";
 import { appCountryDeps } from "@/lib/un/country-app";
@@ -7,8 +8,9 @@ import { attachSop, loadAttachedSop, saveTick } from "@/lib/un/profiles-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { checkSopKb, writeSkill } from "@/lib/un/skill-extract";
 import { rollOut } from "@/lib/un/sop-rollout";
-import { baseOf, latestOf, loadCustomRoots, profilesForUseCase, saveVersion } from "@/lib/un/sop-version-store";
+import { baseOf, discardSopDraft, latestOf, loadCustomRoots, profilesForUseCase, saveVersion } from "@/lib/un/sop-version-store";
 import { customSopFromText, type ProfileOp } from "@/lib/un/sop/custom";
+import { MAX_SOP_CHARS } from "@/lib/un/sop/custom-limits";
 import { SAMPLES, loadBaseline } from "@/lib/un/sop/data";
 import { planManualVersion, planNewVersion } from "@/lib/un/sop/versions";
 
@@ -53,15 +55,29 @@ export async function POST(request: Request, { params }: Ctx) {
 
   if (b.action === "attach_custom") {
     if (frozen) return bad(FROZEN);
-    const taken = [...(await loadCustomRoots(orgId)), ...SAMPLES.map((s) => s.sop_id)];
-    const made = customSopFromText({ title: b.title, text: b.text, entity: uc.entity, baseline: loadBaseline(), takenIds: taken, idBase: uc.ext_id });
-    if (!made.ok) return bad(made.error);
+    const onlyIfVacant = b.intake === true;
+    if (onlyIfVacant && typeof b.text === "string" && (Buffer.byteLength(b.text, "utf8") > MAX_SOP_CHARS || b.text.includes("\0"))) {
+      return bad("Choose a non-empty Markdown or text file up to 200 KB.");
+    }
     const before = await loadAttachedSop(orgId, id);
+    if (before && onlyIfVacant) return NextResponse.json({ error: "This use case already has an SOP." }, { status: 409 });
+    const taken = onlyIfVacant ? [] : [...(await loadCustomRoots(orgId)), ...SAMPLES.map((s) => s.sop_id)];
+    const made = customSopFromText({ title: b.title, text: b.text, entity: uc.entity, baseline: loadBaseline(), takenIds: taken,
+      idBase: onlyIfVacant ? randomUUID() : uc.ext_id });
+    if (!made.ok) return bad(made.error);
     const e1 = await saveVersion(orgId, { sop_id: made.sop_id, version: 1, title: made.title, body: made.body, profiles: made.profiles, changes: null }, who.id);
     if (e1) return fail(e1);
-    const e2 = await attachSop(orgId, id, made.sop_id, who.id, 1);
-    if (e2) return fail(e2);
-    const audited = await audit("sop_changed", { from: before, to: made.sop_id, version: 1, custom: true, profiles: made.profiles.map((p) => p.name) });
+    const e2 = await attachSop(orgId, id, made.sop_id, who.id, 1, onlyIfVacant);
+    if (e2) {
+      if (onlyIfVacant && e2.startsWith("An SOP has already")) {
+        await discardSopDraft(orgId, made.sop_id, who.id);
+        return NextResponse.json({ error: e2 }, { status: 409 });
+      }
+      return fail(e2);
+    }
+    const change = { from: before, to: made.sop_id, version: 1, custom: true, profiles: made.profiles.map((p) => p.name) };
+    let audited = await audit("sop_changed", change);
+    for (let attempt = 0; onlyIfVacant && !audited && attempt < 2; attempt++) audited = await audit("sop_changed", change);
     return NextResponse.json({ ok: true, sop_id: made.sop_id, version: 1, profiles: made.profiles.length, audited });
   }
 

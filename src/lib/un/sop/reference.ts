@@ -198,7 +198,7 @@ export function analyzeSop(input: SopInput): SopAnalysis {
       hours_saved_per_year: saved,
       cost_saved_per_year: candidates.reduce((n, c) => n + c.cost_saved_per_year, 0),
       vs_baseline_pct: baselineHours ? r1((saved / baselineHours) * 100) : 0,
-      currency: "XXD",
+      currency: b.currency,
     },
     assumptions: { loaded_hourly_rate: b.loaded_hourly_rate, share_by_class: b.share_by_class },
     flags: flagsFor(steps),

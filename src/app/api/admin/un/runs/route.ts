@@ -4,7 +4,8 @@ import { bad, requireAdmin } from "@/lib/api-auth";
 import { startRun } from "@/lib/un/scenario";
 import { SCENARIOS } from "@/lib/un/scenarios";
 import { headOf } from "@/lib/un/runs";
-import { loadPolicy, loadUnUseCases } from "@/lib/un/store";
+import { loadCountryUseCases, loadFederalCountry } from "@/lib/un/federal-country";
+import { loadPolicy } from "@/lib/un/store";
 
 /** POST { scenario_id } → { id }. S3 needs the 20 use cases imported first. */
 export async function POST(request: Request) {
@@ -13,12 +14,15 @@ export async function POST(request: Request) {
   const b = (await request.json().catch(() => ({}))) as { scenario_id?: string };
   const sc = b.scenario_id ? SCENARIOS[b.scenario_id] : undefined;
   if (!sc) return bad(`scenario_id must be one of ${Object.keys(SCENARIOS).join(", ")}`);
+  const { state: countryState } = await loadFederalCountry(who.org_id!, "UAE", true);
+  const cases = await loadCountryUseCases(who.org_id!, countryState, "UAE");
+  if (sc.kind === "gate" && !cases.some((useCase) => useCase.ext_id === sc.ext_id)) return bad("This staged scenario needs its UAE use case.");
   const admin = createAdminClient();
   const id = crypto.randomUUID();
   let state;
   try {
     state = startRun(sc, `${sc.id}-${id.slice(0, 8)}`, sc.kind === "portfolio"
-      ? { cases: await loadUnUseCases(who.org_id!), policy: await loadPolicy(who.org_id!) }
+      ? { cases, policy: await loadPolicy(who.org_id!) }
       : {});
   } catch {
     return bad("Import the use cases on the Federal page first (S3 runs over them).");

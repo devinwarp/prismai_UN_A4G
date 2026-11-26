@@ -59,10 +59,10 @@ test("worked example, UAE rule set, answer-key flags: gates, rules and the four 
   assert.deepEqual(a.rollup, { all_pass: "GO_SUPERVISED", one_fix: "ASSISTANT_ONLY", hosting_fails: "NO_GO", no_evidence: "ESCALATE" });
 });
 
-test("if a profile is not client-facing only three gates apply and GO_AUTONOMOUS is reachable", () => {
+test("if a profile is not client-facing only four gates apply (the three shipped plus the mandatory AI disclosure) and GO_AUTONOMOUS is reachable", () => {
   const quiet: JobProfile = { name: "Back office", tasks: [{ id: "T1", title: "t", flags: { client_facing: false, affects_rights: false, irreversible: false } }], flags: { client_facing: false, affects_rights: false, irreversible: false } };
   const r = assessProfiles([quiet], new Set(["Back office"]), UAE_FEDERAL, "E").rows[0];
-  assert.equal(r.gates, 3);
+  assert.equal(r.gates, 4);
   assert.equal(r.verdicts.all_pass, "GO_AUTONOMOUS");
 });
 

@@ -112,7 +112,7 @@ export function createSealer(cfg: AgentConfig, f: typeof fetch = fetch): SealRun
         if (decisionFromSealed(body, { decision: String(r.decision) }) === "reject") rejected++;
       }
       const made = deliverableOf(o.result as { output?: unknown; refused?: unknown });
-      // a drafted message is checked for an AI disclosure here when the pilot did not (only client-facing tests are); the run record is not changed
+      // Check every message, including internal messages that were outside the pilot's client-facing sample.
       const disclosed = made?.kind === "message" ? (run.disclosed ?? checkCitizenMessage(made.text, "en").checks.find((c) => c.id === "ai_disclosure")!.ok) : null;
       const d = made ? deliverableBody(made.text, disclosed, ctx, made.kind) : null;
       let deliverable: { seq: number; hash: string; decision: string } | undefined;

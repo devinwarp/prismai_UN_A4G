@@ -40,6 +40,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
     return out.ok ? NextResponse.json({ ok: true, hash: out.hash, reruns: out.reruns }) : NextResponse.json({ error: out.error }, { status: out.status });
   }
   if (b.action === "waive") {
+    if (gate === "ai_disclosure") return bad("AI disclosure is mandatory and cannot be waived.");
     const may = who.decide("gate.waive");
     if (!may.ok) return forbidden(may.reason);
     const appr = resolveApprover(b.approver, await approversForUseCase(who.org_id!, id));

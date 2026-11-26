@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { basename, join } from "node:path";
 import test from "node:test";
 
 const walk = (dir: string): string[] => readdirSync(dir, { recursive: true, withFileTypes: true }).filter((d) => d.isFile() && /\.(ts|tsx)$/.test(d.name)).map((d) => join(d.parentPath, d.name));
@@ -12,7 +12,7 @@ test("no file under src reads the node's admin token", () => {
 });
 
 test("the agent key is read in one place only: sijil-agent-client.ts", () => {
-  assert.deepEqual(SRC.filter((f) => read(f).includes("SIJIL_AGENT_KEY")).map((f) => f.split("/").pop()), ["sijil-agent-client.ts"]);
+  assert.deepEqual(SRC.filter((f) => read(f).includes("SIJIL_AGENT_KEY")).map((f) => basename(f)), ["sijil-agent-client.ts"]);
 });
 
 test("the agent token and key are never read in a client component, and no client component imports the seal modules", () => {

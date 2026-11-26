@@ -14,6 +14,10 @@ export function appCountryDeps(orgId: string): Deps {
   return {
     ...f,
     store: countryStore(createAdminClient() as unknown as SupabaseLike, orgId),
+    registeredEntityCountries: async () => {
+      const { data } = await createAdminClient().from("un_entities").select("name,country_id").eq("org_id", orgId);
+      return Object.fromEntries(((data ?? []) as { name: string; country_id?: string }[]).filter((r) => r.country_id).map((r) => [r.name, r.country_id!]));
+    },
     embed: process.env.COUNTRY_VECTORS === "off" ? null : (texts) => embedDocuments(texts, 25_000),
     // The country demo judges UC02 under the shipped rule sets only. Use-case gates and waivers added on the lifecycle screens
     // belong to those screens; reading them here made the hosted UAE run differ from the offline one (a waiver and an added gate flipped it).

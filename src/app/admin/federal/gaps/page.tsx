@@ -1,22 +1,29 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import type { CountryQuery } from "@/lib/un/country-context";
+import { loadFederalCountry } from "@/lib/un/federal-country";
 import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
+import { requireFederalToolAccess } from "@/lib/un/federal-read-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadChunks } from "@/lib/un/kb";
+import { DERIVED_GAPS } from "@/lib/un/rulesets";
 import { GAP_CATEGORIES, loadGaps } from "@/lib/un/gaps";
-import AdminHeader from "../../AdminHeader";
-import LangShell, { T } from "../_components/Lang";
-import { ArOnly } from "../_components/b-bits";
+import ToolWorkspace, { WorkspacePane } from "../_components/ToolWorkspace";
+import WorkspaceSections from "../_components/WorkspaceSections";
+import { T } from "../_components/Lang";
+import { ArOnly, Rs } from "../_components/b-bits";
 
 export const metadata: Metadata = { title: "Policy and standards gaps", robots: { index: false, follow: false } };
 
-export default async function GapsPage() {
+export default async function GapsPage({ searchParams }: { searchParams: Promise<CountryQuery> }) {
   const { user, profile } = await getUserAndProfile();
   if (!user) redirect("/login?next=/admin/federal/gaps");
   if (!profile?.org_id) redirect("/login");
+  const { browseCountries } = await requireFederalToolAccess(profile.org_id, user.id, profile.role);
+  const { country } = await loadFederalCountry(profile.org_id, (await searchParams).country, browseCountries);
   const { data: org } = await createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle();
   const f = loadGaps();
+  const derived = DERIVED_GAPS.filter((g) => g.ruleset === country.ruleset);
   const chunk = new Map(loadChunks().map((c) => [c.chunk_id, c]));
   const quote = (id: string) => {
     const c = chunk.get(id);
@@ -28,34 +35,31 @@ export default async function GapsPage() {
     ) : null;
   };
   return (
-    <div className="conduit-bg min-h-dvh">
-      <AdminHeader active="federal" orgName={org?.name} viewer={profile.role === "viewer"} />
-      <LangShell>
-      <main className="mx-auto max-w-4xl px-4 py-10 sm:px-6">
-        <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase"><T k="gt.readonly" en="Read-only" /></p>
-        <h1 className="font-display mt-2 text-3xl font-medium tracking-tight sm:text-4xl"><T k="ub.gap.title" en={f.title} /></h1>
-        <p className="mt-3 max-w-[68ch] text-sm text-ink-soft">
-          <span dir="ltr" lang="en" className="block text-start">{f.scope}</span> <Link href="/admin/federal" className="underline"><T k="sop.back" en="Back to the dashboard" /></Link>
-        </p>
-        <ArOnly><p role="note" className="mt-3 max-w-[68ch] rounded-lg border border-dashed border-line px-3 py-2 text-sm"><T k="ub.en.note" en="" /></p></ArOnly>
-        <nav aria-label="Gap categories" className="mt-5 flex flex-wrap gap-2 text-xs">
-          {GAP_CATEGORIES.map((c) => (
-            <a key={c} href={`#${c}`} className="rounded-full border border-line px-3 py-1 hover:border-ink-soft hover:bg-paper-deep"><T k={`ub.gap.cat.${c}`} en={f.categories[c]} /></a>
-          ))}
-        </nav>
-        {GAP_CATEGORIES.map((cat) => (
+    <ToolWorkspace country={country} orgName={org?.name} viewer={profile.role === "viewer"}
+      title={<T k="workspace.gaps" en="Policy and standards gaps" />}
+      description={<><Rs id={country.ruleset} /> <ArOnly><T k="ub.en.note" en="" /></ArOnly></>}>
+      {country.id === "UAE" ? <WorkspaceSections key={country.id} sections={GAP_CATEGORIES.map((cat) => ({
+        id: cat,
+        label: <T k={`ub.gap.cat.${cat}`} en={f.categories[cat]} />,
+        anchors: f.gaps.filter((g) => g.category === cat).map((g) => g.id),
+        content: (
           <section key={cat} id={cat} aria-labelledby={`h-${cat}`}>
-            <h2 id={`h-${cat}`} className="font-display mt-10 text-2xl font-medium tracking-tight"><T k={`ub.gap.cat.${cat}`} en={f.categories[cat]} /></h2>
-            <ul className="mt-4 grid gap-4">
+            <h2 id={`h-${cat}`} className="font-display text-2xl font-medium tracking-tight"><T k={`ub.gap.cat.${cat}`} en={f.categories[cat]} /></h2>
+            <p dir="ltr" lang="en" className="mt-2 max-w-[82ch] text-start text-sm text-ink-soft">{f.scope}</p>
+            <ul className="mt-4 divide-y divide-line border-t border-line">
               {f.gaps.filter((g) => g.category === cat).map((g) => (
-                <li key={g.id} className="rounded-2xl border border-line bg-card p-5 sm:p-6">
+                <li key={g.id} id={g.id} className="min-w-0 py-4">
                   <p className="font-mono text-xs"><span dir="ltr" className="rounded-md bg-paper-deep px-2 py-0.5 font-medium text-ink">{g.id}</span></p>
                   <p dir="ltr" lang="en" className="font-display mt-2 text-start text-xl">{g.statement}</p>
-                  <h3 className="mt-4 font-mono text-xs tracking-[0.15em] text-ink-soft uppercase"><T k="ub.gap.nat" en="What the national sources say" /></h3>
+                  <div className="mt-4 grid gap-5 desk:grid-cols-2">
+                  <div className="min-w-0">
+                  <h3 className="font-medium"><T k="ub.gap.nat" en="What the national sources say" /></h3>
                   <ul className="mt-2 space-y-3 text-sm">
                     {g.national.map((n) => <li key={n.chunk_id}><span dir="ltr" lang="en" className="block text-start">{n.note}</span>{quote(n.chunk_id)}</li>)}
                   </ul>
-                  <h3 className="mt-4 font-mono text-xs tracking-[0.15em] text-ink-soft uppercase"><T k="ub.gap.glob" en="Global examples (in the knowledge base)" /></h3>
+                  </div>
+                  <div className="min-w-0">
+                  <h3 className="font-medium"><T k="ub.gap.glob" en="Global examples (in the knowledge base)" /></h3>
                   <ul className="mt-2 space-y-3 text-sm">
                     {g.global.map((x) => (
                       <li key={x.source_id + x.chunk_ids.join()}>
@@ -63,10 +67,12 @@ export default async function GapsPage() {
                           {x.support === "primary" ? <T k="ub.gap.primary" en="primary text" /> : <T k="ub.gap.secondary" en="secondary summary" />}
                         </span>
                         <bdi dir="ltr" lang="en">{x.note}</bdi>
-                        {x.chunk_ids.map((c) => <span key={c}>{quote(c)}</span>)}
+                        {x.chunk_ids.map((c) => <div key={c}>{quote(c)}</div>)}
                       </li>
                     ))}
                   </ul>
+                  </div>
+                  </div>
                   {g.not_ingested.length > 0 && (
                     <div className="mt-4 rounded-xl border border-dashed border-line p-3 text-sm">
                       <p className="font-mono text-xs tracking-[0.15em] text-ink-soft uppercase"><T k="ub.gap.noting" en="Not ingested, cited by name only" /></p>
@@ -83,9 +89,18 @@ export default async function GapsPage() {
               ))}
             </ul>
           </section>
-        ))}
-      </main>
-      </LangShell>
-    </div>
+        ),
+      }))} /> : (
+        <WorkspacePane id="ruleset-gaps" title={<T k="workspace.gaps.ruleset" en="Findings for this rule set" />}>
+          {derived.length ? <ul className="divide-y divide-line">
+            {derived.map((gap) => <li id={gap.id} key={gap.id} className="space-y-2 py-4 first:pt-0">
+              <h3 className="text-lg font-medium">{gap.id}</h3>
+              <p>{gap.statement}</p>
+              {gap.chunk_ids.map((id) => <div key={id}>{quote(id)}</div>)}
+            </li>)}
+          </ul> : <p className="text-sm text-ink-soft"><T k="gap.country.empty" en="There are no documented policy gaps for the selected rule set." /></p>}
+        </WorkspacePane>
+      )}
+    </ToolWorkspace>
   );
 }

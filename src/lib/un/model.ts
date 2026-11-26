@@ -48,7 +48,8 @@ export interface UnUseCaseState extends UnUseCase {
   id: string;
   stage: Stage;
   verdict: Verdict | null;
-  /** Latest attestation passes all hard gates (Sijil, simulated until live). */
+  /** The Sijil attestation flag (database column `compliant`): the latest attestation passes all hard gates. The dashboard reads it as ALIGNMENT, and
+   * until Sijil is integrated every use case is read as aligned (alignment.ts). */
   compliant: boolean;
   /** Provenance (I-1, I-4). verdict is engine-written: a completed scenario
    * run (run id + head hash) plus a human signature. compliant comes only
@@ -203,7 +204,7 @@ export interface Tally {
   key: string;
   total: number;
   deployed: number;
-  compliant: number;
+  aligned: number;
 }
 
 export interface Dashboard {
@@ -212,9 +213,9 @@ export interface Dashboard {
   /** Use cases needed to meet the target (rounded up). */
   targetCount: number;
   deployed: number;
-  compliant: number;
+  aligned: number;
   deployedPct: number;
-  compliantPct: number;
+  alignedPct: number;
   /** Use cases still to deploy to reach the target. */
   gap: number;
   byEntity: Tally[];
@@ -225,7 +226,7 @@ export interface Dashboard {
 const pct = (n: number, d: number) => (d ? Math.round((n / d) * 1000) / 10 : 0);
 
 /** deployed = verdict is in the policy's counting set.
- * compliant = deployed AND latest attestation passes. Reported beside, never
+ * aligned = deployed AND aligned with its goals and rules (read from the use case's alignment flag; see alignment.ts). Reported beside, never
  * merged into, deployed % so speed can't hide a safety failure. */
 export function computeDashboard(policy: Policy, ucs: UnUseCaseState[]): Dashboard {
   const counts = new Set<string>(policy.counting_verdicts);
@@ -234,27 +235,27 @@ export function computeDashboard(policy: Policy, ucs: UnUseCaseState[]): Dashboa
     const m = new Map<string, Tally>();
     for (const u of ucs) {
       const k = keyOf(u);
-      const t = m.get(k) ?? { key: k, total: 0, deployed: 0, compliant: 0 };
+      const t = m.get(k) ?? { key: k, total: 0, deployed: 0, aligned: 0 };
       t.total++;
       if (isDeployed(u)) {
         t.deployed++;
-        if (u.compliant) t.compliant++;
+        if (u.compliant) t.aligned++;
       }
       m.set(k, t);
     }
     return [...m.values()].sort((a, b) => a.key.localeCompare(b.key));
   };
   const deployed = ucs.filter(isDeployed).length;
-  const compliant = ucs.filter((u) => isDeployed(u) && u.compliant).length;
+  const aligned = ucs.filter((u) => isDeployed(u) && u.compliant).length;
   const targetCount = Math.ceil((ucs.length * policy.target_percent) / 100);
   return {
     total: ucs.length,
     targetPercent: policy.target_percent,
     targetCount,
     deployed,
-    compliant,
+    aligned,
     deployedPct: pct(deployed, ucs.length),
-    compliantPct: pct(compliant, ucs.length),
+    alignedPct: pct(aligned, ucs.length),
     gap: Math.max(0, targetCount - deployed),
     byEntity: tally((u) => u.entity),
     byQuadrant: tally((u) => u.quadrant),

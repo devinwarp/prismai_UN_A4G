@@ -17,7 +17,7 @@ Technical report: [`docs/report/prism-technical-report.pdf`](docs/report/prism-t
 
 | Area | Where |
 |---|---|
-| Policy config, use-case CSV import, federal dashboard (deployed % beside compliant %) | `src/lib/un/model.ts`, `src/app/admin/federal/` |
+| Policy config, use-case CSV import, federal dashboard (deployed % beside aligned %) | `src/lib/un/model.ts`, `src/app/admin/federal/` |
 | Knowledge base (32 sources, 398 chunks, SHA-256 provenance) built with ITU's code; the country demo adds 8 Singapore sources (59 chunks, 40 sources and 457 chunks in all) | `kb/` |
 | Eight role agents, typed coordination protocol | `src/lib/un/agents.ts`, `protocol.ts`, `round.ts` |
 | Deterministic policy engine: five hard gates never averaged, client-facing cap at `GO_SUPERVISED` | `src/lib/un/policy.ts` |
@@ -111,6 +111,8 @@ product under its own licence; this app only calls its read-only HTTP API
 (`/api/verify`, `/api/records`) and contains none of its code.
 
 Sijil is our own attestation service (built by the team lead). It is simulated unless the live adapter is enabled with `SIJIL_BASE_URL`.
+
+**Alignment.** Sijil is meant to measure whether a use case is aligned. It is not integrated yet, so every use case is read as aligned and no attestation is needed (`src/lib/un/alignment.ts`; nothing is written to the database, and the stored flag is left as the engine wrote it). Set `SIJIL_INTEGRATED=1` to read the stored attestation again.
 
 1. Get Sijil from its own repository and follow its licence terms.
 2. Python 3.11 venv: `python3.11 -m venv .venv && . .venv/bin/activate`, then

@@ -11,10 +11,15 @@ export async function loadAttachedSop(orgId: string, ucId: string): Promise<stri
 }
 
 /** Attaches an SOP to a use case at one version (1 for a shipped sample, or the version a use case is moved to). */
-export async function attachSop(orgId: string, ucId: string, sopId: string, by: string, version = 1): Promise<string | null> {
-  const { error } = await createAdminClient()
+export async function attachSop(orgId: string, ucId: string, sopId: string, by: string, version = 1, onlyIfVacant = false): Promise<string | null> {
+  const query = createAdminClient()
     .from("un_use_case_sops")
-    .upsert({ org_id: orgId, use_case_id: ucId, sop_id: sopId, version, attached_by: by, attached_at: new Date().toISOString() }, { onConflict: "org_id,use_case_id" });
+    .upsert({ org_id: orgId, use_case_id: ucId, sop_id: sopId, version, attached_by: by, attached_at: new Date().toISOString() }, { onConflict: "org_id,use_case_id", ignoreDuplicates: onlyIfVacant });
+  if (onlyIfVacant) {
+    const { data, error } = await query.select("use_case_id");
+    return error?.message ?? (data?.length ? null : "An SOP has already been attached. Refresh the dashboard.");
+  }
+  const { error } = await query;
   return error?.message ?? null;
 }
 

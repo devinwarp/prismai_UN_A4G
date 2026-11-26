@@ -19,6 +19,24 @@ import { CRITERIA, type Criterion, type SijilRun } from "./sijil.ts";
 export type GoalCriterion = Exclude<Criterion, "goal_alignment">;
 /** Where a per-test check is asked: of every test, or only of tests in which the agent writes to a citizen. */
 export type CheckScope = "all" | "client_facing";
+export interface GoalMeasurement {
+  criterion: string;
+  comparison: "at_least" | "at_most";
+  value: number;
+  unit: string;
+}
+
+export function parseGoalMeasurement(raw: unknown): GoalMeasurement | null {
+  if (!raw || typeof raw !== "object") return null;
+  const { criterion, comparison, value, unit } = raw as Partial<GoalMeasurement>;
+  if (typeof criterion !== "string" || criterion.trim().length < 5 || criterion.trim().length > 300
+    || (comparison !== "at_least" && comparison !== "at_most")
+    || typeof value !== "number" || !Number.isFinite(value) || value < 0
+    || typeof unit !== "string" || !unit.trim() || unit.trim().length > 80
+    || (unit.trim() === "%" && value > 100)) return null;
+  return { criterion: criterion.trim(), comparison, value, unit: unit.trim() };
+}
+
 export interface EntityGoal {
   id: string;
   text: string;
@@ -26,7 +44,11 @@ export interface EntityGoal {
   criterion: GoalCriterion | null;
   /** Only on a process-level check (targets.ts): which tests it is asked of. Entity goals have none. */
   scope?: CheckScope;
+  /** How the entity measures a service outcome and the threshold it commits to. */
+  measurement?: GoalMeasurement;
 }
+
+export const hasMeasuredGoals = (goals: EntityGoal[]) => goals.length > 0 && goals.every((goal) => !!goal.measurement);
 
 export const GOAL_ALIGNMENT_FORMULA =
   "goal alignment = mean over the entity's criterion-tagged goals of (1 - rejects on the goal's criterion / actions in the run)";
@@ -38,7 +60,8 @@ export const parseGoals = (raw: unknown): EntityGoal[] =>
   (Array.isArray(raw) ? raw : []).flatMap((g) => {
     if (!g || typeof g !== "object" || typeof g.id !== "string" || typeof g.text !== "string") return [];
     if (g.criterion != null && !isGoalCriterion(g.criterion)) return [];
-    return [{ id: g.id, text: g.text, criterion: g.criterion ?? null, ...(g.scope === "all" || g.scope === "client_facing" ? { scope: g.scope as CheckScope } : {}) }];
+    const measurement = parseGoalMeasurement(g.measurement);
+    return [{ id: g.id, text: g.text, criterion: g.criterion ?? null, ...(measurement ? { measurement } : {}), ...(g.scope === "all" || g.scope === "client_facing" ? { scope: g.scope as CheckScope } : {}) }];
   });
 
 const r4 = (x: number) => Math.round(x * 10000) / 10000;

@@ -37,7 +37,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const ext = row.state.state?.ext_id;
   const uc = ext ? (await loadUnUseCases(who.org_id!)).find((u) => u.ext_id === ext) : undefined;
   const hitl = uc
-    ? { config: await loadHitlConfig(who.org_id!), entity: uc.entity, facts: { client_facing: uc.client_facing, affects_rights: uc.affects_rights, irreversible: uc.irreversible } }
+    ? { config: await loadHitlConfig(), entity: uc.entity, facts: { client_facing: uc.client_facing, affects_rights: uc.affects_rights, irreversible: uc.irreversible } }
     : undefined;
   let next;
   try {

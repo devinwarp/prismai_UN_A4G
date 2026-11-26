@@ -1,7 +1,8 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { withAlignment } from "./alignment";
 import { engineValues } from "./guard";
 import { parseGoals, type EntityGoal } from "./goals";
-import { isHitlRule, type HitlConfig } from "./hitl";
+import type { HitlConfig } from "./hitl";
 import { DEFAULT_POLICY, type Policy, type UnUseCase, type UnUseCaseState } from "./model";
 
 export async function loadPolicy(orgId: string): Promise<Policy> {
@@ -27,8 +28,8 @@ export async function loadUnUseCases(orgId: string): Promise<UnUseCaseState[]> {
     .select("*")
     .eq("org_id", orgId)
     .order("ext_id");
-  // Only engine-written verdicts and attested compliance reach the dashboard (I-1).
-  return ((data ?? []) as UnUseCaseState[]).map(engineValues);
+  // Only engine-written verdicts reach the dashboard (I-1); alignment is read per alignment.ts (assumed until Sijil is integrated).
+  return ((data ?? []) as UnUseCaseState[]).map(engineValues).map(withAlignment);
 }
 
 /** Re-import updates descriptive fields only; stage/verdict/compliant keep
@@ -43,12 +44,9 @@ export async function importUnUseCases(orgId: string, ucs: UnUseCase[]) {
   return error?.message ?? null;
 }
 
-/** Rows are the rules an entity switched off (see un_hitl_rules). */
-export async function loadHitlConfig(orgId: string): Promise<HitlConfig> {
-  const { data } = await createAdminClient().from("un_hitl_rules").select("entity, rule, enabled").eq("org_id", orgId);
-  const cfg: HitlConfig = {};
-  for (const r of data ?? []) if (!r.enabled && isHitlRule(r.rule)) (cfg[r.entity] ??= []).push(r.rule);
-  return cfg;
+/** New runs use the use-case risk flags. Legacy entity overrides remain in storage for audit. */
+export async function loadHitlConfig(): Promise<HitlConfig> {
+  return {};
 }
 
 /** Goals seeded for an entity (un_entities). Empty before the migration/seed,

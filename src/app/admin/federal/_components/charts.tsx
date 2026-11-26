@@ -3,7 +3,7 @@ import Pop from "./Pop";
 import { VERDICTS, QUADRANTS, type Dashboard, type Tally, type UnUseCaseState, type Verdict } from "@/lib/un/model";
 import { tr } from "@/lib/un/i18n/dict";
 import { useLang } from "./Lang";
-import { DataTableAlt, scrollFocus, scrollRegion, VerdictBadge } from "./ui";
+import { DataTableAlt, scrollFocus, scrollRegion } from "./ui";
 import { VERDICT_META, fill as fmt, ltr, quadLabel, stageLabel, verdictName } from "./labels";
 
 const pct = (n: number, d: number) => (d ? Math.round((n / d) * 100) : 0);
@@ -18,10 +18,10 @@ export function monthsLeft(asOf: string, deadline: string | null): number | null
 /** One horizontal progress track with the target marked on it. */
 export function TargetTrack({
   label, value, total, target, fill, note,
-}: { label: string; value: number; total: number; target: number; fill: string; note: string }) {
+}: { label: string; value: number; total: number; target: number | null; fill: string; note: string }) {
   const lang = useLang();
   const w = pct(value, total);
-  const t = total ? (target / total) * 100 : 0;
+  const t = total && target !== null ? (target / total) * 100 : null;
   return (
     <div>
       <div className="flex items-baseline justify-between gap-3 text-sm">
@@ -29,16 +29,18 @@ export function TargetTrack({
         <bdi dir="ltr" className="font-mono text-xs text-ink-soft tabular-nums">{note}</bdi>
       </div>
       <div
-        role="meter"
-        aria-label={label}
-        aria-valuemin={0}
-        aria-valuemax={total}
-        aria-valuenow={value}
-        aria-valuetext={fmt(tr(lang, "ua.tp.vt", "{v} of {t} use cases; target {g}"), { v: value, t: total, g: target })}
+        {...(total ? {
+          role: "meter",
+          "aria-label": label,
+          "aria-valuemin": 0,
+          "aria-valuemax": total,
+          "aria-valuenow": value,
+          "aria-valuetext": target === null ? note : fmt(tr(lang, "ua.tp.vt", "{v} of {t} use cases; target {g}"), { v: value, t: total, g: target }),
+        } : { "aria-hidden": true })}
         className="relative mt-2 h-4 overflow-visible rounded-full bg-paper-deep desk:mt-1.5 desk:h-3"
       >
         <div className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${w}%`, background: fill }} />
-        <div aria-hidden className="absolute -top-1.5 -bottom-1.5 w-0.5 bg-ink" style={{ insetInlineStart: `calc(${t}% - 1px)` }} />
+        {t !== null && <div aria-hidden className="absolute -top-1.5 -bottom-1.5 w-0.5 bg-ink" style={{ insetInlineStart: `calc(${t}% - 1px)` }} />}
       </div>
     </div>
   );
@@ -50,7 +52,7 @@ export function TargetProgress({ d, deadline, deadlineNote, asOf }: { d: Dashboa
   const months = monthsLeft(asOf, deadline);
   const met = d.gap === 0 && d.total > 0;
   const perMonth = months && months > 0 ? d.gap / months : null;
-  const stuck = d.deployed - d.compliant;
+  const stuck = d.deployed - d.aligned;
   return (
     <div className="rounded-2xl border border-line bg-card p-5 sm:p-7">
       <div className="grid gap-8 lg:grid-cols-[minmax(0,17rem)_minmax(0,1fr)] lg:gap-12">
@@ -79,15 +81,15 @@ export function TargetProgress({ d, deadline, deadlineNote, asOf }: { d: Dashboa
             note={`${d.deployed}/${d.total} · ${d.deployedPct}%`}
           />
           <TargetTrack
-            label={tr(lang, "ua.tp.ca", "Compliant & aligned")}
-            value={d.compliant}
+            label={tr(lang, "ua.tp.ca", "Aligned")}
+            value={d.aligned}
             total={d.total}
             target={d.targetCount}
             fill="var(--color-v-sup)"
-            note={`${d.compliant}/${d.total} · ${d.compliantPct}%`}
+            note={`${d.aligned}/${d.total} · ${d.alignedPct}%`}
           />
           <p className="flex items-center gap-2 font-mono text-[11px] text-ink-soft">
-            <span aria-hidden className="inline-block h-3 w-0.5 shrink-0 bg-ink" /> {fmt(tr(lang, "ua.tp.line", "Target line: {n} use cases ({p}%). Compliance is reported beside deployment, never merged into it."), { n: d.targetCount, p: d.targetPercent })}
+            <span aria-hidden className="inline-block h-3 w-0.5 shrink-0 bg-ink" /> {fmt(tr(lang, "ua.tp.line", "Target line: {n} use cases ({p}%). Alignment is reported beside deployment, never merged into it."), { n: d.targetCount, p: d.targetPercent })}
           </p>
         </div>
       </div>
@@ -97,7 +99,7 @@ export function TargetProgress({ d, deadline, deadlineNote, asOf }: { d: Dashboa
           [tr(lang, "ua.tp.k.gap", "Gap to target"), String(d.gap), met ? tr(lang, "ua.tp.s.none", "nothing left to deploy") : tr(lang, "ua.tp.s.left", "use cases still to deploy")],
           [tr(lang, "ua.tp.k.time", "Time left"), months === null ? "-" : months < 1 ? tr(lang, "ua.tp.lt1", "<1 mo") : fmt(tr(lang, "ua.tp.mo", "{n} mo"), { n: Math.round(months) }), deadline ? fmt(tr(lang, "ua.tp.until", "until {d}"), { d: ltr(deadline) }) : tr(lang, "ua.tp.nodl", "no deadline set")],
           [tr(lang, "ua.tp.k.pace", "Pace needed"), perMonth === null ? "-" : met ? "0" : perMonth < 0.1 ? "<0.1" : perMonth.toFixed(1), tr(lang, "ua.tp.s.pace", "deployments a month")],
-          [tr(lang, "ua.tp.k.stuck", "Deployed, not compliant"), String(stuck), stuck ? tr(lang, "ua.tp.s.stuck", "deployed but failing attestation") : tr(lang, "ua.tp.s.nofail", "none failing")],
+          [tr(lang, "ua.tp.k.stuck", "Deployed, not aligned"), String(stuck), stuck ? tr(lang, "ua.tp.s.stuck", "deployed but not aligned") : tr(lang, "ua.tp.s.nofail", "none failing")],
         ].map(([k, v, s]) => (
           <div key={k} className="bg-card px-4 py-3">
             <dt className="font-mono text-[10px] tracking-widest text-ink-soft uppercase">{k}</dt>
@@ -112,6 +114,8 @@ export function TargetProgress({ d, deadline, deadlineNote, asOf }: { d: Dashboa
 
 export type VerdictFilter = Verdict | "NONE";
 
+const UNASSESSED_MARK = { glyph: "–", color: "var(--color-ink-soft)" };
+
 /** Stacked bar of verdicts across the portfolio; the legend filters the table. */
 export function VerdictMix({
   useCases, active, onSelect,
@@ -124,7 +128,7 @@ export function VerdictMix({
   const color = (k: VerdictFilter) => (k === "NONE" ? "var(--color-line)" : VERDICT_META[k].color);
   return (
     <div>
-      <div role="group" aria-label={`${tr(lang, "ua.mix.label", "Verdict mix")}: ${all.filter((a) => a.n).map((a) => `${a.n} ${a.key === "NONE" ? tr(lang, "ua.mix.notyet", "not yet assessed") : verdictName(lang, a.key)}`).join(lang === "ar" ? "، " : ", ")}`} className="flex h-9 gap-0.5 overflow-hidden rounded-lg desk:h-6">
+      <div role={useCases.length ? "group" : undefined} aria-hidden={useCases.length ? undefined : true} aria-label={useCases.length ? `${tr(lang, "ua.mix.label", "Verdict mix")}: ${all.filter((a) => a.n).map((a) => `${a.n} ${a.key === "NONE" ? tr(lang, "ua.mix.notyet", "not yet assessed") : verdictName(lang, a.key)}`).join(lang === "ar" ? "، " : ", ")}` : undefined} className="flex h-9 gap-0.5 overflow-hidden rounded-lg bg-paper-deep desk:h-6">
         {all.filter((a) => a.n).map((a) => (
           <button
             key={a.key}
@@ -141,20 +145,24 @@ export function VerdictMix({
         ))}
       </div>
       <ul className="mt-4 grid grid-cols-2 gap-x-6 gap-y-2 text-sm sm:grid-cols-3 desk:mt-2 desk:grid-cols-2 desk:gap-x-3 desk:gap-y-0 desk:text-xs">
-        {all.map((a) => (
-          <li key={a.key}>
-            <button
-              type="button"
-              onClick={() => onSelect(active === a.key ? "all" : a.key)}
-              aria-pressed={active === a.key}
-              className={`flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-start hover:bg-paper-deep aria-pressed:bg-paper-deep desk:py-px desk:leading-4 ${a.n ? "" : "opacity-60"}`}
-            >
-              <span aria-hidden className="inline-block h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: color(a.key) }} />
-              <span className="min-w-0 flex-1 break-words">{a.key === "NONE" ? tr(lang, "ua.mix.none", "Not assessed") : verdictName(lang, a.key)}</span>
-              <span className="font-mono text-xs text-ink-soft tabular-nums">{a.n}</span>
-            </button>
-          </li>
-        ))}
+        {all.map((a) => {
+          const mark = a.key === "NONE" ? UNASSESSED_MARK : VERDICT_META[a.key];
+          return (
+            <li key={a.key}>
+              <button
+                type="button"
+                disabled={useCases.length === 0}
+                onClick={() => onSelect(active === a.key ? "all" : a.key)}
+                aria-pressed={active === a.key}
+                className="flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-start hover:bg-paper-deep aria-pressed:bg-paper-deep desk:py-px desk:leading-4"
+              >
+                <span aria-hidden className="w-3 shrink-0 text-center" style={{ color: mark.color }}>{mark.glyph}</span>
+                <span className="min-w-0 flex-1 break-words">{a.key === "NONE" ? tr(lang, "ua.mix.none", "Not assessed") : verdictName(lang, a.key)}</span>
+                <span className="font-mono text-xs text-ink-soft tabular-nums">{a.n}</span>
+              </button>
+            </li>
+          );
+        })}
       </ul>
       <DataTableAlt floating caption={tr(lang, "ua.mix.cap", "Verdict counts")} head={[tr(lang, "ua.col.verdict", "Verdict"), tr(lang, "ua.col.ucs", "Use cases")]} rows={all.map((a) => [a.key === "NONE" ? tr(lang, "ua.mix.none", "Not assessed") : verdictName(lang, a.key), a.n])} />
     </div>
@@ -167,21 +175,23 @@ export function StagePipeline({ byStage }: { byStage: Dashboard["byStage"] }) {
   const max = Math.max(1, ...byStage.map((s) => s.count));
   return (
     <div>
-      <ol className="grid grid-cols-7 items-end gap-1.5">
-        {byStage.map((s) => (
-          <li key={s.stage} className="flex flex-col items-center gap-1.5 desk:gap-1">
-            <span className="font-mono text-xs tabular-nums">{s.count}</span>
-            <span aria-hidden className="bar-grow block w-full rounded-t-md bg-lit [height:var(--h)] desk:[height:var(--hd)] short:[height:var(--hs)]" style={{ ["--h" as string]: `${Math.max(3, (s.count / max) * 72)}px`, ["--hd" as string]: `${Math.max(3, (s.count / max) * 30)}px`, ["--hs" as string]: `${Math.max(3, (s.count / max) * 18)}px`, opacity: s.count ? 1 : 0.25, transformOrigin: "bottom" }} />
-            <span className="w-full border-t border-line pt-1 text-center font-mono text-[10px] break-words text-ink-soft uppercase" title={stageLabel(lang, s.stage)}>{stageLabel(lang, s.stage)}</span>
-          </li>
-        ))}
-      </ol>
+      <div {...scrollRegion("portfolio-stages")} className="overflow-x-auto">
+        <ol className="grid grid-cols-[repeat(7,minmax(max-content,1fr))] items-end gap-1.5">
+          {byStage.map((s) => (
+            <li key={s.stage} className="flex flex-col items-center gap-1.5 desk:gap-1">
+              <span className="font-mono text-xs tabular-nums">{s.count}</span>
+              <span aria-hidden className="bar-grow block w-full rounded-t-md bg-lit [height:var(--h)] desk:[height:var(--hd)] short:[height:var(--hs)]" style={{ ["--h" as string]: `${Math.max(3, (s.count / max) * 72)}px`, ["--hd" as string]: `${Math.max(3, (s.count / max) * 30)}px`, ["--hs" as string]: `${Math.max(3, (s.count / max) * 18)}px`, opacity: s.count ? 1 : 0.25, transformOrigin: "bottom" }} />
+              <span className="w-full border-t border-line px-0.5 pt-1 text-center font-mono text-[10px] whitespace-nowrap text-ink-soft uppercase">{stageLabel(lang, s.stage)}</span>
+            </li>
+          ))}
+        </ol>
+      </div>
       <DataTableAlt floating caption={tr(lang, "ua.stage.cap", "Use cases by lifecycle stage")} head={[tr(lang, "ua.col.stage", "Stage"), tr(lang, "ua.col.ucs", "Use cases")]} rows={byStage.map((s) => [stageLabel(lang, s.stage), s.count])} />
     </div>
   );
 }
 
-/** Ranked bars: deployed (green) and compliant (blue) against each group's total. Sorted by deployed share so laggards sit at the bottom. */
+/** Ranked bars: deployed (green) and aligned (blue) against each group's total. Sorted by deployed share so laggards sit at the bottom. */
 export function TallyList({
   rows, active, onSelect, limit = 6, noun, expanded, onToggle,
 }: { rows: Tally[]; active?: string; onSelect?: (k: string) => void; limit?: number; noun: "entities" | "quadrants"; expanded: boolean; onToggle: () => void }) {
@@ -205,12 +215,12 @@ export function TallyList({
                 <span className="flex items-baseline justify-between gap-3 text-sm">
                   <span className="min-w-0 break-words">{label(r.key)}</span>
                   <span className="shrink-0 font-mono text-xs text-ink-soft tabular-nums">
-                    {fmt(tr(lang, "ua.tally.row", "{d}/{t} deployed · {c} compliant"), { d: r.deployed, t: r.total, c: r.compliant })}
+                    {fmt(tr(lang, "ua.tally.row", "{d}/{t} deployed · {c} aligned"), { d: r.deployed, t: r.total, c: r.aligned })}
                   </span>
                 </span>
                 <span className="relative mt-1.5 block h-2.5 rounded-full bg-paper-deep" style={{ width: `${(r.total / maxTotal) * 100}%`, minWidth: "3rem" }}>
                   <span className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.deployed, r.total)}%`, background: "var(--color-lit)" }} />
-                  <span className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.compliant, r.total)}%`, background: "var(--color-v-sup)" }} />
+                  <span className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.aligned, r.total)}%`, background: "var(--color-v-sup)" }} />
                 </span>
               </Row>
             </li>
@@ -222,35 +232,35 @@ export function TallyList({
           {expanded ? tr(lang, "ua.tally.fewer", "Show fewer") : fmt(tr(lang, "ua.tally.all", "Show all {n} {noun}"), { n: sorted.length, noun: nounT })}
         </button>
       )}
-      <DataTableAlt caption={fmt(tr(lang, "ua.tally.cap", "Deployment by {noun}"), { noun: nounT })} head={[tr(lang, "ua.col.name", "Name"), tr(lang, "ua.col.total", "Total"), tr(lang, "hl.deployed", "Deployed"), tr(lang, "hl.compliant", "Compliant")]} rows={sorted.map((r) => [label(r.key), r.total, r.deployed, r.compliant])} />
+      <DataTableAlt caption={fmt(tr(lang, "ua.tally.cap", "Deployment by {noun}"), { noun: nounT })} head={[tr(lang, "ua.col.name", "Name"), tr(lang, "ua.col.total", "Total"), tr(lang, "hl.deployed", "Deployed"), tr(lang, "hl.compliant", "Aligned")]} rows={sorted.map((r) => [label(r.key), r.total, r.deployed, r.aligned])} />
     </div>
   );
 }
 
-/** Quadrant x verdict counts: where in the matrix each verdict lands. With `tallies`, each row also says how many of its use cases are deployed and compliant. */
+/** Quadrant x verdict counts: where in the matrix each verdict lands. With `tallies`, each row also says how many of its use cases are deployed and aligned. */
 export function QuadrantVerdictMatrix({ useCases, tallies = [] }: { useCases: UnUseCaseState[]; tallies?: Tally[] }) {
   const lang = useLang();
   const cell = (q: string, v: Verdict | null) => useCases.filter((u) => u.quadrant === q && (u.verdict ?? null) === v).length;
-  const cols = [...VERDICTS, null] as (Verdict | null)[];
-  const max = Math.max(1, ...QUADRANTS.flatMap((q) => cols.map((v) => cell(q, v))));
+  const cols = ([...VERDICTS, null] as const).map((verdict) => ({
+    verdict,
+    label: verdict ? verdictName(lang, verdict) : tr(lang, "ua.mix.none", "Not assessed"),
+    ...(verdict ? VERDICT_META[verdict] : UNASSESSED_MARK),
+  }));
+  const max = Math.max(1, ...QUADRANTS.flatMap((q) => cols.map(({ verdict }) => cell(q, verdict))));
   return (
-    <div {...scrollRegion("qvm-cap")} className="relative overflow-x-auto">
-      <table className="w-full min-w-[34rem] border-separate border-spacing-1 text-sm desk:min-w-0 desk:border-spacing-0.5">
+    <div {...scrollRegion("qvm-cap")} className="min-w-0 overflow-x-auto">
+      <table className="w-full min-w-max border-separate border-spacing-0.5 text-sm">
         <caption id="qvm-cap" className="sr-only">{tr(lang, "ua.qvm.cap", "Number of use cases per quadrant and verdict")}</caption>
         <thead>
           <tr>
-            <th scope="col" className="text-start font-mono text-[10px] font-normal text-ink-soft uppercase">{tr(lang, "ua.col.quad", "Quadrant")}</th>
-            {cols.map((v) => (
-              <th key={v ?? "none"} scope="col" className="px-1 pb-1 text-center align-bottom">
-                {/* One screen: the column head is the verdict's glyph (its name is on hover, to a screen reader, and in the verdict key beside the register). */}
-                <span className="desk:hidden"><VerdictBadge verdict={v} /></span>
-                <span className="hidden desk:inline" title={v ? verdictName(lang, v) : tr(lang, "ua.mix.none", "Not assessed")}>
-                  <span aria-hidden style={{ color: v ? VERDICT_META[v].color : "var(--color-ink-soft)" }}>{v ? VERDICT_META[v].glyph : "–"}</span>
-                  <span className="sr-only">{v ? verdictName(lang, v) : tr(lang, "ua.mix.none", "Not assessed")}</span>
-                </span>
+            <th scope="col" className="text-start font-mono text-[10px] font-normal whitespace-nowrap text-ink-soft uppercase">{tr(lang, "ua.col.quad", "Quadrant")}</th>
+            {cols.map(({ verdict, label, glyph, color }) => (
+              <th key={verdict ?? "none"} scope="col" className="w-[9%] min-w-7 px-1 pb-1 text-center whitespace-nowrap" title={label}>
+                <span aria-hidden style={{ color }}>{glyph}</span>
+                <span className="sr-only">{label}</span>
               </th>
             ))}
-            <th scope="col" className="text-end font-mono text-[10px] font-normal text-ink-soft uppercase">{tr(lang, "ua.col.total", "Total")}</th>
+            <th scope="col" className="ps-2 text-end font-mono text-[10px] font-normal whitespace-nowrap text-ink-soft uppercase">{tr(lang, "ua.col.total", "Total")}</th>
           </tr>
         </thead>
         <tbody>
@@ -260,16 +270,15 @@ export function QuadrantVerdictMatrix({ useCases, tallies = [] }: { useCases: Un
             <tr key={q}>
               <th scope="row" className="py-1 pe-3 text-start font-normal whitespace-nowrap desk:py-0 desk:pe-2 desk:text-xs desk:leading-4">
                 {quadLabel(lang, q)}
-                {t && <span className="hidden font-mono text-[10px] leading-3 text-ink-soft desk:block" title={fmt(tr(lang, "ua.tally.row", "{d}/{t} deployed · {c} compliant"), { d: t.deployed, t: t.total, c: t.compliant })}><bdi dir="ltr">{t.deployed}/{t.total}</bdi> · <bdi dir="ltr">{t.compliant}</bdi> ✓</span>}
+                {t && <span className="hidden font-mono text-[10px] leading-3 text-ink-soft desk:block" title={fmt(tr(lang, "ua.tally.row", "{d}/{t} deployed · {c} aligned"), { d: t.deployed, t: t.total, c: t.aligned })}><bdi dir="ltr">{t.deployed}/{t.total}</bdi> · <bdi dir="ltr">{t.aligned}</bdi> ✓</span>}
               </th>
-              {cols.map((v) => {
-                const n = cell(q, v);
-                const c = v ? VERDICT_META[v].color : "var(--color-ink-soft)";
+              {cols.map(({ verdict, color }) => {
+                const n = cell(q, verdict);
                 return (
                   <td
-                    key={v ?? "none"}
-                    className="h-10 rounded-md text-center font-mono text-sm tabular-nums desk:h-7 desk:text-xs"
-                    style={{ background: n ? `color-mix(in srgb, ${c} ${15 + (n / max) * 55}%, transparent)` : "var(--color-paper-deep)", color: n ? "var(--color-ink)" : "var(--color-ink-soft)" }}
+                    key={verdict ?? "none"}
+                    className="h-10 rounded-md text-center font-mono text-sm tabular-nums desk:h-6 desk:text-xs"
+                    style={{ background: n ? `color-mix(in srgb, ${color} ${15 + (n / max) * 55}%, transparent)` : "var(--color-paper-deep)", color: n ? "var(--color-ink)" : "var(--color-ink-soft)" }}
                   >
                     {n || "·"}
                   </td>
@@ -304,14 +313,14 @@ function EntityChip({ r, active, onSelect }: { r: Tally; active: string; onSelec
       type="button"
       onClick={() => onSelect(active === r.key ? "" : r.key)}
       aria-pressed={active === r.key}
-      title={`${r.key}: ${fmt(tr(lang, "ua.tally.row", "{d}/{t} deployed · {c} compliant"), { d: r.deployed, t: r.total, c: r.compliant })}`}
+      title={`${r.key}: ${fmt(tr(lang, "ua.tally.row", "{d}/{t} deployed · {c} aligned"), { d: r.deployed, t: r.total, c: r.aligned })}`}
       className="block w-full rounded-lg border border-line bg-paper px-2.5 py-1.5 text-start hover:border-ink-soft aria-pressed:border-ink aria-pressed:bg-paper-deep"
     >
       <span dir="auto" className="block truncate text-xs font-medium">{r.key}</span>
-      <span className="mt-1 block font-mono text-[10px] text-ink-soft tabular-nums"><bdi dir="ltr">{r.deployed}/{r.total}</bdi> · <bdi dir="ltr">{r.compliant}</bdi> ✓</span>
+      <span className="mt-1 block font-mono text-[10px] text-ink-soft tabular-nums"><bdi dir="ltr">{r.deployed}/{r.total}</bdi> · <bdi dir="ltr">{r.aligned}</bdi> ✓</span>
       <span className="relative mt-1 block h-1.5 rounded-full bg-paper-deep" aria-hidden>
         <span className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.deployed, r.total)}%`, background: "var(--color-lit)" }} />
-        <span className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.compliant, r.total)}%`, background: "var(--color-v-sup)" }} />
+        <span className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.aligned, r.total)}%`, background: "var(--color-v-sup)" }} />
       </span>
     </button>
   );
@@ -341,11 +350,11 @@ function EntityDirectory({ rows, active, onSelect }: { rows: Tally[]; active: st
             <button type="button" onClick={() => onSelect(active === r.key ? "" : r.key)} aria-pressed={active === r.key} className="block w-full px-3 py-2 text-start hover:bg-paper-deep aria-pressed:bg-paper-deep">
               <span className="flex items-baseline justify-between gap-3">
                 <span dir="auto" className="min-w-0 truncate text-sm">{active === r.key && <span aria-hidden>● </span>}{r.key}</span>
-                <span className="shrink-0 font-mono text-[11px] text-ink-soft tabular-nums"><bdi dir="ltr">{r.deployed}/{r.total}</bdi> · <bdi dir="ltr">{r.compliant}</bdi> ✓</span>
+                <span className="shrink-0 font-mono text-[11px] text-ink-soft tabular-nums"><bdi dir="ltr">{r.deployed}/{r.total}</bdi> · <bdi dir="ltr">{r.aligned}</bdi> ✓</span>
               </span>
               <span className="relative mt-1.5 block h-1.5 rounded-full bg-paper-deep" aria-hidden>
                 <span className="absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.deployed, r.total)}%`, background: "var(--color-lit)" }} />
-                <span className="absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.compliant, r.total)}%`, background: "var(--color-v-sup)" }} />
+                <span className="absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.aligned, r.total)}%`, background: "var(--color-v-sup)" }} />
               </span>
             </button>
           </li>
@@ -356,7 +365,7 @@ function EntityDirectory({ rows, active, onSelect }: { rows: Tally[]; active: st
   );
 }
 
-/** Entities as filter chips: name, deployed (green) and compliant (blue) bars against its own total. One tap filters the register.
+/** Entities as filter chips: name, deployed (green) and aligned (blue) bars against its own total. One tap filters the register.
  * Up to six, every entity is a chip. Beyond that the four furthest along are chips (plus the one filtered to, so the filter is never hidden)
  * and a "Show all N entities" tile opens a directory, so thirty entities cost the same height as five. */
 export function EntityStrip({
@@ -370,15 +379,16 @@ export function EntityStrip({
   const pinned = many && active && !chips.some((r) => r.key === active) ? sorted.find((r) => r.key === active) : undefined;
   const li = "min-w-0 desk:min-w-40 desk:flex-1 desk:basis-40";
   return (
-    <div className="relative">
+    <div data-tour="entities" className="relative">
       <div className="mb-2 flex flex-wrap items-baseline gap-x-4 gap-y-1 desk:mb-1.5 desk:pe-28">
         <h3 className="text-base font-medium desk:text-sm">{tr(lang, "pf.q.entity", "Which entities are furthest along?")}</h3>
         <p className="flex gap-x-3 font-mono text-[11px] text-ink-soft">
           <span><span aria-hidden className="me-1 inline-block h-2 w-2 rounded-full bg-lit" />{tr(lang, "hl.deployed_l", "deployed")}</span>
-          <span><span aria-hidden className="me-1 inline-block h-2 w-2 rounded-full" style={{ background: "var(--color-v-sup)" }} />{tr(lang, "ua.legend.compliant", "compliant")}</span>
+          <span><span aria-hidden className="me-1 inline-block h-2 w-2 rounded-full" style={{ background: "var(--color-v-sup)" }} />{tr(lang, "ua.legend.compliant", "aligned")}</span>
         </p>
       </div>
       <ul {...scrollFocus} aria-label={tr(lang, "pf.q.entity", "Which entities are furthest along?")} className="flex flex-wrap gap-2 desk:flex-nowrap desk:overflow-x-auto desk:pb-1">
+        {!chips.length && <li className="w-full rounded-lg border border-line bg-paper-deep px-2.5 py-2 text-xs text-ink-soft">{tr(lang, "ua.pg.empty.ent", "No entities with visible use cases")}</li>}
         {chips.map((r) => <li key={r.key} className={li}><EntityChip r={r} active={active} onSelect={onSelect} /></li>)}
         {pinned && <li key={pinned.key} className={li}><EntityChip r={pinned} active={active} onSelect={onSelect} /></li>}
         {many && (
@@ -393,7 +403,7 @@ export function EntityStrip({
           </li>
         )}
       </ul>
-      {!many && <DataTableAlt floating caption={fmt(tr(lang, "ua.tally.cap", "Deployment by {noun}"), { noun: nounT })} head={[tr(lang, "ua.col.name", "Name"), tr(lang, "ua.col.total", "Total"), tr(lang, "hl.deployed", "Deployed"), tr(lang, "hl.compliant", "Compliant")]} rows={sorted.map((r) => [r.key, r.total, r.deployed, r.compliant])} />}
+      {!many && sorted.length > 0 && <DataTableAlt floating caption={fmt(tr(lang, "ua.tally.cap", "Deployment by {noun}"), { noun: nounT })} head={[tr(lang, "ua.col.name", "Name"), tr(lang, "ua.col.total", "Total"), tr(lang, "hl.deployed", "Deployed"), tr(lang, "hl.compliant", "Aligned")]} rows={sorted.map((r) => [r.key, r.total, r.deployed, r.aligned])} />}
     </div>
   );
 }

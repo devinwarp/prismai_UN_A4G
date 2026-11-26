@@ -75,7 +75,7 @@ export default function VersionsPanel({ state, canEdit }: { state: TuningState; 
   const { t, tv } = useT();
   const versions = [...state.versions].sort((a, b) => b.proposed_at.localeCompare(a.proposed_at));
   return (
-    <section id="versions" aria-labelledby="h-versions" className="mt-12">
+    <section id="versions" aria-labelledby="h-versions">
       <h2 id="h-versions" className="font-display text-2xl font-medium">{t("tn.v.title", "Versions and approval")}</h2>
       <p className="mt-2 max-w-[68ch] text-sm text-ink-soft">{t("tn.v.lede", "Every change is a version. A person approves the version the agent uses. Code refuses an approval of a value outside the safe ranges, of a stale version, and of a version that makes the agent answer what the SOP does not answer.")}</p>
       {!versions.length && <p className="mt-4 text-sm text-ink-soft">{t("tn.v.none", "No versions yet. The agent uses the built-in defaults (v0).")}</p>}

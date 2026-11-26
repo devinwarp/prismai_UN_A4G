@@ -60,7 +60,7 @@ export default function UseCaseGates({ useCaseId, ext, eff, runGates, canEdit, a
         </table>
       </div>
       {canEdit ? (
-        <GateActions useCaseId={useCaseId} candidates={candidates} waivable={eff.gates.filter((g) => !g.waiver).map((g) => ({ id: g.id, label: g.label }))} approvers={approvers} />
+        <GateActions useCaseId={useCaseId} candidates={candidates} waivable={eff.gates.filter((g) => !g.waiver && g.id !== "ai_disclosure").map((g) => ({ id: g.id, label: g.label }))} approvers={approvers} />
       ) : (
         <p className="mt-3 text-sm text-ink-soft"><T k="gt.viewer" en="Adding and changing gates needs an administrator. Viewers and judges can read everything here." /></p>
       )}

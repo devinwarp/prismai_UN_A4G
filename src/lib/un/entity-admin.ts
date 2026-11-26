@@ -1,17 +1,17 @@
 import { CRITERIA } from "./sijil.ts";
-import { type EntityGoal, type GoalCriterion } from "./goals.ts";
+import { parseGoalMeasurement, type EntityGoal, type GoalCriterion } from "./goals.ts";
 
 // What an admin may do to an entity, and to the people who belong to it. Pure: the routes and the stores call it.
 //
-//  - an entity is added by name (unique, any case), with an optional sector and goals;
-//  - goals are the outcomes the entity wants (goals.ts): at least one and at most MAX_GOALS, each with text and an optional Prism criterion;
+//  - a new entity needs measured service goals; its sector is optional;
+//  - a Prism criterion is an optional link to a Sijil test, distinct from how the service outcome is measured;
 //  - hiding is reversible: a hidden entity's use cases leave the dashboard counts and the lists, and nothing is deleted;
 //  - an entity's people come from their roles on its use cases; the people above any entity are federal members of a body (see below);
 //  - a person's job title is free text up to 80 characters; it is what the approver rules match against a job profile's name.
 
 export const MAX_GOALS = 12;
 export const MAX_NAME = 120;
-export interface EntityRow { name: string; sector: string | null; goals: EntityGoal[]; hidden: boolean }
+export interface EntityRow { name: string; sector: string | null; goals: EntityGoal[]; hidden: boolean; country_id?: string }
 
 const CRITERION_IDS = (CRITERIA as readonly string[]).filter((c) => c !== "goal_alignment") as GoalCriterion[];
 export const GOAL_CRITERIA: readonly GoalCriterion[] = CRITERION_IDS;
@@ -20,7 +20,7 @@ export const GOAL_CRITERIA: readonly GoalCriterion[] = CRITERION_IDS;
 export const goalPrefix = (entity: string): string => (entity.trim().split(/\s+/)[0] ?? "").replace(/[^A-Za-z0-9]/g, "").toUpperCase().slice(0, 8) || "ENTITY";
 
 /** Validates goals typed in the editor into the stored shape. Ids already present are kept when they are well formed and unique; new goals get the next free id. */
-export function normalizeGoals(entity: string, raw: unknown): { ok: true; goals: EntityGoal[] } | { ok: false; error: string } {
+export function normalizeGoals(entity: string, raw: unknown, requireMeasurement = false): { ok: true; goals: EntityGoal[] } | { ok: false; error: string } {
   if (!Array.isArray(raw) || raw.length < 1) return { ok: false, error: "An entity needs at least one goal." };
   if (raw.length > MAX_GOALS) return { ok: false, error: `At most ${MAX_GOALS} goals.` };
   const prefix = goalPrefix(entity);
@@ -31,7 +31,7 @@ export function normalizeGoals(entity: string, raw: unknown): { ok: true; goals:
   let n = 0;
   const out: EntityGoal[] = [];
   for (const [i, g] of raw.entries()) {
-    const o = (g && typeof g === "object" ? g : {}) as { text?: unknown; criterion?: unknown };
+    const o = (g && typeof g === "object" ? g : {}) as { text?: unknown; criterion?: unknown; measurement?: unknown };
     const text = typeof o.text === "string" ? o.text.trim() : "";
     if (text.length < 5 || text.length > 300) return { ok: false, error: `Goal ${i + 1}: write the outcome in 5 to 300 characters.` };
     let criterion: GoalCriterion | null = null;
@@ -44,7 +44,11 @@ export function normalizeGoals(entity: string, raw: unknown): { ok: true; goals:
       do { n += 1; id = `${prefix}-G${n}`; } while (used.has(id) || taken.has(id));
     }
     taken.add(id);
-    out.push({ id, text, criterion });
+    const measurement = parseGoalMeasurement(o.measurement);
+    if (!measurement && (requireMeasurement || o.measurement != null)) {
+      return { ok: false, error: `Goal ${i + 1}: enter a measurement criterion, a valid numeric target and its unit.` };
+    }
+    out.push({ id, text, criterion, ...(measurement ? { measurement } : {}) });
   }
   return { ok: true, goals: out };
 }
@@ -61,20 +65,20 @@ export type EntityPlan =
 const bad = (error: string, status = 400): EntityPlan => ({ ok: false, status, error });
 
 /** Decides an entity change. `known` is every entity name the organisation has (its entity rows, its use cases' entities, the seeded ones); `hidden` those now hidden. */
-export function planEntity(a: EntityAction, o: { known: string[]; hidden: string[] }): EntityPlan {
+export function planEntity(a: EntityAction, o: { known: string[]; hidden: string[]; measured?: string[] }): EntityPlan {
   const name = typeof a.name === "string" ? a.name.trim().replace(/\s+/g, " ") : "";
   if (a.type === "add") {
     if (name.length < 3 || name.length > MAX_NAME) return bad(`The entity name is 3 to ${MAX_NAME} characters.`);
     if (o.known.some((k) => k.toLowerCase() === name.toLowerCase())) return bad(`An entity named ${name} already exists.`, 409);
     const sector = typeof a.sector === "string" ? a.sector.trim().slice(0, 80) : "";
-    const goals = a.goals === undefined || (Array.isArray(a.goals) && a.goals.length === 0) ? { ok: true as const, goals: [] as EntityGoal[] } : normalizeGoals(name, a.goals);
+    const goals = normalizeGoals(name, a.goals, true);
     if (!goals.ok) return bad(goals.error);
     return { ok: true, type: "add", row: { name, sector: sector || null, goals: goals.goals, hidden: false } };
   }
   const known = o.known.find((k) => k === name);
   if (!known) return bad("Unknown entity", 404);
   if (a.type === "set_goals") {
-    const g = normalizeGoals(name, a.goals);
+    const g = normalizeGoals(name, a.goals, o.measured?.includes(name));
     return g.ok ? { ok: true, type: "set_goals", name, goals: g.goals } : bad(g.error);
   }
   if (typeof a.hidden !== "boolean") return bad("Hidden is true or false.");

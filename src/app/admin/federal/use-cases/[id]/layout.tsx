@@ -1,5 +1,6 @@
 import { Suspense } from "react";
 import { notFound, redirect } from "next/navigation";
+import { mayReadUseCase } from "@/lib/un/federal-read-access";
 import { getUserAndProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadJourneys } from "@/lib/un/journey-store";
@@ -21,6 +22,7 @@ export default async function UseCaseLayout({ children, params }: { children: Re
   if (!user) redirect(`/login?next=/admin/federal/use-cases/${id}`);
   if (!profile?.org_id) redirect("/login");
   if (!isUuid(id)) notFound();
+  if (!(await mayReadUseCase(profile.org_id, user.id, profile.role, id))) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
   const [{ data: org }, journeys, release] = await Promise.all([

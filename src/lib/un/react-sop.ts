@@ -74,6 +74,7 @@ export type Reasoner = (s: ReactState) => { thought: string; action: Action } | 
 export type Retrieve = (query: string, kind?: string) => Promise<Hit[]> | Hit[];
 
 export interface ReactResult {
+  ai_disclosure?: string;
   status: "answered" | "outside_kb" | "answered_by_person";
   steps: Step[];
   citations: string[];

@@ -7,6 +7,7 @@ import { reasonerFromEnv } from "./react-llm.ts";
 import { withTunedRules, type ReactConfig } from "./react-config.ts";
 import { extractSkill, loadSop, type SkillFile } from "./sop-kb.ts";
 import { loadRules, type Rules } from "./sop-rules.ts";
+import { AI_OUTPUT_NOTICE, discloseAgentOutput } from "./ai-disclosure.ts";
 
 // The licence-renewal agent: the job profile's own skill file is its authority, the SOP knowledge
 // base (through ReAct) is where every figure comes from, uploaded documents arrive through OCR,
@@ -143,15 +144,20 @@ export class Agent {
       return { status: "answered_by_person", steps: [], citations: [], answer: [], evidence: [], calls: [], person_answer: prior.answered };
     }
     if (prior) {
-      return { status: "outside_kb", steps: [], citations: [], answer: [], evidence: [], calls: [], outside: { question, reason: prior.reason ?? "waiting for a person", tried: [] } };
+      return { status: "outside_kb", ai_disclosure: AI_OUTPUT_NOTICE, steps: [], citations: [], answer: [], evidence: [], calls: [], outside: { question, reason: prior.reason ?? "waiting for a person", tried: [] } };
     }
     const r = await reactAnswer(this.sopId, question, { retrieve: this.tools.retrieve, requestOutside: this.tools.requestOutside, reasoner: this.tools.reasoner ?? reasonerFromEnv(), reflect: this.tools.reflect, config: this.tools.react });
     for (const c of r.calls) this.calls.push(c);
     if (r.status === "outside_kb") await this.memory.write("outside_request", this.actor, { question, reason: r.outside?.reason ?? "", tried: r.outside?.tried ?? [] });
-    return r;
+    return { ...r, ai_disclosure: AI_OUTPUT_NOTICE };
   }
 
   async run(task: string): Promise<TaskResult> {
+    const result = await this.execute(task);
+    return result.output.ai_disclosure === AI_OUTPUT_NOTICE ? result : { ...result, output: discloseAgentOutput(result.output) };
+  }
+
+  private async execute(task: string): Promise<TaskResult> {
     if (!this.gate(`task:${task}`)) {
       const owner = loadSop(this.sopId).chunks.find((c) => c.chunk_id === `${this.sopId}#${task}`)?.job_profile ?? "the role named in the SOP";
       if (HUMAN_ONLY.includes(task)) {
@@ -163,7 +169,8 @@ export class Agent {
     if (stopped && task !== FORGERY_TASK && task !== "T01") {
       return { task, ok: false, output: {}, citations: this.cite("S8", "T05"), refused: "the case is stopped: a submitted document looked forged and went to Compliance", escalate: "Compliance, immediately" };
     }
-    const r = await this.perform(task);
+    const result = await this.perform(task);
+    const r = { ...result, output: discloseAgentOutput(result.output) };
     await this.memory.write("check", this.actor, { task, output: r.output, citations: r.citations });
     if (task === "T09" && r.ok) await this.memory.write("status", this.actor, { status: r.output.status });
     const draft = task === "T10" ? r.output.email : task === "T12" ? r.output.notice : null;
@@ -297,7 +304,7 @@ export class Agent {
             `Your trade licence renewal (case ${this.caseId}) is on hold because of missing information until it is received.`,
             "Please send:", ...items.map((i) => `- ${i}`), "",
             "You can submit documents on the case page of the portal, at the counter, or by replying to this email with the case number in the subject.",
-            "", "This message was drafted by an AI assistant and a member of staff reviews it before it is sent.",
+            "", "A member of staff reviews this draft before it is sent.",
           ].join("\n"),
           items,
         };

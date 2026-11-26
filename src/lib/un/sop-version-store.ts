@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { JobProfile } from "./sop/profiles";
-import { profilesOf, sampleInput } from "./sop/data";
+import { profilesOf, sampleInput, sampleSopIdForUseCase } from "./sop/data";
+import { loadAttachedSop } from "./profiles-store";
 import type { SopChanges, SopVersion } from "./sop/versions";
 import type { SopChangeRequest } from "./sop/change";
 
@@ -40,6 +41,28 @@ export async function saveVersion(orgId: string, v: SopVersion, by: string): Pro
   const { error } = await createAdminClient().from("un_sop_versions").insert({ org_id: orgId, sop_id: v.sop_id, version: v.version, title: v.title, body: v.body, profiles: v.profiles, changes: v.changes, created_by: by, created_at: new Date().toISOString() });
   return error ? (/duplicate|unique/i.test(error.message) ? "Someone published a new version at the same time: reload and try again." : error.message) : null;
 }
+
+/** Remove a newly created draft that could not be attached. The uploader supplies a unique SOP id. */
+export async function discardSopDraft(orgId: string, sopId: string, by: string) {
+  return createAdminClient().from("un_sop_versions").delete().eq("org_id", orgId).eq("sop_id", sopId).eq("version", 1).eq("created_by", by);
+}
+
+export async function loadSopIntakeSummaries(orgId: string, useCaseIds: string[]) {
+  if (!useCaseIds.length) return {};
+  const db = createAdminClient();
+  const { data: attachments } = await db.from("un_use_case_sops").select("*").eq("org_id", orgId).in("use_case_id", useCaseIds);
+  const rows = (attachments ?? []) as { use_case_id: string; sop_id: string; version?: number; attached_at?: string }[];
+  if (!rows.length) return {};
+  const { data: versions } = await db.from("un_sop_versions").select("*").eq("org_id", orgId).in("sop_id", [...new Set(rows.map((row) => row.sop_id))]);
+  const byKey = new Map((versions ?? []).map((row) => [`${row.sop_id}:${row.version}`, ver(row)]));
+  return Object.fromEntries(rows.map((row) => {
+    const version = Number(row.version) || 1;
+    const document = byKey.get(`${row.sop_id}:${version}`) ?? (version === 1 ? baseOf(row.sop_id) : null);
+    return [row.use_case_id, { title: document?.title ?? row.sop_id, version, attachedAt: row.attached_at ?? null,
+      bytes: document ? Buffer.byteLength(document.body, "utf8") : null,
+      profiles: document?.profiles.length ?? null, tasks: document?.profiles.reduce((count, profile) => count + profile.tasks.length, 0) ?? null }];
+  }));
+}
 /** Every SOP id an admin has pasted (the roots that are not shipped samples). */
 export async function loadCustomRoots(orgId: string): Promise<string[]> {
   const { data } = await createAdminClient().from("un_sop_versions").select("sop_id").eq("org_id", orgId);
@@ -50,6 +73,17 @@ export interface Attachment { sop_id: string; version: number }
 export async function loadAttachment(orgId: string, ucId: string): Promise<Attachment | null> {
   const { data } = await createAdminClient().from("un_use_case_sops").select("sop_id, version").eq("org_id", orgId).eq("use_case_id", ucId).maybeSingle();
   return data ? { sop_id: String((data as Record<string, unknown>).sop_id), version: Number((data as Record<string, unknown>).version ?? 1) || 1 } : null;
+}
+
+export async function loadUseCaseSopDocument(orgId: string, useCase: { id: string; ext_id: string; entity: string }) {
+  const attachment = await loadAttachment(orgId, useCase.id);
+  // Older schemas may have the SOP attachment without a version column.
+  const attachedId = attachment?.sop_id ?? await loadAttachedSop(orgId, useCase.id);
+  const version = attachment?.version ?? 1;
+  const sampleId = attachedId ? null : sampleSopIdForUseCase(useCase);
+  const attached = attachedId ? await getVersion(orgId, attachedId, version) : null;
+  const sample = sampleId ? sampleInput(sampleId) : null;
+  return { attachedId, version, sampleId, attached, sample };
 }
 /** Which use cases are attached to an SOP, and at which version. */
 export async function attachmentsOf(orgId: string, sopId: string): Promise<{ use_case_id: string; version: number }[]> {

@@ -1,5 +1,6 @@
 import { createHash, createPrivateKey, generateKeyPairSync, sign } from "node:crypto";
 import type { CallDecision } from "./sijil-calls.ts";
+import { AI_OUTPUT_NOTICE } from "./ai-disclosure.ts";
 
 // Pure request builders for sealing an agent run into a Sijil node (docs/sijil-wire-format.md). Sijil is a separate product; this file
 // shares no code with it and only builds what its HTTP API takes. No I/O here: the client is sijil-agent-client.ts.
@@ -74,13 +75,16 @@ export const DELIVER_TOOL = "deliver_output";
 export const DISCLOSURE_MISSING_HIT = "prism:ai_disclosure_missing";
 
 /** The agent's deliverable, sealed as a call of a fixed tool name (Sijil has no deliverable record type): input_hash is the hash of the exact text.
- * null when the run produced no text. A client-facing message without an AI disclosure (disclosed === false) is flagged with the missing-disclosure hit.
- * A structured decision (kind "decision") is sealed too, so every run's output is on the chain; a disclosure does not apply to it. */
+ * null when the run produced no text. Text and structured output both require AI provenance. */
 export function deliverableBody(text: string | null, disclosed: boolean | null, ctx: { sessionId: string }, kind: "message" | "decision" = "message"): SealBody | null {
   if (text === null) return null;
-  const missing = kind === "message" && disclosed === false;
+  let hasDisclosure = disclosed === true;
+  if (kind === "decision") {
+    try { hasDisclosure = JSON.parse(text)?.ai_disclosure === AI_OUTPUT_NOTICE; } catch { hasDisclosure = false; }
+  }
+  const missing = !hasDisclosure;
   const what = kind === "decision" ? "structured decision" : "deliverable";
-  const disclosure = kind === "decision" ? "not applicable" : disclosed === true ? "present" : missing ? "MISSING" : "not checked";
+  const disclosure = missing ? "MISSING" : "present";
   return {
     type: "tool_call", rulepack_hash: "", decision: missing ? "flag" : "allow", mode: "record",
     input_hash: sha256Hex(text),
@@ -94,10 +98,14 @@ export function decisionFromSealed(sent: SealBody, sealed: { decision: string })
   return sealed.decision === "block" || sent.rule_hits.some((h) => h.startsWith("prism:gate_rejected:")) ? "reject" : "allow";
 }
 
-/** The text of a client-facing message in a run's output (the email body), or null when there is none. */
+/** The text of a message in a run's output, or null when there is none. */
 export function deliverableText(output: unknown): string | null {
-  const email = (output as { email?: { body?: unknown } | null } | null)?.email;
-  return typeof email?.body === "string" && email.body.length > 0 ? email.body : null;
+  const messages = output as Record<string, { body?: unknown } | null> | null;
+  for (const key of ["email", "message", "acknowledgement"]) {
+    const body = messages?.[key]?.body;
+    if (typeof body === "string" && body.trim()) return body;
+  }
+  return null;
 }
 
 /** What a run delivered: the client-facing message when there is one, otherwise the structured decision (canonical JSON of the output); nothing for

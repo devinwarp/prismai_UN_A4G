@@ -11,6 +11,8 @@ import { parseUseCases } from "../un/model.ts";
 type Row = Record<string, unknown>;
 type Db = Record<string, Row[]>;
 type Result = { data: unknown; error: { message: string } | null };
+const activeOwner = (row: Row) => row.role === "process_owner" && !row.revoked_at;
+const ownerConflict = "un_role_assignments_one_process_owner_idx";
 
 export const OFFLINE_ORG = "00000000-0000-4000-8000-000000000001";
 export const OFFLINE_USER = { id: "00000000-0000-4000-8000-000000000002", email: "offline@example.invalid" };
@@ -88,7 +90,16 @@ class Query implements PromiseLike<Result> {
     let out: Row[];
     if (this.op === "insert" || this.op === "upsert") {
       out = [];
-      for (const p of Array.isArray(this.payload) ? this.payload : [this.payload]) {
+      const incoming = Array.isArray(this.payload) ? this.payload : [this.payload];
+      if (this.op === "insert" && this.table === "un_role_assignments") {
+        const owned = new Set(rows.filter(activeOwner).map((r) => r.use_case_id));
+        for (const row of incoming) {
+          if (!row.use_case_id || !activeOwner(row)) continue;
+          if (owned.has(row.use_case_id)) return { data: null, error: { message: ownerConflict } };
+          owned.add(row.use_case_id);
+        }
+      }
+      for (const p of incoming) {
         const hit = this.op === "upsert" ? rows.find((r) => this.conflict.every((k) => r[k] === p[k])) : undefined;
         if (hit) {
           if (!this.ignoreDup) { Object.assign(hit, p, { updated_at: now }); out.push(hit); }
@@ -124,11 +135,37 @@ class Query implements PromiseLike<Result> {
   }
 }
 
+function replaceOwner(args: Row): Result {
+  const data = db();
+  const { p_org_id: org, p_assignment_id: id, p_user_id: user, p_actor_id: actor } = args;
+  const rows = data.un_role_assignments ?? [];
+  const previous = rows.find((row) => row.id === id && row.org_id === org && activeOwner(row));
+  if (user === actor || !data.profiles.some((row) => row.id === user && row.org_id === org)) {
+    return { data: null, error: { message: "Choose a different successor from this organisation." } };
+  }
+  if (!previous || previous.user_id === actor || previous.user_id === user) {
+    return { data: null, error: { message: "The owner assignment changed. Refresh and try again." } };
+  }
+  if (rows.some((row) => row !== previous && row.org_id === org && activeOwner(row)
+    && (row.use_case_id ?? null) === (previous.use_case_id ?? null) && (previous.use_case_id || row.user_id === user))) {
+    return { data: null, error: { message: ownerConflict } };
+  }
+  const now = new Date().toISOString();
+  Object.assign(previous, { revoked_at: now, revoked_by: actor });
+  rows.push({
+    id: randomUUID(), org_id: org, user_id: user, role: "process_owner", use_case_id: previous.use_case_id ?? null,
+    granted_by: actor, granted_at: now,
+  });
+  save();
+  return { data: null, error: null };
+}
+
 /** Stands in for both the admin client and the cookie (user) client. */
 export function offlineClient() {
   return {
     from: (t: string) => new Query(t),
-    rpc: async () => ({ data: null, error: null }),
+    rpc: async (name: string, args: Row = {}) =>
+      name === "un_replace_process_owner" ? replaceOwner(args) : { data: null, error: null },
     auth: { getUser: async () => ({ data: { user: { ...OFFLINE_USER, user_metadata: {} } }, error: null }) },
   };
 }

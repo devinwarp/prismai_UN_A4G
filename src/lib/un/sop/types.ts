@@ -1,6 +1,6 @@
 // SOP analysis contract (Phase 1, public reference slice). Pure types: no I/O.
 // Every figure is computed in code against a SYNTHETIC baseline (fictional
-// unit XXD); nothing here is a measurement of a real process.
+// staffing assumptions); nothing here is a measurement of a real process.
 
 export type AutomationClass = "automate" | "assist" | "keep_human";
 export type StepKind = "start" | "step" | "decision" | "handoff" | "exception" | "end";
@@ -10,8 +10,8 @@ export type FlagId = "client_facing" | "affects_rights" | "irreversible";
 export interface SyntheticBaseline {
   version: "synthetic-v1";
   note: string;
-  currency: "XXD";
-  /** XXD per hour of staff time (fictional). */
+  currency: string | null;
+  /** Assumed cost per hour of staff time. */
   loaded_hourly_rate: number;
   /** Share of a step's time removed, by class (fictional, documented in data/sop-baseline.json). */
   share_by_class: Record<AutomationClass, number>;
@@ -77,7 +77,7 @@ export interface SopAnalysis {
     hours_saved_per_year: number;
     cost_saved_per_year: number;
     vs_baseline_pct: number;
-    currency: "XXD";
+    currency: string | null;
   };
   /** The synthetic assumptions behind the totals, echoed so a reader can redo the sums. */
   assumptions: { loaded_hourly_rate: number; share_by_class: Record<AutomationClass, number> };

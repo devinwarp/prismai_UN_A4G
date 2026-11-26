@@ -11,7 +11,7 @@ export default function TasksPanel({ state, canEdit }: { state: TuningState; can
   const tasks = run ? [...new Set(run.rows.map((r) => r.task))] : [];
   const bad = run?.rows.filter((r) => r.verdict !== "correct") ?? [];
   return (
-    <section id="tasks" aria-labelledby="h-tasks" className="mt-12">
+    <section id="tasks" aria-labelledby="h-tasks">
       <h2 id="h-tasks" className="font-display text-2xl font-medium">{t("tn.t.title", "Per-task evals")}</h2>
       <p className="mt-2 max-w-[68ch] text-sm text-ink-soft">{t("tn.t.lede", "These run the real licence-renewal agent (the same code the pilot uses): its skill, ReAct retrieval, OCR of synthetic documents and case memory. They are the score a rule-line version or a settings version is judged on, besides the questions above.")}</p>
       <p className="mt-2 max-w-[68ch] text-xs text-ink-soft">{t("tn.t.sim", "What is simulated: the documents, the licence register, the finance system and the applicants are synthetic; OCR output is a recording of Tesseract on the synthetic images; retrieval here is keyword search (BM25), not vectors.")}</p>

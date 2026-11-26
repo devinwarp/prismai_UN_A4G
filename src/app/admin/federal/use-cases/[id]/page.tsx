@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
+import { mayReadUseCase } from "@/lib/un/federal-read-access";
 import { getUserAndProfile } from "@/lib/auth";
 import { permissionsFor } from "@/lib/un/permissions-server";
 import { createAdminClient } from "@/lib/supabase/admin";
@@ -14,6 +15,7 @@ import LangShell, { T, TV } from "../../_components/Lang";
 import { effectiveGates } from "@/lib/un/gates";
 import { approversForUseCase } from "@/lib/un/approvers-store";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
+import { sijilIntegrated, withAlignment } from "@/lib/un/alignment";
 import { loadRun } from "@/lib/un/runs";
 import { loadReleaseCached } from "@/lib/un/release-cached";
 
@@ -35,7 +37,7 @@ async function ChangeHistory({ ext_id }: { ext_id: string }) {
     <section className="mx-auto mt-10 max-w-6xl px-4 sm:px-6">
       <h2 className="text-lg font-semibold"><T k="uc.ch.title" en="Change history" /></h2>
       <p className="mt-1 text-sm text-ink-soft">
-        <T k="uc.ch.lede" en="Every change to this use case's stage, verdict or compliant flag is stored with its old and new value in an append-only, hash-chained log. History starts when the log was installed." />{" "}
+        <T k="uc.ch.lede" en="Every change to this use case's stage, verdict or alignment flag is stored with its old and new value in an append-only, hash-chained log. History starts when the log was installed." />{" "}
         {v ? (v.ok ? <TV k="uc.ch.ok" en="✓ Chain verified: {n} records, intact." v={{ n: v.length }} /> : <><TV k="uc.ch.bad" en="✕ Chain broken at record {n}:" v={{ n: v.broken_seq ?? "" }} /> {v.reason}</>) : ""}
       </p>
       {rows.length === 0 ? (
@@ -69,6 +71,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
   const { user, profile } = await getUserAndProfile();
   if (!user) redirect(`/login?next=/admin/federal/use-cases/${id}`);
   if (!profile?.org_id) redirect("/login");
+  if (!(await mayReadUseCase(profile.org_id, user.id, profile.role, id))) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
   const [goals, runs, reports] = await Promise.all([
@@ -92,8 +95,8 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
           <Link href={`/admin/federal/use-cases/${id}/pilot`} className="underline underline-offset-4"><T k="ucsum.pilot.link" en="Open the pilot" /></Link>
         </p>
         <p className="mb-4 text-sm text-ink-soft">
-          <strong><T k="ucsum.sim.att" en="Simulated attestation:" /></strong>{" "}
-          {uc.compliant ? <T k="uc.sj.compliant" en="✓ compliant and aligned" /> : <T k="uc.sj.notcompliant" en="not yet compliant" />}
+          <strong><T k="ucsum.sim.att" en="Alignment:" /></strong>{" "}
+          {withAlignment(uc).compliant ? <T k="uc.sj.compliant" en="✓ aligned" /> : <T k="uc.sj.notcompliant" en="not yet aligned" />}{!sijilIntegrated() && <> <T k="uc.sj.assumed" en="(assumed: the Sijil attestation is not yet integrated)" /></>}
         </p>
         <SijilPanel
           uc={uc}
