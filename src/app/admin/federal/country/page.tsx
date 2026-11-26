@@ -11,11 +11,13 @@ import { RULESETS } from "@/lib/un/rulesets";
 import { allCountries, countryIn, diffProfiles, diffRuns, diffSops, entityCountryOf, rulesetOf, sourceCounts, type CompanyRec, type Country, type PolicyRec, type RunResult } from "@/lib/un/country";
 import ToolWorkspace from "../_components/ToolWorkspace";
 import WorkspaceSections from "../_components/WorkspaceSections";
-import { T } from "../_components/Lang";
+import { T, TV } from "../_components/Lang";
 import { card, scrollRegion, Section } from "../_components/ui";
 import { CountryPanel } from "./CountryPanel";
 import CountryPolicy from "./CountryPolicy";
 import { loadPolicy } from "@/lib/un/store";
+import { countriesNeedingGovernanceAdmin } from "@/lib/un/people-agent";
+import { loadAssignmentRows, loadUseCaseChoices } from "@/lib/un/roles-store";
 import { Ct, En, GateList, Ltr, Rs, TX, Vd } from "../_components/b-bits";
 
 export const metadata: Metadata = { title: "Country and knowledge base", robots: { index: false, follow: false } };
@@ -47,6 +49,9 @@ export default async function CountryPage({ searchParams }: { searchParams: Prom
   const infos = await Promise.all(allCountries(state).map(async (c) => ({ c, info: await indexOfCountry(d, state, c.id) })));
   // what is required before the process can be run under a country: its policy, for every country that has no knowledge base yet
   const needs = infos.filter(({ c, info }) => c.id === country.id && !info).map(({ c }) => c);
+  // a country that has entities must have a governance admin (they approve its targets and test sets): mandatory, so it is a required action
+  const [choices, assignmentRows] = await Promise.all([loadUseCaseChoices(orgId), loadAssignmentRows(orgId)]);
+  const needsGovernance = countriesNeedingGovernanceAdmin({ countriesWithEntities: choices.map((u) => entityCountryOf(state, u.entity)), assignments: assignmentRows }).includes(country.id);
   const scope = (await scopeOf(d, state, country.id)) ?? [];
 
   // every run: the logged ones, plus the two precomputed baselines of the built-in company when they are not logged yet
@@ -103,10 +108,17 @@ export default async function CountryPage({ searchParams }: { searchParams: Prom
 
               </div>
             </Section>
-          {canEdit && needs.length > 0 && (
+          {canEdit && (needs.length > 0 || needsGovernance) && (
             <section aria-labelledby="req-h" data-testid="required-actions" className={`${card} mt-4`}>
               <h2 id="req-h" className="text-lg font-semibold"><T k="cn.req.h" en="Required actions" /></h2>
               <ul className="mt-2 space-y-1 text-sm">
+                {needsGovernance && (
+                  <li data-testid="needs-governance-admin">
+                    <a className="underline" href="/admin/federal/people">
+                      <TV k="cn.req.gov" en="{c}: appoint a governance admin. Targets and test sets cannot be approved there until one is." v={{ c: country.name }} />
+                    </a>
+                  </li>
+                )}
                 {needs.map((c) => (
                   <li key={c.id} className={(sp.setup ?? country.id) === c.id ? "font-medium" : ""}>
                     <a className="underline" href={c.custom ? `#docs-${c.id}` : "#step-a"}>

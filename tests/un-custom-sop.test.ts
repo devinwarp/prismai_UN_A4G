@@ -81,10 +81,10 @@ test("removing a job profile: it must exist and it cannot be the last one", () =
   assert.equal(nextTaskId(lic, ["T99"]), "T100");
 });
 
-test("the shipped samples are never edited in place, the profiles route is admin-only and audited, and every consumer reads the profiles of the version a use case is on", () => {
+test("the shipped samples are never edited in place, the profiles route is for the entity admin or an administrator and audited, and every consumer reads the profiles of the version a use case is on", () => {
   assert.ok(sampleInput("SOP-LIC-014"));
   const route = readFileSync("src/app/api/admin/un/use-cases/[id]/profiles/route.ts", "utf8");
-  assert.match(route, /await requireAdmin\(\)/);
+  assert.match(route, /requirePermission\("entity\.setup", \{ useCaseId: id \}\)/);
   for (const a of ["attach", "attach_custom", "new_version", "profile", "tick"]) assert.match(route, new RegExp(`"${a}"`));
   assert.doesNotMatch(route, /"fork"/, "an edit is a new version, not a copy");
   assert.match(route, /recordChange/);

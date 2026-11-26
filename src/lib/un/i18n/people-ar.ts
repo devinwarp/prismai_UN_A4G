@@ -1,6 +1,15 @@
 // Arabic strings for the people and roles screen (/admin/federal/people). DRAFT translations for review by a
 // native speaker, like the rest of dict.ts. Spread into AR there. Role ids and action labels are not translated.
 export const PEOPLE_AR: Record<string, string> = {
+  "pe.entity": "الجهة",
+  "pe.country": "الدولة",
+  "pe.entity.detail": "أشخاص جهتك. يمكنك منح أدوار مالك العملية ومؤلف الاختبار والمشغّل والمشاهد لها وسحبها.",
+  "pe.agent": "الوكيل",
+  "pe.agent.on": "وكيل {n} يعمل على صندوق وارده ضمن صلاحياته.",
+  "pe.agent.off": "وكيل {n} متوقف: كل ما في صندوق وارده عليه.",
+  "pe.agent.switchoff": "أوقف الوكيل",
+  "pe.agent.switchon": "شغّل الوكيل",
+  "pe.agent.cap": "الحد اليومي لإجراءات الوكيل",
   "go.people": "الأشخاص والأدوار",
   "hdr.country": "الدولة",
   "hdr.setup": "تحتاج إلى إعداد",

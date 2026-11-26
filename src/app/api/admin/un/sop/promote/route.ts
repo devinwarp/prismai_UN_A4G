@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bad, requireAdmin } from "@/lib/api-auth";
+import { bad, requireAdmin, requirePermission } from "@/lib/api-auth";
 import { loadCountrySop } from "@/lib/un/federal-country";
 import { inputFromBody } from "@/lib/un/sop/data";
 import { toUseCase } from "@/lib/un/sop/promote";
@@ -10,8 +10,6 @@ import { importUnUseCases } from "@/lib/un/store";
  * The analysis is recomputed here by the rules, never taken from the client, so a row
  * always matches what the reference analyzer says about the text. */
 export async function POST(request: Request) {
-  const who = await requireAdmin();
-  if (who instanceof NextResponse) return who;
   if (Number(request.headers.get("content-length") ?? 0) > 400_000) return bad("The SOP is too large (200 KB limit).");
   let body: Record<string, unknown>;
   try {
@@ -19,6 +17,10 @@ export async function POST(request: Request) {
   } catch {
     return bad("Invalid JSON");
   }
+  // an SOP for one entity is that entity admin's to upload; one that names no entity is an administrator's
+  const forEntity = typeof body?.entity === "string" ? body.entity.trim() : "";
+  const who = forEntity ? await requirePermission("entity.setup", { entity: forEntity }) : await requireAdmin();
+  if (who instanceof NextResponse) return who;
   const context = await loadCountrySop(who.org_id!, body?.country, true);
   const input = inputFromBody(body, context.country.currency ?? null, !context.uc02);
   if (typeof input === "string") return bad(input);

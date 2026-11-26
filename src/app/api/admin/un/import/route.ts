@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { bad, requireAdmin } from "@/lib/api-auth";
+import { bad, requireAdmin, requirePermission } from "@/lib/api-auth";
 import { entityRegistrationReady, loadState } from "@/lib/un/country-actions";
 import { appCountryDeps } from "@/lib/un/country-app";
 import { countryIn, entityCountryOf } from "@/lib/un/country";
@@ -11,8 +11,6 @@ import { loadGoalsResolved } from "@/lib/un/target-store";
 
 /** POST text/csv body (or { csv }) → { imported } | 400 { error, errors[] } */
 export async function POST(request: Request) {
-  const who = await requireAdmin();
-  if (who instanceof NextResponse) return who;
   const raw = await request.text();
   if (raw.length > 1_000_000) return bad("File is too large");
   let csv = raw;
@@ -29,6 +27,9 @@ export async function POST(request: Request) {
       return bad("Invalid JSON");
     }
   }
+  // a list for one entity is that entity admin's to import; a list that names no entity is an administrator's
+  const who = scope ? await requirePermission("entity.setup", { entity: scope.entity }) : await requireAdmin();
+  if (who instanceof NextResponse) return who;
   const { useCases, errors } = parseUseCases(csv);
   if (errors.length) {
     return NextResponse.json({ error: errors[0], errors: errors.slice(0, 20) }, { status: 400 });

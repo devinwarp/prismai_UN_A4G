@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { sweepPeople } from "@/lib/un/inbox-service";
 import { randomUUID } from "node:crypto";
-import { bad, notFound, requireAdmin } from "@/lib/api-auth";
+import { bad, notFound, requirePermission } from "@/lib/api-auth";
 import { recordChange } from "@/lib/un/country-actions";
 import { appCountryDeps } from "@/lib/un/country-app";
 import { isUuid } from "@/lib/un/model";
@@ -27,10 +28,11 @@ type Ctx = { params: Promise<{ id: string }> };
  * owner (sop-change route). Every change is written to the hash-chained country log. A custom SOP has no knowledge base, so it can be ticked (and assessed)
  * but has no skill file or generated tests. */
 export async function POST(request: Request, { params }: Ctx) {
-  const who = await requireAdmin();
-  if (who instanceof NextResponse) return who;
   const { id } = await params;
   if (!isUuid(id)) return notFound();
+  // attaching an SOP and ticking its job profiles is entity setup: the entity admin of this use case's entity (or an administrator)
+  const who = await requirePermission("entity.setup", { useCaseId: id });
+  if (who instanceof NextResponse) return who;
   const b = (await request.json().catch(() => ({}))) as Record<string, unknown>;
   const orgId = who.org_id!;
   const uc = await loadUseCase(orgId, id);
@@ -50,6 +52,7 @@ export async function POST(request: Request, { params }: Ctx) {
     const err = await attachSop(orgId, id, b.sop_id, who.id, latest.version);
     if (err) return fail(err);
     const audited = await audit("sop_changed", { from: before, to: b.sop_id, version: latest.version });
+    await sweepPeople(orgId).catch(() => {}); // the job profiles changed: the People agent looks for positions nobody holds
     return NextResponse.json({ ok: true, sop_id: b.sop_id, version: latest.version, audited });
   }
 
@@ -113,6 +116,7 @@ export async function POST(request: Request, { params }: Ctx) {
     const skill = b.automate && kb?.ok ? writeSkill(sopId, b.profile) : null;
     const err = await saveTick(orgId, id, sopId, b.profile, b.automate, who.id, skill?.ok ? { path: skill.path, sha256: skill.sha256 } : null);
     if (err) return fail(err);
+    await sweepPeople(orgId).catch(() => {}); // the job profiles changed: the People agent looks for positions nobody holds
     return NextResponse.json({ ok: true, kb, skill });
   }
   void baseOf;

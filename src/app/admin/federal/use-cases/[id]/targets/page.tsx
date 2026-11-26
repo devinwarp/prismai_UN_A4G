@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { mayReadUseCase } from "@/lib/un/federal-read-access";
 import { getUserAndProfile } from "@/lib/auth";
+import { withGovernance } from "@/lib/un/approvers";
 import { approversForUseCase } from "@/lib/un/approvers-store";
 import { isUuid } from "@/lib/un/model";
 import { permissionsFor } from "@/lib/un/permissions-server";
@@ -31,7 +32,7 @@ export default async function TargetsPage({ params }: { params: Promise<{ id: st
   let storeError: string | null = null;
   try { log = await loadTargetLog(profile.org_id, id); } catch (e) { storeError = e instanceof Error ? e.message : "The target log could not be read"; }
   const { goals, source } = await loadGoalsResolved(profile.org_id, uc.entity);
-  const approvers = (await approversForUseCase(profile.org_id, id)).map((a) => ({ title: a.title, source: a.source }));
+  const approvers = withGovernance(await approversForUseCase(profile.org_id, id)).map((a) => ({ title: a.title, source: a.source }));
 
   return (
     <LangShell>

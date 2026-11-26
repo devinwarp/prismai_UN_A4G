@@ -76,7 +76,7 @@ function SopLinkStatus() {
 }
 
 export default function FederalPanel({
-  lead, emptyState, policy, dashboard: d, useCases, canEdit, editableRisks, asOf, gatesAdded = {}, journeys = {}, work = {}, sops, intakeSummaries, rerun = {}, noTarget = false, countryId, hasLicenceDemo, canCompare, showFederalTools, countryReady, setupEntities, initialEntity,
+  lead, emptyState, policy, dashboard: d, useCases, canEdit, editableRisks, asOf, gatesAdded = {}, journeys = {}, work = {}, governanceAppointed = true, sops, intakeSummaries, rerun = {}, noTarget = false, countryId, hasLicenceDemo, canCompare, showFederalTools, countryReady, setupEntities, initialEntity,
 }: {
   /** The rerun icon of each use case, by id (see page.tsx). */
   rerun?: Record<string, RerunUi>;
@@ -86,6 +86,8 @@ export default function FederalPanel({
   canCompare: boolean;
   showFederalTools: boolean;
   countryReady: boolean;
+  /** a country with entities needs a governance admin before its targets and test sets can be approved */
+  governanceAppointed?: boolean;
   setupEntities: SetupEntity[];
   initialEntity: string;
   /** The page title and its one-line summary, drawn by the server page; sits at the left of the toolbar. */
@@ -246,7 +248,7 @@ export default function FederalPanel({
 
       <div className="desk:col-span-2"><HeadlineBand d={d} policy={policy} noTarget={noTarget} asOf={asOf} story={story} /></div>
 
-      {showFederalTools && <SetupJourney country={countryId} countryReady={countryReady} entities={setupEntities} entity={setupEntity}
+      {showFederalTools && <SetupJourney country={countryId} countryReady={countryReady} governanceAppointed={governanceAppointed} entities={setupEntities} entity={setupEntity}
         selectEntity={changeEntity} canEdit={canEdit} cases={setupCases.length} attached={setupCases.filter((uc) => sops[uc.id] && !sops[uc.id].sample).length}
         existingIds={setupCases.map((uc) => uc.ext_id)} review={reviewSetup}
         sopRows={setupCases.map((uc) => ({ id: uc.id, code: uc.ext_id, title: uc.title, frozen: uc.stage === "deployed", sop: intakeSummaries[uc.id] }))} />}

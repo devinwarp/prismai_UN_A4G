@@ -206,11 +206,13 @@ test("offline mode: promoting writes a SOP-* row beside the CSV rows and re-prom
   }
 });
 
-test("both SOP write routes check requireAdmin before reading the body (viewers get the read-only 403)", () => {
+test("both SOP write routes check the guard before doing any work (viewers get the read-only 403): the entity admin of the named entity, or an administrator", () => {
   for (const f of ["src/app/api/admin/un/sop/analyze/route.ts", "src/app/api/admin/un/sop/promote/route.ts"]) {
     const src = readFileSync(f, "utf8");
     const post = src.slice(src.indexOf("export async function POST"));
-    assert.ok(post.indexOf("requireAdmin()") > 0 && post.indexOf("requireAdmin()") < post.indexOf("request.json()"), f);
+    // the body is parsed only to learn which entity the SOP is for; nothing is read from the country or analysed until the guard has passed
+    assert.ok(post.indexOf("requireAdmin()") > 0 && post.indexOf('requirePermission("entity.setup"') > 0, f);
+    assert.ok(post.indexOf("requireAdmin()") < post.indexOf("loadCountrySop("), f);
   }
   assert.ok(loadBaseline().currency === "XXD");
 });

@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ROLES } from "./authz";
 import { loadMembers } from "./entity-store";
 import { loadAssignments } from "./roles-store";
+import { scopeIndex } from "./scope-context";
 
 export const loadFederalReadAccess = cache(async (orgId: string, userId: string, role: string | null) => {
   if (role === "admin" || role === "platform") return { allCases: true, browseCountries: true, caseIds: new Set<string>() };
@@ -15,7 +16,16 @@ export const loadFederalReadAccess = cache(async (orgId: string, userId: string,
     return { allCases: true, browseCountries: true, caseIds: new Set<string>() };
   }
   const assignments = await loadAssignments(orgId, userId);
+  // a role held for the whole organisation reads everything; one held for a country or an entity reads the use cases of that country or entity;
+  // one held for a use case reads that use case
+  if (assignments.some((a) => a.scope.kind === "org")) return { allCases: true, browseCountries: true, caseIds: new Set<string>() };
   const caseIds = new Set(assignments.flatMap((a) => a.scope.kind === "use_case" ? [a.scope.use_case_id] : []));
+  if (assignments.some((a) => a.scope.kind === "entity" || a.scope.kind === "country")) {
+    for (const uc of (await scopeIndex(orgId)).all()) {
+      const reach = assignments.some((a) => (a.scope.kind === "entity" && a.scope.entity === uc.entity && (!a.scope.country || a.scope.country === uc.country)) || (a.scope.kind === "country" && a.scope.country === uc.country));
+      if (reach && uc.use_case_id) caseIds.add(uc.use_case_id);
+    }
+  }
   return { allCases: false, browseCountries: true, caseIds };
 });
 

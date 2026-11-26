@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { noticeApproval } from "@/lib/un/inbox-service";
 import { bad, forbidden, notFound, requirePermission } from "@/lib/api-auth";
 import { resolveApprover, type Approver } from "@/lib/un/approvers";
+import { withGovernance } from "@/lib/un/approvers";
 import { approversForUseCase } from "@/lib/un/approvers-store";
 import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
@@ -60,7 +62,7 @@ export async function POST(request: Request, { params }: Ctx) {
   if (!v.ok) return NextResponse.json({ error: `The test-set log failed verification at entry ${v.broken_seq}: ${v.reason}` }, { status: 409 });
   const state = replayTestSet(log);
 
-  const approvers = await approversForUseCase(who.org_id!, id);
+  const approvers = withGovernance(await approversForUseCase(who.org_id!, id));
   const pick = (choice: unknown): { ok: true; approver: Approver } | { ok: false; error: string } => resolveApprover(choice, approvers);
   let action: Action;
   switch (act) {
@@ -93,6 +95,9 @@ export async function POST(request: Request, { params }: Ctx) {
   const err = await appendTestLog(who.org_id!, id, profile, entry);
   if (err) return NextResponse.json({ error: /duplicate|unique/i.test(err) ? "Someone else changed the test set just now; reload and try again" : err }, { status: /duplicate|unique/i.test(err) ? 409 : 500 });
   const next = replayTestSet([...log, entry]);
+  // a test set is edited, not proposed: the first change asks for its approval (one open request per use case), and an approval or withdrawal closes it
+  const event = p.kind === "approved" ? "approved" : p.kind === "withdrawn" ? "withdrawn" : "request";
+  await noticeApproval(who.org_id!, id, { step: "tests", what: "The test set", event, ext: uc.ext_id, by: who.id, link: `/admin/federal/use-cases/${id}/tests`, ref: entry.hash.slice(0, 8) });
   return NextResponse.json({ ok: true, kind: p.kind, hash: entry.hash, version: next.version, draft: next.draft, ...(p.kind === "approved" ? { set_hash: p.payload.hash } : {}) });
 }
 
