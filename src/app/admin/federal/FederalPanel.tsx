@@ -413,7 +413,7 @@ export default function FederalPanel({
                   <td className="px-2">
                     <span className="inline-flex items-center rounded-md border border-line px-2 py-0.5 font-mono text-[11px]">{stageLabel(lang, u.stage)}</span>
                   </td>
-                  <td className="px-2"><WorkIcon kind={work[u.id] ?? "human"} /></td>
+                  <td className="px-2"><WorkIcon kind={work[u.id] ?? "human"} compact /></td>
                   <td className="px-2">
                     <VerdictBadge verdict={u.verdict} />
                     {(gatesAdded[u.ext_id] ?? 0) > 0 && (
