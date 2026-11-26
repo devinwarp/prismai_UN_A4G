@@ -107,7 +107,7 @@ test("the process under the UAE and Singapore rule sets: different gates, source
   assert.equal(uae.final, "GO_SUPERVISED");
   assert.equal(sg.final, "ESCALATE"); // hallucination_rate is a Singapore gate and the staged evidence has none: unknown, so escalate
   assert.deepEqual(uae.required.map((g) => g.id).sort(), ["ai_disclosure", "approved_infrastructure", "audit_log", "data_lawful", "human_final_approval"]);
-  assert.deepEqual(sg.required.map((g) => g.id).sort(), ["audit_log", "data_lawful", "hallucination_rate", "human_final_approval"]);
+  assert.deepEqual(sg.required.map((g) => g.id).sort(), ["ai_disclosure", "audit_log", "data_lawful", "hallucination_rate", "human_final_approval"]);
   assert.equal(sg.required.find((g) => g.id === "hallucination_rate")!.status, "unknown");
   assert.equal(sg.steps.length, 5);
   const allowed = new Set(["Singapore", "international"]);

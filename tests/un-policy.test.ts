@@ -16,8 +16,14 @@ test("a failed gate is never averaged away", () => {
 
 test("client-facing is capped at GO_SUPERVISED; internal may be autonomous", () => {
   assert.equal(decide({ clientFacing: true, requested: "GO_AUTONOMOUS", gates: passAll }).verdict, "GO_SUPERVISED");
-  const internal: GateState = { approved_infrastructure: "pass", audit_log: "pass", data_lawful: "pass" };
+  const internal: GateState = { approved_infrastructure: "pass", audit_log: "pass", data_lawful: "pass", ai_disclosure: "pass" };
   assert.equal(decide({ clientFacing: false, requested: "GO_AUTONOMOUS", gates: internal }).verdict, "GO_AUTONOMOUS");
+});
+
+test("disclosure is required for internal use cases even with a recorded waiver", () => {
+  const input = { clientFacing: false, requested: "GO_AUTONOMOUS", waived: ["ai_disclosure"] } as const;
+  assert.equal(decide({ ...input, waived: [...input.waived], gates: { ...passAll, ai_disclosure: "fail" } }).verdict, "NO_GO");
+  assert.equal(decide({ ...input, waived: [...input.waived], gates: { ...passAll, ai_disclosure: "unknown" } }).verdict, "ESCALATE");
 });
 
 test("no evidence escalates; declared fixes are assistant-only", () => {

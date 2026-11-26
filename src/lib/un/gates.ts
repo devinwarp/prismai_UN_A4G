@@ -1,4 +1,5 @@
 import { GATES, decide, type Decision, type GateState, type GateStatus, type Requested } from "./policy.ts";
+import { AI_DISCLOSURE_GATE } from "./ai-disclosure.ts";
 import type { ApproverSource } from "./approvers.ts";
 import type { GateDef, GateId } from "./governance.ts";
 import { metricStatus, parseGateDef, simulatedMetric } from "./governance.ts";
@@ -85,15 +86,16 @@ export function effectiveGates(o: { ext: string; facts: HitlFacts; ruleset?: Rul
   const catalog = catalogOf(gov);
   const { rs: shipped } = resolve(o.ruleset ?? UAE_FEDERAL, o.facts);
   const applies = (id: GateId) => o.facts.client_facing || !catalog[id]?.clientFacingOnly;
-  const shippedIds = shipped.gates.filter((g) => catalog[g] && applies(g));
+  const shippedIds = [...new Set([...shipped.gates, AI_DISCLOSURE_GATE])].filter((g) => catalog[g] && (g === AI_DISCLOSURE_GATE || applies(g)));
   const customIds = Object.keys(gov.custom).filter((id) => !shipped.gates.includes(id) && gov.custom[id].def.rulesets?.includes((o.ruleset ?? UAE_FEDERAL).id) && flagsOk(gov.custom[id].def, o.facts) && applies(id));
   const waivers = gov.waivers[o.ext] ?? [];
   const waiverOf = (id: GateId) => {
-    const w = [...waivers].reverse().find((x) => x.gate === id);
+    const w = id === AI_DISCLOSURE_GATE ? undefined : [...waivers].reverse().find((x) => x.gate === id);
     return w ? { waiver: { approver: w.approver, reason: w.reason, at: w.at } } : {};
   };
   const gates: EffectiveGate[] = [
-    ...shippedIds.map((id) => ({ id, label: catalog[id].label, category: catalog[id].category, source: "ruleset" as const, reason: `Required by ${shipped.name}`, ...waiverOf(id) })),
+    ...shippedIds.map((id) => ({ id, label: catalog[id].label, category: catalog[id].category, source: "ruleset" as const,
+      reason: id === AI_DISCLOSURE_GATE ? "Mandatory for internal and external AI outputs" : `Required by ${shipped.name}`, ...waiverOf(id) })),
     ...customIds.map((id) => ({ id, label: catalog[id].label, category: catalog[id].category, source: "ruleset" as const, reason: `Required by ${shipped.name} (gate added by ${gov.custom[id].by})`, ...waiverOf(id) })),
   ];
   const own: GateId[] = [];

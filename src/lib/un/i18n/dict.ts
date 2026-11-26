@@ -48,7 +48,7 @@ export const AR: Record<string, string> = {
   "gate.audit_log": "تسجيل كل إجراء في سجل التدقيق",
   "gate.data_lawful": "البيانات قانونية الاستخدام لهذا الغرض",
   "gate.human_final_approval": "موافقة نهائية من شخص قبل وصول أي مخرجات إلى المواطن",
-  "gate.ai_disclosure": "إبلاغ المواطن بأنه يتعامل مع مساعد ذكاء اصطناعي",
+  "gate.ai_disclosure": "الإفصاح للمستلم عن المخرجات التي أنشأها الذكاء الاصطناعي",
   "gate.hallucination_rate": "معدل الهلوسة ضمن الحد المتفق عليه",
   "gate.fee_accuracy": "الرسوم المعلنة مطابقة لجدول الرسوم المنشور",
   "gate.no_commercial_promotion": "عدم الترويج لمنتجات تجارية مدفوعة",

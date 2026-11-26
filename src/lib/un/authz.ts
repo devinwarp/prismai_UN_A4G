@@ -26,6 +26,7 @@ export const ACTIONS = {
   // gates and governance
   "gate.add": def("Add a gate to a use case", true, ["process_owner"], true),
   "gate.waive": def("Waive a gate for a use case", true, ["process_owner"], true),
+  "risk.edit": def("Edit the risk flags for a use case", true, ["process_owner", "governance_admin", "platform_admin"], true),
   "gate.catalogue.change": def("Add or change a gate in the org-wide catalogue", false, ["governance_admin"], true),
   "policy.edit": def("Edit the adoption target, counting rule and human-in-the-loop rules", false, ["governance_admin"]),
   // approval and the pilot

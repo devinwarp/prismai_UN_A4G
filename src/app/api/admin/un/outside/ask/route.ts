@@ -38,5 +38,5 @@ export async function POST(req: Request) {
   });
   await agent.openCase({ licence_number: RECORDS.noor.licence_number, declared_activity_code: "4711" });
   const r = await agent.ask(t.query);
-  return NextResponse.json({ status: r.status, citations: r.citations, quotes: r.answer, person_answer: r.person_answer ?? null, ...(t.from ? { query_translated_from: t.from, query_used: t.query, query_translated_via: t.via ?? "llm" } : {}) });
+  return NextResponse.json({ status: r.status, citations: r.citations, quotes: r.answer, person_answer: r.person_answer ?? null, ...(r.ai_disclosure ? { ai_disclosure: r.ai_disclosure } : {}), ...(t.from ? { query_translated_from: t.from, query_used: t.query, query_translated_via: t.via ?? "llm" } : {}) });
 }

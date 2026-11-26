@@ -3,6 +3,7 @@
 import { countryHref } from "@/lib/un/country-context";
 
 import Link, { useLinkStatus } from "next/link";
+import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import { LangBar, T, TV, useLang } from "./_components/Lang";
 import { tr } from "@/lib/un/i18n/dict";
@@ -15,10 +16,9 @@ import { fill, ltr, quadLabel, stageLabel, verdictHint, verdictName, VERDICT_MET
 import HeadlineBand from "./_components/HeadlineBand";
 import SetupJourney, { type SetupEntity } from "./_components/SetupJourney";
 import type { SopIntakeRow } from "./_components/SopIntake";
-import ConfigDrawer from "./_components/ConfigDrawer";
 import Pop from "./_components/Pop";
 import { RerunControl, type RerunUi } from "./_components/RerunButton";
-import type { HitlConfig } from "@/lib/un/hitl";
+import { RISK_FIELDS, type RiskField } from "@/lib/un/hitl";
 import { STAGES, VERDICTS, type Dashboard, type Policy, type UnUseCaseState, type Verdict } from "@/lib/un/model";
 
 const GO = [
@@ -50,6 +50,11 @@ const TOUR: TourStep[] = [
 ];
 
 const toolBtn = "inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:border-ink-soft desk:py-1.5";
+const RISK_LABELS = {
+  client_facing: ["risk.client", "Client-facing"],
+  affects_rights: ["risk.rights", "Rights or fees"],
+  irreversible: ["risk.irrev", "Irreversible"],
+} as const;
 
 function SopLinkStatus() {
   const { pending } = useLinkStatus();
@@ -61,7 +66,7 @@ function SopLinkStatus() {
 }
 
 export default function FederalPanel({
-  lead, emptyState, policy, dashboard: d, useCases, canEdit, hitl, asOf, gatesAdded = {}, journeys = {}, sops, intakeSummaries, rerun = {}, noTarget = false, countryId, hasLicenceDemo, canCompare, showFederalTools, countryReady, setupEntities, initialEntity,
+  lead, emptyState, policy, dashboard: d, useCases, canEdit, editableRisks, asOf, gatesAdded = {}, journeys = {}, sops, intakeSummaries, rerun = {}, noTarget = false, countryId, hasLicenceDemo, canCompare, showFederalTools, countryReady, setupEntities, initialEntity,
 }: {
   /** The rerun icon of each use case, by id (see page.tsx). */
   rerun?: Record<string, RerunUi>;
@@ -87,11 +92,46 @@ export default function FederalPanel({
   sops: Record<string, { id: string; sample: boolean }>;
   intakeSummaries: Record<string, SopIntakeRow["sop"]>;
   canEdit: boolean;
-  hitl: HitlConfig;
+  editableRisks: string[];
   asOf: string;
   journeys?: Record<string, Journey>;
 }) {
   const lang = useLang();
+  const router = useRouter();
+  const [risks, setRisks] = useState<Record<string, Partial<Record<RiskField, boolean>>>>({});
+  const [riskSaving, setRiskSaving] = useState(false);
+  const [riskResult, setRiskResult] = useState<{ text: string; error: boolean } | null>(null);
+  const allowedRisks = new Set(editableRisks);
+  const riskChanges = useCases.flatMap((uc) => {
+    if (!risks[uc.id] || !allowedRisks.has(uc.id)) return [];
+    const patch = Object.fromEntries(RISK_FIELDS.flatMap((key) => risks[uc.id][key] !== undefined && risks[uc.id][key] !== !!uc[key] ? [[key, risks[uc.id][key]]] : []));
+    return Object.keys(patch).length ? [{ id: uc.id, code: uc.ext_id, patch }] : [];
+  });
+  const editRisk = (id: string, field: RiskField, checked: boolean) => {
+    setRiskResult(null);
+    setRisks((drafts) => ({ ...drafts, [id]: { ...drafts[id], [field]: checked } }));
+  };
+  async function saveRisks() {
+    setRiskSaving(true);
+    setRiskResult(null);
+    const errors: string[] = [];
+    const saved = new Set<string>();
+    for (const row of riskChanges) {
+      try {
+        const res = await fetch(`/api/admin/un/use-cases/${row.id}/risk`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(row.patch) });
+        const result = await res.json().catch(() => ({})) as { error?: string; audited?: boolean };
+        if (!res.ok) throw new Error(result.error ?? tr(lang, "gt.failed", "The request failed."));
+        saved.add(row.id);
+        if (result.audited === false) errors.push(`${row.code} · ${tr(lang, "risk.audit_failed", "Saved, but the audit entry could not be written.")}`);
+      } catch (error) {
+        errors.push(`${row.code} · ${error instanceof Error ? error.message : tr(lang, "gt.failed", "The request failed.")}`);
+      }
+    }
+    setRisks((drafts) => Object.fromEntries(Object.entries(drafts).filter(([id]) => !saved.has(id))));
+    setRiskResult(errors.length ? { text: errors.join("\n"), error: true } : { text: tr(lang, "risk.saved", "Risk changes saved."), error: false });
+    setRiskSaving(false);
+    router.refresh();
+  }
   const [tour, setTour] = useState(false);
 
   const [q, setQ] = useState("");
@@ -179,22 +219,9 @@ export default function FederalPanel({
           >
             {goLinks("grid-cols-2")}
             {hasStagedScenarios && <div className="mt-4 border-t border-line pt-3">
-              <p className="font-display text-lg font-medium">{tr(lang, "pe.start", "Start here")}</p>
-              <ol className="mt-2 grid grid-cols-3 gap-4">
-                {startSteps.map((s) => (
-                  <li key={s.n} className="flex gap-2.5">
-                    <span aria-hidden className="font-display text-3xl leading-none text-lit tabular-nums">{s.n}</span>
-                    <div className="min-w-0">
-                      <Link href={scopedHref(s.href!)} className="text-sm font-medium underline decoration-line underline-offset-4 hover:decoration-ink">{tr(lang, s.k, s.en)} →</Link>
-                      <p className="mt-0.5 text-xs text-ink-soft">{tr(lang, s.hintK, s.hint)}</p>
-                    </div>
-                  </li>
-                ))}
-              </ol>
-              <button type="button" onClick={(e) => { e.currentTarget.closest<HTMLElement>("[popover]")?.hidePopover(); setTour(true); }} className="mt-3 rounded-lg border border-line px-3 py-1.5 text-sm font-medium hover:border-ink-soft">{tr(lang, "start.tour", "Take the tour")}</button>
+              <button type="button" onClick={(e) => { e.currentTarget.closest<HTMLElement>("[popover]")?.hidePopover(); setTour(true); }} className="rounded-lg border border-line px-3 py-1.5 text-sm font-medium hover:border-ink-soft">{tr(lang, "start.tour", "Take the tour")}</button>
             </div>}
           </Pop>}
-          {showFederalTools && <ConfigDrawer key={countryId} canEdit={canEdit} hitl={hitl} useCases={useCases} entities={d.byEntity.map((t) => t.key)} buttonClass={toolBtn} />}
           <LangBar />
         </div>
       </div>
@@ -298,6 +325,13 @@ export default function FederalPanel({
             </Pop>
           </div>
         </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs desk:mt-0">
+          <p className="text-ink-soft">{tr(lang, "risk.disclosure", "AI disclosure is required for internal and external outputs.")}</p>
+          {riskChanges.length > 0 && <button type="button" className={`${btnPrimary} py-1 text-xs`} disabled={riskSaving} onClick={() => void saveRisks()}>
+            {riskSaving ? tr(lang, "ua.saving", "Saving…") : tr(lang, "risk.save", "Save risk changes")}
+          </button>}
+          {riskResult && <p role={riskResult.error ? "alert" : "status"} className={`whitespace-pre-line ${riskResult.error ? "text-ember" : "text-lit-deep"}`}>{riskResult.text}</p>}
+        </div>
         <p className="mt-3 max-w-[68ch] text-sm leading-relaxed text-ink-soft desk:hidden">{tr(lang, "ua.reg.lede", "Stage, verdict and compliance are read from the database and cannot be edited here. The verdict comes only from a signed scenario run and compliance only from a passing Sijil attestation.")}</p>
 
         {noVerdicts && (
@@ -314,7 +348,8 @@ export default function FederalPanel({
                 <th scope="col" className="px-4 py-3 font-normal desk:ps-3 desk:py-2">{tr(lang, "ua.col.id", "ID")}</th>
                 <th scope="col" className={th}>{tr(lang, "ua.col.uc", "Use case")}</th>
                 <th scope="col" className={th}>{tr(lang, "ua.col.sop", "SOP")}</th>
-                <th scope="col" className={th}>{tr(lang, "ua.col.quad", "Quadrant")} / {tr(lang, "ua.col.oversight", "Oversight")}</th>
+                <th scope="col" className={th}>{tr(lang, "ua.col.quad", "Quadrant")}</th>
+                {RISK_FIELDS.map((field) => <th key={field} scope="col" className={`${th} whitespace-nowrap text-center`}>{tr(lang, RISK_LABELS[field][0], RISK_LABELS[field][1])}</th>)}
                 <th scope="col" className={th}>{tr(lang, "ua.col.stage", "Stage")}</th>
                 <th scope="col" className={th}>{tr(lang, "ua.col.verdict", "Verdict")}</th>
                 <th scope="col" className={th}><T k="jb.col" en="Journey" /></th>
@@ -348,8 +383,17 @@ export default function FederalPanel({
                   </td>
                   <td className="px-2 whitespace-nowrap">
                     {quadLabel(lang, u.quadrant)}
-                    <span className="block text-xs text-ink-soft">{u.client_facing ? `● ${tr(lang, "ua.cf.client", "client-facing")}` : `○ ${tr(lang, "ua.cf.internal", "internal")}`}</span>
                   </td>
+                  {RISK_FIELDS.map((field) => {
+                    const checked = risks[u.id]?.[field] ?? !!u[field];
+                    const value = checked ? tr(lang, "risk.yes", "Yes") : tr(lang, "risk.no", "No");
+                    return <td key={field} className="px-2 text-center text-xs">
+                      {allowedRisks.has(u.id) ? <button type="button" role="switch" aria-checked={checked}
+                        aria-label={`${u.ext_id} ${tr(lang, RISK_LABELS[field][0], RISK_LABELS[field][1])}`} disabled={riskSaving}
+                        onClick={() => editRisk(u.id, field, !checked)}
+                        className={`min-w-11 rounded-full border px-2 py-1 ${checked ? "border-lit bg-lit-soft text-lit-deep" : "border-line bg-paper text-ink-soft"}`}>{value}</button> : value}
+                    </td>;
+                  })}
                   <td className="px-2">
                     <span className="inline-flex items-center rounded-md border border-line px-2 py-0.5 font-mono text-[11px]">{stageLabel(lang, u.stage)}</span>
                   </td>
@@ -370,7 +414,7 @@ export default function FederalPanel({
                 );
               })}
               {!filtered.length && !emptyState && (
-                <tr><td colSpan={9} className="px-4 py-10 text-center text-ink-soft">
+                <tr><td colSpan={12} className="px-4 py-10 text-center text-ink-soft">
                   {useCases.length ? <>{noVerdicts && !filtering ? null : <>{tr(lang, "ua.reg.nomatch", "No use case matches.")} <button type="button" onClick={clear} className="font-medium underline">{tr(lang, "ua.f.clear", "Clear filters")}</button></>}</> : <>{tr(lang, "ua.reg.empty", "No use cases yet. Import a CSV below (a sample is in")} <bdi dir="ltr">data/un-use-cases.csv</bdi>{tr(lang, "ua.reg.empty2", ").")}</>}
                 </td></tr>
               )}

@@ -2,6 +2,7 @@ import { runAgent, ROLES, type AgentDeps, type AgentEvent } from "./agents.ts";
 import type { HitlRuleId } from "./hitl.ts";
 import { applicableGates, GATES, type GateId, type RoleId } from "./policy.ts";
 import { reconcile, type AgentMessage, type CaseState, type Reconciled } from "./protocol.ts";
+import { AI_DISCLOSURE_GATE } from "./ai-disclosure.ts";
 
 /** An event plus who receives it. Uneven distribution is the point: an agent
  * never sees an event that was not routed to it. */
@@ -46,7 +47,7 @@ export function coordinate(state: CaseState, thread: AgentMessage[], round: Agen
   const seen = [...thread, ...round];
   const cat = state.customGates ? { ...GATES, ...state.customGates } : GATES;
   const gateName = (g: GateId) => cat[g].label.toLowerCase();
-  const ids = [...new Set([...applicableGates(state.clientFacing, state.extraGates, cat), ...(state.useCaseGates ?? [])])].filter((g) => cat[g] && !state.waived?.includes(g));
+  const ids = [...new Set([...applicableGates(state.clientFacing, state.extraGates, cat), ...(state.useCaseGates ?? [])])].filter((g) => cat[g] && (g === AI_DISCLOSURE_GATE || !state.waived?.includes(g)));
   for (const g of ids) {
     const status = state.gates[g] ?? "unknown";
     const owner = cat[g].owner;

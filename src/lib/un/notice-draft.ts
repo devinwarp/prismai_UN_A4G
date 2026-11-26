@@ -1,5 +1,6 @@
 import { chatCompletion, CHAT_MODEL, parseLlmJson } from "../llm.ts";
 import { checkCitizenMessage, PROMISE } from "./citizen-message.ts";
+import { discloseAiMessage } from "./ai-disclosure.ts";
 
 // The model-written part of task T12 (the fee notice to the applicant). The deterministic agent still works out the
 // notice (amount, due date, ways to pay, registered address) from the SOP rules; a language model only WRITES THE
@@ -102,14 +103,14 @@ export function makeDrafter(o: { model?: string; chat?: Chat; maxRevisions?: num
     let body: string;
     try { body = await write(noticePrompt(f)); } catch (e) { usage.failures++; throw e; }
     let problems = draftProblems(body, f);
-    if (!problems.length) { usage.first_pass_ok++; return body; }
+    if (!problems.length) { usage.first_pass_ok++; return discloseAiMessage(body); }
     usage.revised++;
     for (let i = 0; i < maxRevisions && problems.length; i++) {
       try { body = await write(revisionPrompt(f, body, problems)); } catch { usage.failures++; break; }
       problems = draftProblems(body, f);
     }
     if (problems.length) usage.unresolved++; else usage.revised_ok++;
-    return body;
+    return discloseAiMessage(body);
   };
   return { draft, usage, model };
 }

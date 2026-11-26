@@ -188,7 +188,7 @@ export function measure(all: PilotRun[], confidence = 0.95): Measures {
     hallucination: rate(runs.filter((r) => r.hallucinated === true).length, runs.filter((r) => r.hallucinated !== null).length, confidence),
     audit_completeness: rate(runs.filter((r) => r.logged).length, runs.length, confidence),
     client_facing_compliance: share(cf.map((r) => r.compliance_ok), confidence),
-    disclosure: share(cf.map((r) => r.disclosed), confidence),
+    disclosure: share(runs.map((r) => r.disclosed), confidence),
     promotion_free: share(cf.map((r) => r.promotion_free), confidence),
     fee: share(runs.map((r) => r.fee_ok), confidence),
     rejected_calls: runs.reduce((a, r) => a + r.rejected_calls, 0),
@@ -252,7 +252,7 @@ export function measuredGates(m: Measures, p: Params, j: Judgement): GateState {
   return {
     hallucination_rate: status(hall, m.hallucination.n > 0),
     audit_log: status(audit, m.runs > 0),
-    ai_disclosure: status(rateOk(m.disclosure, clientMin), m.disclosure.n > 0),
+    ai_disclosure: status(rateOk(m.disclosure, 1), m.disclosure.n > 0),
     fee_accuracy: status(rateOk(m.fee, clientMin), m.fee.n > 0),
     no_commercial_promotion: status(rateOk(m.promotion_free, clientMin), m.promotion_free.n > 0),
   };

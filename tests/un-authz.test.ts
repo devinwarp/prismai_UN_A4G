@@ -12,9 +12,9 @@ const allowed = (s: Subject, a: ActionId, uc: string | undefined = UC02) => can(
 
 // The whole table, written out, so a change to who may do what shows up in review as a change to this test.
 const EXPECTED: Record<RoleId, ActionId[]> = {
-  platform_admin: ["view", "users.manage"],
-  governance_admin: ["view", "gate.catalogue.change", "policy.edit", "rerun.run", "sop.change.apply"],
-  process_owner: ["view", "gate.add", "gate.waive", "tuning.approve", "tuning.run", "autotune.switch", "tuning.decide", "run.sign", "reinstate", "scenario.propose", "scenario.edit", "scenario.approve", "goals.approve", "rerun.request", "sop.change.request"],
+  platform_admin: ["view", "users.manage", "risk.edit"],
+  governance_admin: ["view", "gate.catalogue.change", "policy.edit", "rerun.run", "sop.change.apply", "risk.edit"],
+  process_owner: ["view", "gate.add", "gate.waive", "tuning.approve", "tuning.run", "autotune.switch", "tuning.decide", "run.sign", "reinstate", "scenario.propose", "scenario.edit", "scenario.approve", "goals.approve", "rerun.request", "sop.change.request", "risk.edit"],
   test_author: ["view", "tuning.propose", "scenario.propose"],
   operator: ["view", "tuning.run", "tuning.propose", "pilot.run", "deploy", "watchdog.window", "rerun.run", "sop.change.apply"],
   viewer: ["view"],

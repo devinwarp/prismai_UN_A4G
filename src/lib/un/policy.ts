@@ -1,5 +1,6 @@
 import type { Verdict } from "./model.ts";
 import type { RuleSet } from "./rulesets.ts";
+import { AI_DISCLOSURE_GATE } from "./ai-disclosure.ts";
 
 // Deterministic policy engine. LLM agents propose and explain; only this code
 // turns gate states into a verdict. Hard gates are never averaged: one failed
@@ -33,7 +34,7 @@ export type GateState = Partial<Record<GateId, GateStatus>>;
 
 export const applicableGates = (clientFacing: boolean, extra: GateId[] = [], catalog: Record<GateId, GateDef> = GATES): GateId[] =>
   Object.keys(catalog).filter(
-    (g) => (clientFacing || !catalog[g].clientFacingOnly) && (!catalog[g].optional || extra.includes(g)),
+    (g) => g === AI_DISCLOSURE_GATE || ((clientFacing || !catalog[g].clientFacingOnly) && (!catalog[g].optional || extra.includes(g))),
   );
 
 export type Requested = Extract<Verdict, "GO_AUTONOMOUS" | "GO_SUPERVISED" | "ASSISTANT_ONLY">;
@@ -68,10 +69,11 @@ export function decide(opts: {
   const GATES = opts.catalog ?? SHIPPED;
   const base = rs
     ? Object.keys(GATES).filter(
-        (g) => (opts.clientFacing || !GATES[g].clientFacingOnly) && (rs.gates.includes(g) || !!opts.extraGates?.includes(g)),
+        (g) => g === AI_DISCLOSURE_GATE || ((opts.clientFacing || !GATES[g].clientFacingOnly) && (rs.gates.includes(g) || !!opts.extraGates?.includes(g))),
       )
     : applicableGates(opts.clientFacing, opts.extraGates, GATES);
-  const ids = [...new Set([...base, ...(opts.useCaseGates ?? []).filter((g) => Object.hasOwn(GATES, g))])].filter((g) => !opts.waived?.includes(g));
+  const ids = [...new Set([...base, ...(opts.useCaseGates ?? []).filter((g) => Object.hasOwn(GATES, g))])]
+    .filter((g) => g === AI_DISCLOSURE_GATE || !opts.waived?.includes(g));
   const capped = opts.clientFacing || rs?.capAutonomy === "always";
   if (opts.hitlBreaches?.length) {
     const failed = ids.filter((g) => g !== "human_final_approval" && opts.gates[g] === "fail");

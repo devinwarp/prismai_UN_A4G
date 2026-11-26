@@ -1,7 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { engineValues } from "./guard";
 import { parseGoals, type EntityGoal } from "./goals";
-import { isHitlRule, type HitlConfig } from "./hitl";
+import type { HitlConfig } from "./hitl";
 import { DEFAULT_POLICY, type Policy, type UnUseCase, type UnUseCaseState } from "./model";
 
 export async function loadPolicy(orgId: string): Promise<Policy> {
@@ -43,12 +43,9 @@ export async function importUnUseCases(orgId: string, ucs: UnUseCase[]) {
   return error?.message ?? null;
 }
 
-/** Rows are the rules an entity switched off (see un_hitl_rules). */
-export async function loadHitlConfig(orgId: string): Promise<HitlConfig> {
-  const { data } = await createAdminClient().from("un_hitl_rules").select("entity, rule, enabled").eq("org_id", orgId);
-  const cfg: HitlConfig = {};
-  for (const r of data ?? []) if (!r.enabled && isHitlRule(r.rule)) (cfg[r.entity] ??= []).push(r.rule);
-  return cfg;
+/** New runs use the use-case risk flags. Legacy entity overrides remain in storage for audit. */
+export async function loadHitlConfig(): Promise<HitlConfig> {
+  return {};
 }
 
 /** Goals seeded for an entity (un_entities). Empty before the migration/seed,

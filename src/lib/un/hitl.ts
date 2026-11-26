@@ -24,6 +24,15 @@ export const HITL_RULE_IDS = Object.keys(HITL_RULES) as HitlRuleId[];
 export const isHitlRule = (x: unknown): x is HitlRuleId => typeof x === "string" && x in HITL_RULES;
 
 export type HitlFacts = Pick<UnUseCase, "client_facing" | "affects_rights" | "irreversible">;
+export const RISK_FIELDS = ["client_facing", "affects_rights", "irreversible"] as const;
+export type RiskField = (typeof RISK_FIELDS)[number];
+
+export function parseRiskPatch(raw: unknown): Partial<Record<RiskField, boolean>> | null {
+  if (!raw || typeof raw !== "object" || Array.isArray(raw)) return null;
+  const entries = Object.entries(raw);
+  if (!entries.length || entries.some(([field, value]) => !(RISK_FIELDS as readonly string[]).includes(field) || typeof value !== "boolean")) return null;
+  return Object.fromEntries(entries);
+}
 
 /** entity -> rules explicitly switched off. Absent entity = all rules on. */
 export type HitlConfig = Record<string, HitlRuleId[]>;

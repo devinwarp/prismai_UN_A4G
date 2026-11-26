@@ -87,7 +87,7 @@
       "title": "UC01 Voice contact centre: hallucination alert on a live pilot",
       "chain_ok": true,
       "records": 27,
-      "head_hash": "fcc8ce6c5d803fe056af92dde13f847def6c7eedbe87a46aa839d4c7569274cb",
+      "head_hash": "c427a0a5da28f1c18980895bea07d26491df04b1ef76ff5aa2ff887aacd1fc3b",
       "steps": [
         {
           "step": "T0",
@@ -139,7 +139,7 @@
           "expected": "NO_GO",
           "match": true,
           "reasons": [
-            "Gate failed: The citizen is told they are dealing with an AI assistant",
+            "Gate failed: AI-generated output is disclosed to its recipient",
             "Gate failed: Fees and amounts quoted to citizens match the published fee table"
           ],
           "events": [
@@ -153,7 +153,7 @@
           "expected": "ASSISTANT_ONLY",
           "match": true,
           "reasons": [
-            "Fix declared, not yet re-tested: The citizen is told they are dealing with an AI assistant",
+            "Fix declared, not yet re-tested: AI-generated output is disclosed to its recipient",
             "Fix declared, not yet re-tested: Measured hallucination rate stays under the agreed threshold",
             "Fix declared, not yet re-tested: Fees and amounts quoted to citizens match the published fee table"
           ],

@@ -316,7 +316,7 @@ export async function runCase(c: TaskCase, env: EvalEnv): Promise<CaseOutcome> {
   const role: Role = c.agent ?? "dv";
   if (c.ask) {
     const r = await dv.ask(c.ask);
-    result = { task: "ASK", ok: r.status === "answered", output: { status: r.status, quotes: r.answer, steps: r.steps.length }, citations: r.citations };
+    result = { task: "ASK", ok: r.status === "answered", output: { status: r.status, quotes: r.answer, steps: r.steps.length, ...(r.ai_disclosure ? { ai_disclosure: r.ai_disclosure } : {}) }, citations: r.citations };
   } else {
     result = await (await agentFor(role)).run(c.task);
     // T12: the agent worked out the notice; the drafter (a model) only writes the message that carries it, as a draft for

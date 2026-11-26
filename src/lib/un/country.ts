@@ -154,7 +154,7 @@ export async function runProcess(i: RunInput): Promise<RunResult> {
 
 export type CountryKind = "switch" | "policy_added" | "company_onboarded" | "run" | "reset" | "country_added" | "entity_country" | "country_updated" | "country_target"
   // an admin's changes to entities and people: the data is in its own tables, the log is the tamper-evident record of who changed what and when
-  | "entity_added" | "entity_goals" | "entity_hidden" | "federal_member" | "person_title" | "sop_changed" | "profile_changed" | "rerun_requested" | "rerun_done" | "sop_version" | "sop_change_requested" | "sop_change_applied" | "sop_change_declined";
+  | "entity_added" | "entity_goals" | "entity_hidden" | "federal_member" | "person_title" | "sop_changed" | "profile_changed" | "use_case_risk" | "rerun_requested" | "rerun_done" | "sop_version" | "sop_change_requested" | "sop_change_applied" | "sop_change_declined";
 export type CountryEntry = ChainEntry<CountryKind>;
 
 export interface Timing { stage: string; ms: number; detail: string }

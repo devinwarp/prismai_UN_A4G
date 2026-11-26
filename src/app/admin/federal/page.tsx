@@ -20,7 +20,7 @@ import { permissionsFor } from "@/lib/un/permissions-server";
 import { buttonFor } from "@/lib/un/rerun";
 import { loadRerunView } from "@/lib/un/rerun-store";
 import { loadPeople } from "@/lib/un/roles-store";
-import { loadHitlConfig, loadPolicy, loadUnUseCases } from "@/lib/un/store";
+import { loadPolicy, loadUnUseCases } from "@/lib/un/store";
 import AdminHeader from "../AdminHeader";
 import LangShell, { T, TV } from "./_components/Lang";
 import { DeadlineNote } from "./_components/Deadline";
@@ -41,11 +41,10 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
   if (!user) redirect("/login?next=/admin/federal");
   if (!profile?.org_id) redirect("/login");
 
-  const [{ data: org }, policy, useCases, hitl, gov] = await Promise.all([
+  const [{ data: org }, policy, useCases, gov] = await Promise.all([
     createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle(),
     loadPolicy(profile.org_id),
     loadUnUseCases(profile.org_id),
-    loadHitlConfig(profile.org_id),
     loadGov(profile.org_id),
   ]);
   // The dashboard counts only the entities linked to the active country (the country switch in the header); every entity is UAE until an admin links it elsewhere.
@@ -159,7 +158,7 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
             dashboard={dashboard}
             useCases={scoped}
             canEdit={profile.role === "admin"}
-            hitl={hitl}
+            editableRisks={scoped.filter((uc) => perms.can("risk.edit", uc.id)).map((uc) => uc.id)}
             gatesAdded={gatesAdded}
             journeys={Object.fromEntries(journeys)}
             sops={sops}

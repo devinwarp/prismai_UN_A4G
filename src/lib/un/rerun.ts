@@ -20,7 +20,7 @@ export interface RerunRequest {
   status: "open" | "done"; resolved_by: string | null; resolved_at: string | null; run_id: string | null;
 }
 export interface RerunState { hasRun: boolean; lastRunAt: string | null; open: RerunRequest | null; stale: StaleInfo | null }
-export interface StaleInfo { since: string; why: "country_rules" | "country_policy" | "sop" | "profile" }
+export interface StaleInfo { since: string; why: "country_rules" | "country_policy" | "sop" | "profile" | "risk" }
 
 /** What the rerun icon on a dashboard row shows. */
 export type RerunButton = "ready" | "needs_request" | "requested" | "no_run";
@@ -68,6 +68,7 @@ export function staleSince(entries: LogLike[], o: { country: string; ext: string
     else if (e.kind === "policy_added" && (p.policy as { country?: string } | undefined)?.country === o.country) why = "country_policy";
     else if (e.kind === "sop_changed" && p.use_case === o.ext) why = "sop";
     else if (e.kind === "profile_changed" && p.use_case === o.ext) why = "profile";
+    else if (e.kind === "use_case_risk" && p.use_case === o.ext) why = "risk";
     if (why && e.at > o.lastRunAt && (!hit || e.at > hit.since)) hit = { since: e.at, why };
   }
   return hit;
