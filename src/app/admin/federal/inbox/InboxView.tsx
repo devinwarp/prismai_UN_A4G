@@ -71,7 +71,7 @@ function Card({ item, act, onMsg, waiting }: { item: InboxItem; act: (a: string,
   return (
     <li className="border-t border-line py-4 first:border-t-0 first:pt-0">
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-        <WorkIcon kind={tag} />
+        <WorkIcon kind={tag} compact />
         <p className="font-medium">{item.subject}</p>
       </div>
       <p className="mt-1 text-xs text-ink-soft">
@@ -170,6 +170,7 @@ export default function InboxView() {
               <ul className="mt-3 divide-y divide-line text-sm">
                 {closed.slice(0, 50).map((i) => (
                   <li key={i.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                    <WorkIcon kind={i.status === "done" && i.handler === "agent" ? "agent_done" : "human"} compact />
                     <span className="font-medium">{i.subject}</span>
                     <span className="text-xs text-ink-soft">{i.status === "done" ? tr(lang, "ib.archive.done", "Done") : tr(lang, "ib.archive.away", "Put away")} · <bdi dir="ltr">{when(i.resolved_at ?? i.created_at)}</bdi></span>
                     {i.status === "dismissed" && <button type="button" className="ms-auto text-sm underline underline-offset-4" onClick={() => void act("restore", i.id)}>{tr(lang, "ib.restore", "Bring back")}</button>}
