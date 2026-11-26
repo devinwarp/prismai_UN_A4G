@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
 import { requireFederalToolAccess } from "@/lib/un/federal-read-access";
-import { isSuperUser } from "@/lib/un/people-directory";
+import { canCompareCountries as mayCompareCountries } from "@/lib/un/people-directory";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { baselineRun, companyView, indexOfCountry, loadState, scopeOf } from "@/lib/un/country-actions";
 import { federalCountryOf } from "@/lib/un/federal-country";
@@ -42,7 +42,7 @@ export default async function CountryPage({ searchParams }: { searchParams: Prom
   const countryPolicy = basePolicy && (country.id === "UAE" ? basePolicy : {
     ...basePolicy, ...(countryTarget ?? { name: `${country.name}: agentic AI deployment`, jurisdiction: country.name, source_url: null, deadline: null }),
   });
-  const canCompareCountries = isSuperUser(user.id, profile.role);
+  const canCompareCountries = mayCompareCountries(user.id, profile.role);
 
   const infos = await Promise.all(allCountries(state).map(async (c) => ({ c, info: await indexOfCountry(d, state, c.id) })));
   // what is required before the process can be run under a country: its policy, for every country that has no knowledge base yet

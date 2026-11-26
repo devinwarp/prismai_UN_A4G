@@ -6,6 +6,12 @@ import type { Person } from "./roles-store";
 export const isSuperUser = (userId: string, role: string | null, designatedId = process.env.FEDERAL_SUPER_USER_ID?.trim()) =>
   role === "platform" && userId === designatedId;
 
+/** Who may open Federal Compare and compare countries side by side: the designated super user, and the read-only viewer account the judges use, so a judge
+ * sees every feature the super user sees. Both pages only read; every route that writes still refuses a viewer. The people directory is NOT opened
+ * this way: it holds real people's details, and the judge account is shared in public. */
+export const canCompareCountries = (userId: string, role: string | null, designatedId = process.env.FEDERAL_SUPER_USER_ID?.trim()) =>
+  isSuperUser(userId, role, designatedId) || role === "viewer";
+
 export function scopePeople<T extends { id: string }>(data: { people: Person[]; rows: AssignmentRow[]; useCases: T[]; federal: MemberRow[] }, userId: string, role: string | null) {
   const mine = data.rows.filter((row) => row.user_id === userId && !row.revoked_at);
   const assignments = mine.flatMap((row): Assignment[] => (ROLES as readonly string[]).includes(row.role) ? [{
