@@ -253,7 +253,12 @@ html[data-theme="ink"] .paper-bg::after {
 @keyframes bar-grow { from { transform: scaleX(0); } }
 .bar-grow { transform-origin: left center; animation: bar-grow 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
+/* Landing: the six seal dots fill in one after another, once. */
+@keyframes seal-fill { from { background-color: transparent; transform: scale(0.7); } }
+.seal-dot { animation: seal-fill 0.5s cubic-bezier(0.22, 1, 0.36, 1) both; animation-delay: calc(var(--i, 0) * 140ms + 300ms); }
+
 @media (prefers-reduced-motion: reduce) {
+  .seal-dot { animation: none; }
   .bar-grow { animation: none; }
   .typing-dot, .node-live { animation: none; }
   .marquee-track { animation: none; }

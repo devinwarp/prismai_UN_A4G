@@ -26,7 +26,7 @@ import LangShell, { T, TV } from "./_components/Lang";
 import { DeadlineNote } from "./_components/Deadline";
 import FederalPanel from "./FederalPanel";
 import { loadFederalReadAccess } from "@/lib/un/federal-read-access";
-import { isSuperUser } from "@/lib/un/people-directory";
+import { canCompareCountries } from "@/lib/un/people-directory";
 
 // The dashboard depends on the active country, which changes at any time: never prerender it
 export const dynamic = "force-dynamic";
@@ -148,7 +148,7 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
             emptyState={emptyState}
             noTarget={!hasTarget}
             countryId={active.id}
-            canCompare={isSuperUser(user.id, profile.role)}
+            canCompare={canCompareCountries(user.id, profile.role)}
             showFederalTools={access.allCases}
             countryReady={countryReady}
             setupEntities={setupEntities}

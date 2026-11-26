@@ -11,7 +11,8 @@ export const loadFederalReadAccess = cache(async (orgId: string, userId: string,
     return { allCases: true, browseCountries: true, caseIds: new Set<string>() };
   }
   if (role === "viewer" || (process.env.OFFLINE === "1" && role && (ROLES as readonly string[]).includes(role))) {
-    return { allCases: true, browseCountries: false, caseIds: new Set<string>() };
+    // read-only: a viewer (the judge account) may look at any country; nothing about it writes
+    return { allCases: true, browseCountries: true, caseIds: new Set<string>() };
   }
   const assignments = await loadAssignments(orgId, userId);
   const caseIds = new Set(assignments.flatMap((a) => a.scope.kind === "use_case" ? [a.scope.use_case_id] : []));

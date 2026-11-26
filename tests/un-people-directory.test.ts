@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isSuperUser, scopePeople } from "../src/lib/un/people-directory.ts";
+import { canCompareCountries, isSuperUser, scopePeople } from "../src/lib/un/people-directory.ts";
 import type { AssignmentRow } from "../src/lib/un/role-admin.ts";
 
 const assignment = (userId: string, useCaseId: string, revokedAt: string | null = null): AssignmentRow => ({
@@ -47,4 +47,11 @@ test("Compare is reserved for the designated platform account", () => {
   assert.equal(isSuperUser("other", "platform", "designated"), false);
   assert.equal(isSuperUser("designated", "admin", "designated"), false);
   assert.equal(isSuperUser("designated", "platform", ""), false);
+});
+
+test("a read-only viewer (the judge account) can compare countries like the super user, and an ordinary employee cannot", () => {
+  assert.equal(canCompareCountries("designated", "platform", "designated"), true);
+  assert.equal(canCompareCountries("judge", "viewer", "designated"), true);
+  assert.equal(canCompareCountries("someone", "employee", "designated"), false);
+  assert.equal(canCompareCountries("someone", "admin", "designated"), false);
 });
