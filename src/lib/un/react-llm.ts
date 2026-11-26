@@ -1,4 +1,5 @@
-import { CHAT_MODEL, chatCompletion, parseLlmJson } from "../llm.ts";
+import { CHAT_MODEL, chatCompletion, parseLlmJson, SijilBlockedError } from "../llm.ts";
+import { agentLlmEndpoint } from "./agent-llm.ts";
 import { ruleReasoner, type Action, type Reflection, type Reflector, type ReactState, type Reasoner } from "./react-sop.ts";
 
 // A language-model reasoner for the ReAct loop in react-sop.ts. It only proposes the next thought and
@@ -74,15 +75,22 @@ export function llmReasoner(o: LlmReasonerOptions = {}): LlmReasoner {
   const model = o.model ?? (process.env.AGENT_LLM_MODEL || CHAT_MODEL);
   const usage: LlmUsage = { calls: 0, fallbacks: 0, prompt_tokens: 0, completion_tokens: 0, cost: 0 };
   const fallback = o.fallback ?? ruleReasoner;
-  const chat: ChatFn = o.chat ?? (({ system, user }) => chatCompletion({
-    system, messages: [{ role: "user", content: user }], maxTokens: 700, timeoutMs: 60_000, seed: 7,
-    ...(process.env.AGENT_LLM_MODEL ? { model: process.env.AGENT_LLM_MODEL } : {}),
-    onUsage: (u) => { usage.prompt_tokens += u?.prompt_tokens ?? 0; usage.completion_tokens += u?.completion_tokens ?? 0; usage.cost += u?.cost ?? 0; },
-  }));
+  const chat: ChatFn = o.chat ?? (({ system, user }) => {
+    // AGENT_LLM_BASE_URL routes the call through the Sijil node, which
+    // screens the exact prompt before inference; a block throws
+    // SijilBlockedError and must never fall back to the rule reasoner.
+    const ep = agentLlmEndpoint();
+    return chatCompletion({
+      system, messages: [{ role: "user", content: user }], maxTokens: 700, timeoutMs: 60_000, seed: 7,
+      ...(process.env.AGENT_LLM_MODEL ? { model: process.env.AGENT_LLM_MODEL } : {}),
+      ...(ep ? { baseUrl: ep.baseUrl, apiKey: ep.apiKey } : {}),
+      onUsage: (u) => { usage.prompt_tokens += u?.prompt_tokens ?? 0; usage.completion_tokens += u?.completion_tokens ?? 0; usage.cost += u?.cost ?? 0; },
+    });
+  });
   const reasoner: Reasoner = async (s) => {
     usage.calls++;
     try { return parseStep(await chat({ system: o.system ?? SYSTEM, user: promptFor(s) })); }
-    catch { usage.fallbacks++; return fallback(s); }
+    catch (e) { if (e instanceof SijilBlockedError) throw e; usage.fallbacks++; return fallback(s); }
   };
   return { reasoner, usage, model };
 }
@@ -108,10 +116,14 @@ export interface LlmReflector { reflect: Reflector; usage: ReflectUsage; model: 
 export function llmReflector(o: { model?: string; chat?: ChatFn } = {}): LlmReflector {
   const model = o.model ?? (process.env.REFLECT_LLM_MODEL || process.env.AGENT_LLM_MODEL || CHAT_MODEL);
   const usage: ReflectUsage = { calls: 0, said_no: 0, errors: 0, prompt_tokens: 0, completion_tokens: 0 };
-  const chat: ChatFn = o.chat ?? (({ system, user }) => chatCompletion({
-    system, messages: [{ role: "user", content: user }], maxTokens: 1500, timeoutMs: 60_000, model, json: true,
-    onUsage: (u) => { usage.prompt_tokens += u?.prompt_tokens ?? 0; usage.completion_tokens += u?.completion_tokens ?? 0; },
-  }));
+  const chat: ChatFn = o.chat ?? (({ system, user }) => {
+    const ep = agentLlmEndpoint();
+    return chatCompletion({
+      system, messages: [{ role: "user", content: user }], maxTokens: 1500, timeoutMs: 60_000, model, json: true,
+      ...(ep ? { baseUrl: ep.baseUrl, apiKey: ep.apiKey } : {}),
+      onUsage: (u) => { usage.prompt_tokens += u?.prompt_tokens ?? 0; usage.completion_tokens += u?.completion_tokens ?? 0; },
+    });
+  });
   const reflect: Reflector = async (question, passages, opts) => {
     usage.calls++;
     try {

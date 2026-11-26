@@ -6,7 +6,7 @@ import type { TuningState } from "@/lib/un/tuning-service";
 import { btnGhost, btnPrimary, field } from "../_components/ui";
 import { useAct, useT } from "./useTuning";
 
-const VERDICT_EN: Record<QVerdict, string> = { correct: "Correct", wrong_citation: "Wrong passage", went_outside: "Went outside", answered_anyway: "Answered, should not have" };
+const VERDICT_EN: Record<QVerdict, string> = { correct: "Correct", wrong_citation: "Wrong passage", went_outside: "Went outside", answered_anyway: "Answered, should not have", sijil_blocked: "Blocked by Sijil" };
 const GOOD = "var(--color-v-auto)";
 const BAD = "var(--color-v-nogo)";
 const short = (id: string) => id.split("#")[1] ?? id;

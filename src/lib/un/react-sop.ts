@@ -1,3 +1,4 @@
+import { SijilBlockedError } from "../llm.ts";
 import { bestSentence, type Chunk, type Hit } from "./kb.ts";
 import { loadSop, searchSopForAgent, type SopChunk } from "./sop-kb.ts";
 import { DEFAULT_REACT_CONFIG, termRegex, type GlossaryEntry, type ReactConfig, type RouteKind, type RouteRule } from "./react-config.ts";
@@ -280,7 +281,7 @@ export async function reactAnswer(sopId: string, question: string, opts: ReactOp
 
   for (let i = 0; i < max; i++) {
     let proposed: { thought: string; action: Action };
-    try { proposed = await reason(s); } catch (e) { return outside("The reasoner failed, so the answer cannot come from the knowledge base.", `Reasoner error: ${(e as Error).message.slice(0, 120)}`); }
+    try { proposed = await reason(s); } catch (e) { if (e instanceof SijilBlockedError) throw e; return outside("The reasoner failed, so the answer cannot come from the knowledge base.", `Reasoner error: ${(e as Error).message.slice(0, 120)}`); }
     const { thought } = proposed;
     const checked = checkAction(proposed.action, kinds);
     const rawTool = checked.ok ? checked.action.tool : checked.tool;
@@ -326,7 +327,7 @@ export async function reactAnswer(sopId: string, question: string, opts: ReactOp
       if (opts.reflect) {
         const passages = valid.map((id) => ({ chunk_id: id, text: s.retrieved.get(id)!.text.split("\n").slice(1).join("\n") }));
         let refl: Reflection | null = null;
-        try { refl = await opts.reflect(question, passages, { list: !!s.enumerated?.length }); } catch (e) { refl = { answers: false, quote: "", why: `the reflection step failed: ${(e as Error).message.slice(0, 100)}` }; }
+        try { refl = await opts.reflect(question, passages, { list: !!s.enumerated?.length }); } catch (e) { if (e instanceof SijilBlockedError) throw e; refl = { answers: false, quote: "", why: `the reflection step failed: ${(e as Error).message.slice(0, 100)}` }; }
         const v = verifyReflection(refl, passages);
         if (!v.ok) {
           // a rejected finish is not an answer: drop what was cited, so only a new search can support a new one

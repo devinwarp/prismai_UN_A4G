@@ -1,4 +1,5 @@
-import { chatCompletion, CHAT_MODEL, parseLlmJson } from "../llm.ts";
+import { chatCompletion, CHAT_MODEL, parseLlmJson, SijilBlockedError } from "../llm.ts";
+import { agentLlmEndpoint } from "./agent-llm.ts";
 import { checkCitizenMessage, PROMISE } from "./citizen-message.ts";
 import { discloseAiMessage } from "./ai-disclosure.ts";
 
@@ -90,15 +91,20 @@ type Chat = (a: { system: string; user: string }) => Promise<string>;
 /** The drafter: write, check with `draftProblems`, and revise up to `maxRevisions` times with the problems named. `chat`
  * is injectable for tests; by default it calls src/lib/llm.ts with AGENT_LLM_MODEL (else CHAT_MODEL). A failed first call
  * throws: the case then has no draft and fails visibly. A failed revision keeps the last draft. */
-export function makeDrafter(o: { model?: string; chat?: Chat; maxRevisions?: number } = {}): NoticeDrafter {
+export function makeDrafter(o: { model?: string; chat?: Chat; maxRevisions?: number; system?: string } = {}): NoticeDrafter {
   const model = o.model ?? (process.env.AGENT_LLM_MODEL || CHAT_MODEL);
   const maxRevisions = o.maxRevisions ?? MAX_REVISIONS;
   const usage: DraftUsage = { calls: 0, failures: 0, first_pass_ok: 0, revised: 0, revised_ok: 0, unresolved: 0, prompt_tokens: 0, completion_tokens: 0 };
-  const chat: Chat = o.chat ?? (({ system, user }) => chatCompletion({
-    system, messages: [{ role: "user", content: user }], maxTokens: 2500, timeoutMs: 90_000, model, json: true,
-    onUsage: (u) => { usage.prompt_tokens += u?.prompt_tokens ?? 0; usage.completion_tokens += u?.completion_tokens ?? 0; },
-  }));
-  const write = async (user: string) => { usage.calls++; return parseDraft(await chat({ system: NOTICE_SYSTEM, user })); };
+  const chat: Chat = o.chat ?? (({ system, user }) => {
+    const ep = agentLlmEndpoint();
+    return chatCompletion({
+      system, messages: [{ role: "user", content: user }], maxTokens: 2500, timeoutMs: 90_000, model, json: true,
+      ...(ep ? { baseUrl: ep.baseUrl, apiKey: ep.apiKey } : {}),
+      onUsage: (u) => { usage.prompt_tokens += u?.prompt_tokens ?? 0; usage.completion_tokens += u?.completion_tokens ?? 0; },
+    });
+  });
+  const system = o.system ?? NOTICE_SYSTEM;
+  const write = async (user: string) => { usage.calls++; return parseDraft(await chat({ system, user })); };
   const draft: Drafter = async (f) => {
     let body: string;
     try { body = await write(noticePrompt(f)); } catch (e) { usage.failures++; throw e; }
@@ -106,7 +112,7 @@ export function makeDrafter(o: { model?: string; chat?: Chat; maxRevisions?: num
     if (!problems.length) { usage.first_pass_ok++; return discloseAiMessage(body); }
     usage.revised++;
     for (let i = 0; i < maxRevisions && problems.length; i++) {
-      try { body = await write(revisionPrompt(f, body, problems)); } catch { usage.failures++; break; }
+      try { body = await write(revisionPrompt(f, body, problems)); } catch (e) { if (e instanceof SijilBlockedError) throw e; usage.failures++; break; }
       problems = draftProblems(body, f);
     }
     if (problems.length) usage.unresolved++; else usage.revised_ok++;

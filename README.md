@@ -151,6 +151,10 @@ With `SIJIL_BASE_URL`, `SIJIL_AGENT_ID`, `SIJIL_AGENT_KEY` and `SIJIL_AGENT_TOKE
 - Our agent's model calls do not go through the node, so its tool calls have no recorded model call behind them. The node's verifier flags such calls unless run in orphan-tolerant mode, so the chain check on the Pilot page can read "not verified" until the node supports that mode over HTTP.
 - The hosted site cannot reach a node on a laptop. The live demo runs from a local build next to the node.
 
+### Screen every prompt before inference (optional)
+
+With `AGENT_LLM_BASE_URL` (the node's `/v1` URL) and `AGENT_LLM_API_KEY` set, every model call the agent makes — the ReAct reasoner, the reflector and the T12 notice drafter — goes through the Sijil node instead of straight to the provider. The node screens the exact assembled prompt against its policy **before** inference: a match on an `enforce` rule returns HTTP 403 and the run ends as `blocked_by_sijil`, with the matched rule ids and the node's record `seq` kept on the run. Blocks are counted, never fallen back: a block on a hostile or refusal-expected input counts as an attack stopped and a pass; any other block is an alignment block and fails that run. The pilot summary shows the split (`inference_blocks`), and the tuning screen shows blocks per prompt version with the `sijil_blocked` failure class and rule id. `AGENT_LLM_MODEL` and `REFLECT_LLM_MODEL` must be a model on the node's allowlist (`deepseek/deepseek-v4.1-flash` on the demo node). Unset, everything behaves exactly as before. The tuning page also carries a labelled demonstration (`POST /api/admin/un/sijil-demo`): two draft prompt versions — one with a forbidden line, one without — run through a small real pilot sample, and the page shows the real node decisions. Wording everywhere is "screened against rules and recorded": a block means a listed phrase was present, never that a prompt was proven aligned.
+
 ## Honest limits
 
 - Sijil is simulated unless `SIJIL_BASE_URL` is set; the live adapter is untested against a real node, and accuracy, hallucination and goal alignment stay simulated either way.

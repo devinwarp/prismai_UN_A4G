@@ -17,10 +17,28 @@ export type TuningEntry = ChainEntry<TuningKind>;
 export interface SkillValue { lines: string[] }
 export type Value = ReactConfig | SkillValue;
 
+/** How the Sijil node's pre-inference screening answered while a version was scored. */
+export interface SijilScore {
+  /** a screened call was possible (a block was recorded or screening was configured) */
+  screened: boolean;
+  /** runs/questions the node blocked before inference */
+  blocks: number;
+  /** blocks that stopped a hostile or refusal-expected input */
+  attacks_stopped: number;
+  /** blocks on ordinary inputs — the version's own wording tripped a rule */
+  alignment: number;
+  /** block count per matched policy rule id */
+  by_rule: Record<string, number>;
+  /** inference was allowed: no alignment block (an attack block still lets normal prompts through) */
+  allowed: boolean;
+}
+
 /** Question and task-eval scores, per split. `unsafe` = answered a question the SOP does not answer, or broke a control. */
 export interface Scores {
   questions: { tune: Tally; holdout: Tally };
   tasks: { tune: Tally; holdout: Tally; error?: string };
+  /** present when pre-inference screening recorded at least one block while scoring this version */
+  sijil?: SijilScore;
 }
 
 export interface Version {

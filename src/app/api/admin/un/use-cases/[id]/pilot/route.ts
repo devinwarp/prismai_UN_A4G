@@ -3,7 +3,8 @@ import { bad, notFound, requirePermission } from "@/lib/api-auth";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { isUuid } from "@/lib/un/model";
 import { buildReport } from "@/lib/un/pilot";
-import { couldNotRun, executePilot, generatedCases, planPilot, sealSummary, spreadSample, type AgentInfo } from "@/lib/un/pilot-run";
+import { couldNotRun, executePilot, generatedCases, inferenceBlockSummary, planPilot, sealSummary, spreadSample, type AgentInfo } from "@/lib/un/pilot-run";
+import { agentLlmEndpoint } from "@/lib/un/agent-llm";
 import { agentConfigFromEnv, configProblem, createSealer, verifyChain, type AgentConfig } from "@/lib/un/sijil-agent-client";
 import { costOf, metered, recordToolCalls } from "@/lib/un/cost";
 import { makeDrafter } from "@/lib/un/notice-draft";
@@ -106,6 +107,9 @@ export async function POST(request: Request, { params }: Ctx) {
     const chain = sealed.runs_sealed > 0 ? await verifyChain(sijilCfg) : null;
     plan.sijil = { ...sealed, chain_ok: chain ? chain.ok : null, ...(chain && !chain.ok && chain.reason ? { chain_reason: chain.reason } : {}), ...(chain && !chain.ok && chain.orphan ? { chain_orphan: true } : {}) };
   } else if (sijilNote) plan.sijil = { source: "simulated", sealed: 0, runs_sealed: 0, runs: runs.length, chain_ok: null, halted: false, note: sijilNote };
+  // pre-inference screening: when the agent's model calls go through the Sijil node, the plan records how its
+  // blocks split into attacks stopped and alignment blocks (absent when screening is not configured)
+  try { if (agentLlmEndpoint() || runs.some((r) => r.sijil_blocks?.length)) plan.inference_blocks = inferenceBlockSummary(runs); } catch { /* an invalid AGENT_LLM_BASE_URL already failed the runs that needed it */ }
   const pilotCost = costOf(whole.usage, table);
   const agent: AgentInfo = { reasoner: llm ? "llm" : "rule", ...(llm ? { model: llm.model, usage: { calls: llm.usage.calls, fallbacks: llm.usage.fallbacks, prompt_tokens: llm.usage.prompt_tokens, completion_tokens: llm.usage.completion_tokens } } : {}), ...(drafter ? { drafter: { model: drafter.model, ...drafter.usage } } : {}), ...(reflector ? { reflection: { model: reflector.model, ...reflector.usage } } : {}), ...(only || wantReps < params_.min_runs_per_test ? { sample: { tests: only ? only.size : bound.length, of: bound.length, reps: wantReps } } : {}) };
   plan.agent = { ...agent, cost: { usage: whole.usage, usd: pilotCost.usd, unpriced: pilotCost.unpriced, gross_calls: whole.usage.total.calls + whole.usage.total.tool_calls } };

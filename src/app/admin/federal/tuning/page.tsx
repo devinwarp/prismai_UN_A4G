@@ -11,6 +11,7 @@ import { loadState, PROFILES } from "@/lib/un/tuning-service";
 import ToolWorkspace, { WorkspacePane } from "../_components/ToolWorkspace";
 import { T } from "../_components/Lang";
 import TuningBoard from "./TuningBoard";
+import SijilDemo from "./SijilDemo";
 
 export const metadata: Metadata = { title: "Tune the agent", robots: { index: false, follow: false } };
 export const dynamic = "force-dynamic";
@@ -34,6 +35,7 @@ export default async function TuningPage({ searchParams }: { searchParams: Promi
           <p className="text-sm text-ink-soft"><T k="tn.country.empty" en="No demo agent is available to tune in this country." /></p>
         </WorkspacePane>
       )}
+      <SijilDemo canRun={canEdit} />
     </ToolWorkspace>
   );
 }

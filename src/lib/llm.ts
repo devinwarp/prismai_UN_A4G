@@ -26,6 +26,12 @@ interface ChatRequestOpts {
    * neither; reasoning models ignore temperature), so code-computed
    * numbers and prompt anchors carry run-to-run stability, not this. */
   seed?: number;
+  /** Send this call to another OpenAI-compatible base URL instead of
+   * LLM_BASE_URL — the Sijil node's /v1 endpoint screens the exact
+   * prompt before inference. `apiKey` is sent as the Bearer token when
+   * set; the Bedrock branch is skipped for a per-call override. */
+  baseUrl?: string;
+  apiKey?: string;
   /** Multi-turn conversation id: caches the system prompt and history
    * across turns and keeps the conversation on one provider. */
   conversationId?: string;
@@ -99,8 +105,50 @@ export function converseReply(data: { output?: { message?: { content?: { text?: 
   return { choices: [{ message: { content: text } }], usage: { prompt_tokens: data.usage?.inputTokens, completion_tokens: data.usage?.outputTokens } };
 }
 
-async function postChat(body: Record<string, unknown>, timeoutMs?: number) {
-  if (isBedrock()) {
+/** The Sijil node refused the prompt before inference: HTTP 403 with
+ * `{"sijill":{"seq","decision":"block","rule_hits":[...]}}`. Distinct
+ * from an auth 403 (LlmHttpError) — callers must surface it, never
+ * fall back. `rules` are the matched policy rule ids, `seq` the node's
+ * record sequence number (its audit trail). */
+export class SijilBlockedError extends Error {
+  readonly rules: string[];
+  readonly seq: number;
+  readonly recordHash?: string;
+  constructor(rules: string[], seq: number, recordHash?: string) {
+    super(`Sijil blocked the prompt before inference (seq ${seq}): ${rules.join(", ") || "policy"}`);
+    this.name = "SijilBlockedError";
+    this.rules = rules;
+    this.seq = seq;
+    this.recordHash = recordHash;
+  }
+}
+
+interface ChatEndpoint { baseUrl: string; apiKey?: string }
+
+/** A node policy block arrives as 403 + a `sijill.decision === "block"`
+ * body — parse it into SijilBlockedError. Anything else returns null so
+ * the caller raises the usual LlmHttpError. */
+async function sijilBlock(res: Response): Promise<SijilBlockedError | null> {
+  if (res.status !== 403) return null;
+  let j: unknown;
+  try { j = await res.clone().json(); } catch { return null; }
+  const s = (j as { sijill?: { seq?: unknown; decision?: unknown; rule_hits?: unknown; record_hash?: unknown } } | null)?.sijill;
+  if (!s || s.decision !== "block") return null;
+  const hits = Array.isArray(s.rule_hits) ? s.rule_hits : [];
+  const rules = hits.map((h) => {
+    if (typeof h === "string") return h;
+    if (h && typeof h === "object") {
+      const o = h as { id?: unknown; rule?: unknown; rule_id?: unknown };
+      return String(o.id ?? o.rule ?? o.rule_id ?? "");
+    }
+    return "";
+  }).filter(Boolean);
+  return new SijilBlockedError(rules, typeof s.seq === "number" ? s.seq : 0,
+    typeof s.record_hash === "string" ? s.record_hash : undefined);
+}
+
+async function postChat(body: Record<string, unknown>, timeoutMs?: number, endpoint?: ChatEndpoint) {
+  if (!endpoint && isBedrock()) {
     if (body.tools) throw new Error("The web-search tool is not available on Bedrock");
     const base = (process.env.LLM_BASE_URL ?? "").replace(/\/+$/, "");
     const call = (b: Record<string, unknown>) => fetch(`${base}/model/${encodeURIComponent(String(b.model))}/converse`, {
@@ -122,16 +170,20 @@ async function postChat(body: Record<string, unknown>, timeoutMs?: number) {
     if (!res.ok) throw new LlmHttpError(res.status, await res.text());
     return converseReply(await res.json());
   }
-  const res = await fetch(OPENROUTER_URL, {
+  const res = await fetch(endpoint ? `${endpoint.baseUrl.replace(/\/+$/, "")}/chat/completions` : OPENROUTER_URL, {
     method: "POST",
     signal: AbortSignal.timeout(timeoutMs ?? 45_000),
     headers: {
-      Authorization: `Bearer ${process.env.LLM_API_KEY ?? process.env.OPENROUTER_API_KEY}`,
+      ...(endpoint?.apiKey || !endpoint
+        ? { Authorization: `Bearer ${endpoint?.apiKey ?? process.env.LLM_API_KEY ?? process.env.OPENROUTER_API_KEY}` }
+        : {}),
       "Content-Type": "application/json",
     },
     body: JSON.stringify(body),
   });
   if (!res.ok) {
+    const blocked = await sijilBlock(res);
+    if (blocked) throw blocked;
     throw new LlmHttpError(res.status, await res.text());
   }
   return res.json();
@@ -158,8 +210,9 @@ function meter(model: string, usage: { prompt_tokens?: number; completion_tokens
 
 export async function chatCompletion(opts: ChatRequestOpts): Promise<string> {
   const model = opts.model ?? CHAT_MODEL;
+  const endpoint = opts.baseUrl ? { baseUrl: opts.baseUrl, apiKey: opts.apiKey } : undefined;
   let data;
-  try { data = await postChat(requestBody(opts), opts.timeoutMs); } catch (e) { meter(model, undefined); throw e; }
+  try { data = await postChat(requestBody(opts), opts.timeoutMs, endpoint); } catch (e) { meter(model, undefined); throw e; }
   meter(model, data.usage);
   opts.onUsage?.(data.usage);
   return data.choices?.[0]?.message?.content ?? "";
