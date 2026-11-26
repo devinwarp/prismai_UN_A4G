@@ -366,7 +366,7 @@ export default function FederalPanel({
                 <th scope="col" className={th}>{tr(lang, "ua.col.quad", "Quadrant")}</th>
                 {RISK_FIELDS.map((field) => <th key={field} scope="col" className={`${th} whitespace-nowrap text-center`}>{tr(lang, RISK_LABELS[field][0], RISK_LABELS[field][1])}</th>)}
                 <th scope="col" className={th}>{tr(lang, "ua.col.stage", "Stage")}</th>
-                <th scope="col" className={`${th} min-w-[7.5rem]`}>{tr(lang, "wk.col", "Work by")}</th>
+                <th scope="col" className={`${th} min-w-[7.5rem] text-center`}>{tr(lang, "wk.col", "Work by")}</th>
                 <th scope="col" className={th}>{tr(lang, "ua.col.verdict", "Verdict")}</th>
                 <th scope="col" className={th}><T k="jb.col" en="Journey" /></th>
                 <th scope="col" className="px-2 text-center font-normal">{tr(lang, "hl.compliant", "Aligned")}</th>
@@ -413,7 +413,7 @@ export default function FederalPanel({
                   <td className="px-2">
                     <span className="inline-flex items-center rounded-md border border-line px-2 py-0.5 font-mono text-[11px]">{stageLabel(lang, u.stage)}</span>
                   </td>
-                  <td className="min-w-[7.5rem] px-2"><WorkIcon kind={work[u.id] ?? "human"} compact /></td>
+                  <td className="min-w-[7.5rem] px-2 text-center"><WorkIcon kind={work[u.id] ?? "human"} compact /></td>
                   <td className="px-2">
                     <VerdictBadge verdict={u.verdict} />
                     {(gatesAdded[u.ext_id] ?? 0) > 0 && (
