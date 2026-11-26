@@ -127,3 +127,13 @@ test("the bell counts what needs a person: open human actions, approvals and con
   ];
   assert.deepEqual(countsOf(items), { todo: 3, info: 1, agent: 1 });
 });
+
+test("with no governance admin, a request for approval goes to the platform admin as an action, not to nobody", () => {
+  const noGov = holders.filter((h) => h.user_id !== "gov");
+  const rs = route("targets", noGov);
+  assert.equal(letterOf(rs, "owner"), "R");
+  assert.equal(letterOf(rs, "super"), "AR");
+  assert.equal(rs.find((r) => r.user_id === "super")?.escalated_from, "governance_admin");
+  assert.equal(letterOf(route("targets", holders), "super"), "I", "with a governance admin the platform admin is only told");
+  assert.equal(letterOf(route("deploy", noGov), "super"), "I", "a step that does not need the governance admin is unaffected");
+});

@@ -12,9 +12,11 @@ import SopIntake, { type SopIntakeRow } from "./SopIntake";
 
 export type SetupEntity = { name: string; hasGoals: boolean; goalsReady: boolean };
 
-export default function SetupJourney({ country, countryReady, entities, entity, selectEntity, canEdit, cases, attached, existingIds, review, sopRows }: {
+export default function SetupJourney({ country, countryReady, governanceAppointed = true, entities, entity, selectEntity, canEdit, cases, attached, existingIds, review, sopRows }: {
   country: string;
   countryReady: boolean;
+  /** a country with entities needs a governance admin: until one is appointed the country step is not done */
+  governanceAppointed?: boolean;
   entities: SetupEntity[];
   entity: SetupEntity | undefined;
   selectEntity: (name: string) => void;
@@ -28,7 +30,7 @@ export default function SetupJourney({ country, countryReady, entities, entity, 
   const lang = useLang();
   const dialog = useRef<HTMLDialogElement>(null);
   const goalsReady = !!entity?.goalsReady;
-  const completed = [countryReady, goalsReady, cases > 0, cases > 0 && attached === cases];
+  const completed = [countryReady && governanceAppointed, goalsReady, cases > 0, cases > 0 && attached === cases];
   const next = completed.indexOf(false);
   const addEntityHref = countryHref("/admin/federal/goals?add=1#manage", country);
   const goalsHref = entity ? countryHref("/admin/federal/goals", country, entity.name) : addEntityHref;
@@ -40,8 +42,11 @@ export default function SetupJourney({ country, countryReady, entities, entity, 
   const steps: { title: string; detail: string; action?: ReactNode; blocker: string }[] = [
     {
       title: tr(lang, "setup.country", "Country setup"),
-      detail: countryReady ? tr(lang, "setup.country_ready", "Rules and policy sources are ready.") : tr(lang, "setup.country_needed", "Set up the rules and policy knowledge base."),
-      action: <Link className={actionClass} href={countryHref(canEdit ? "/admin/federal/country#manage" : "/admin/federal/country", country)}>{tr(lang, "setup.open_country", "Open country setup")}</Link>,
+      detail: !countryReady ? tr(lang, "setup.country_needed", "Set up the rules and policy knowledge base.")
+        : !governanceAppointed ? tr(lang, "setup.gov_needed", "Appoint a governance admin: targets and test sets cannot be approved without one.")
+          : tr(lang, "setup.country_ready", "Rules and policy sources are ready, and a governance admin is appointed."),
+      action: <><Link className={actionClass} href={countryHref(canEdit ? "/admin/federal/country#manage" : "/admin/federal/country", country)}>{tr(lang, "setup.open_country", "Open country setup")}</Link>
+        {countryReady && !governanceAppointed && canEdit && <Link className={actionClass} href="/admin/federal/people">{tr(lang, "setup.appoint_gov", "Appoint a governance admin")}</Link>}</>,
       blocker: tr(lang, "setup.block_country", "Waiting for country setup."),
     },
     {

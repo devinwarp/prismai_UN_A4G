@@ -27,6 +27,8 @@ import { DeadlineNote } from "./_components/Deadline";
 import FederalPanel from "./FederalPanel";
 import { loadFederalReadAccess } from "@/lib/un/federal-read-access";
 import { canCompareCountries } from "@/lib/un/people-directory";
+import { countriesNeedingGovernanceAdmin } from "@/lib/un/people-agent";
+import { loadAssignmentRows } from "@/lib/un/roles-store";
 
 // The dashboard depends on the active country, which changes at any time: never prerender it
 export const dynamic = "force-dynamic";
@@ -86,6 +88,8 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
   const hasTarget = active.id === "UAE" || !!own;
   const shown = active.id === "UAE" ? policy : own ? { ...policy, ...own } : { ...policy, name: `${active.name}: agentic AI deployment`, jurisdiction: active.name, source_url: null, deadline: null };
   const dashboard = computeDashboard(shown, scoped);
+  // a country with entities must have a governance admin: until one is appointed, the setup journey's country step is not done
+  const governanceAppointed = !scoped.length || countriesNeedingGovernanceAdmin({ countriesWithEntities: [active.id], assignments: await loadAssignmentRows(profile.org_id) }).length === 0;
   const [{ journeys, attachedSopIds, automation }, intakeSummaries] = await Promise.all([
     loadJourneyDetails(profile.org_id, scoped),
     access.allCases ? loadSopIntakeSummaries(profile.org_id, scoped.map((entry) => entry.id)) : {},
@@ -151,6 +155,7 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
             canCompare={canCompareCountries(user.id, profile.role)}
             showFederalTools={access.allCases}
             countryReady={countryReady}
+            governanceAppointed={governanceAppointed}
             setupEntities={setupEntities}
             initialEntity={initialEntity}
             hasLicenceDemo={scoped.some((u) => sampleSopIdForUseCase(u))}

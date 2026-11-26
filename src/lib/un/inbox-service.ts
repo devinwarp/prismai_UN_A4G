@@ -38,11 +38,12 @@ export async function notify(orgId: string, n: Notice, now = new Date()): Promis
   const mine = overrides.filter((o) => o.step === n.step && (o.use_case_id ? o.use_case_id === n.place.use_case_id : !o.entity || o.entity === n.place.entity));
   const recipients = route(n.step, holders, mine).filter((r) => !(n.exclude ?? []).includes(r.user_id)).map((r) => (n.inform ? { ...r, letter: "I" as const, escalated_from: undefined } : r));
   const items: NewItem[] = recipients.map((r) => ({
-    kind: r.letter === "A" ? n.decisionKind ?? n.kind : n.kind,
+    // an accountable request, or one that came up because nobody holds the accountable position, is a decision for a person
+    kind: r.letter === "A" || r.escalated_from === "governance_admin" ? n.decisionKind ?? n.kind : n.kind,
     user_id: r.user_id,
     letter: r.letter,
     subject: n.subject,
-    body: r.escalated_from ? `${n.body}\n\nThis came to you because nobody holds the position of ${r.escalated_from.replace("_", " ")} here.` : n.body,
+    body: r.escalated_from ? `${n.body}\n\nThis came to you because nobody holds the position of ${r.escalated_from.replace("_", " ")} here. Appoint one, or decide it yourself if you may.` : n.body,
     entity: n.place.entity ?? null, country: n.place.country ?? null, use_case_id: n.place.use_case_id ?? null, link: n.link ?? null,
     payload: { ...(n.payload ?? {}), step: n.step }, dedupe_key: n.dedupe, escalated_from: r.escalated_from ?? null, created_by: n.created_by ?? "system",
   }));

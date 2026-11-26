@@ -75,8 +75,9 @@ export interface Recipient { user_id: string; letter: Letter; escalated_from?: P
 
 /**
  * Who receives an event of this step. Each holder gets the letter of their strongest position (a person who is Responsible and also Informed is Responsible).
- * An override (user_id, step -> letter) replaces the default for that person. If nobody holds a position that is Responsible or Accountable, the item goes
- * to the platform holders as an action (and `escalated_from` says whose it was), so work is never left with no one.
+ * An override (user_id, step -> letter) replaces the default for that person. If nobody holds a position that is Responsible, or nobody holds the position
+ * that is Accountable (for targets and test sets, the governance admin of the country), the item goes to the platform holders as an action (and
+ * `escalated_from` says whose it was), so a request is never left with no one.
  */
 export function route(step: Step, holders: Holder[], overrides: { user_id: string; letter: Letter }[] = []): Recipient[] {
   const rank: Record<Letter, number> = { AR: 5, R: 4, A: 3, C: 2, I: 1 };
@@ -88,12 +89,16 @@ export function route(step: Step, holders: Holder[], overrides: { user_id: strin
     if (letter) out.set(h.user_id, { user_id: h.user_id, letter });
   }
   const covered = (want: (l: Letter) => boolean) => [...out.values()].some((r) => want(r.letter));
+  const held = (p: Position) => holders.some((h) => h.positions.includes(p));
   const needs = POSITIONS.filter((p) => DEFAULT_RACI[step][p] === "AR" || DEFAULT_RACI[step][p] === "R");
-  if (!covered((l) => l === "R" || l === "AR") || (needs.length && !needs.some((p) => holders.some((h) => h.positions.includes(p))))) {
-    const platform = holders.filter((h) => h.positions.includes("platform"));
-    for (const h of platform) {
+  const accountable = POSITIONS.filter((p) => DEFAULT_RACI[step][p] === "A" || DEFAULT_RACI[step][p] === "AR");
+  const noResponsible = !covered((l) => l === "R" || l === "AR") || (needs.length > 0 && !needs.some(held));
+  const noAccountable = accountable.length > 0 && !accountable.some(held);
+  if (noResponsible || noAccountable) {
+    const missing = noAccountable ? accountable[0] : needs[0];
+    for (const h of holders.filter((x) => x.positions.includes("platform"))) {
       const cur = out.get(h.user_id);
-      if (!cur || (cur.letter !== "AR" && cur.letter !== "R")) out.set(h.user_id, { user_id: h.user_id, letter: "AR", escalated_from: needs[0] });
+      if (!cur || (cur.letter !== "AR" && cur.letter !== "R")) out.set(h.user_id, { user_id: h.user_id, letter: "AR", escalated_from: missing });
     }
   }
   return [...out.values()];
