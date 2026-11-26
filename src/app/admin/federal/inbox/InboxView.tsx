@@ -10,7 +10,8 @@ import WorkIcon from "../_components/WorkIcon";
 
 interface Settings { enabled: boolean; daily_cap: number }
 interface LogEntry { seq: number; at: string; action: string; outcome: "done" | "blocked" | "skipped" }
-interface Data { items: InboxItem[]; counts: { todo: number; info: number; agent: number }; settings: Settings; log: LogEntry[]; log_ok: boolean }
+interface Waiting { name: string; job_title: string | null; letter: Letter; mode: string; handler: string }
+interface Data { waiting?: Record<string, Waiting[]>; items: InboxItem[]; counts: { todo: number; info: number; agent: number }; settings: Settings; log: LogEntry[]; log_ok: boolean }
 interface Staged { job_title: string | null; role: string | null; entity: string | null; use_case_id: string | null; ext_id: string | null; suggested_email: string }
 
 const field = "mt-1 block w-full rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-lit focus:ring-1 focus:ring-lit";
@@ -61,7 +62,7 @@ function StagedUser({ item, onDone }: { item: InboxItem; onDone: (msg: string) =
   );
 }
 
-function Card({ item, act, onMsg }: { item: InboxItem; act: (a: string, id: string, extra?: Record<string, unknown>) => Promise<void>; onMsg: (m: string) => void }) {
+function Card({ item, act, onMsg, waiting }: { item: InboxItem; act: (a: string, id: string, extra?: Record<string, unknown>) => Promise<void>; onMsg: (m: string) => void; waiting?: Waiting[] }) {
   const lang = useLang();
   const staged = item.payload.staged as Staged | undefined;
   const draft = item.payload.draft as string | undefined;
@@ -78,6 +79,13 @@ function Card({ item, act, onMsg }: { item: InboxItem; act: (a: string, id: stri
         {item.escalated_from && <> · {tr(lang, "ib.escalated", "Escalated to you: nobody dealt with it in two working days.")}</>}
       </p>
       <p className="mt-2 text-sm whitespace-pre-line text-ink-soft">{item.body}</p>
+      {item.mode === "inform" && waiting && waiting.length > 0 && (
+        <p className="mt-1 text-xs text-ink-soft">
+          <span className="font-medium">{tr(lang, "ib.waiting", "Waiting on")}:</span>{" "}
+          {waiting.map((w, k) => <span key={k}>{k > 0 && "; "}{w.name}{w.job_title ? `, ${w.job_title}` : ""} ({w.mode === "approval" ? tr(lang, "ib.w.decide", "to decide") : w.mode === "consult" ? tr(lang, "ib.w.input", "asked for input") : tr(lang, "ib.w.act", "to act")}, {w.handler === "agent" ? tr(lang, "ib.w.agent", "their agent is on it") : tr(lang, "ib.w.human", "a person")})</span>)}
+        </p>
+      )}
+      {item.mode !== "inform" && item.status !== "done" && item.status !== "dismissed" && <p className="mt-1 text-xs text-ink-soft">{tr(lang, "ib.pending.you", "Pending on: you")}</p>}
       {item.blocked_reason && <p className="mt-2 rounded-lg border border-ember/40 bg-ember/10 px-3 py-2 text-sm text-ember">{tr(lang, "ib.blocked", "Your agent was stopped: {why}").replace("{why}", item.blocked_reason)}</p>}
       {item.mode === "approval" && <p className="mt-2 text-xs font-medium text-ink-soft">{tr(lang, "ib.decision.note", "A decision for a person. An agent does not take it.")}</p>}
       {staged && item.status !== "done" && <StagedUser item={item} onDone={onMsg} />}
@@ -99,12 +107,13 @@ function Card({ item, act, onMsg }: { item: InboxItem; act: (a: string, id: stri
   );
 }
 
-function Section({ id, title, items, act, onMsg }: { id: string; title: string; items: InboxItem[]; act: (a: string, id: string, extra?: Record<string, unknown>) => Promise<void>; onMsg: (m: string) => void }) {
+function Section({ id, title, items, act, onMsg, waiting, extra }: { id: string; title: string; items: InboxItem[]; act: (a: string, id: string, extra?: Record<string, unknown>) => Promise<void>; onMsg: (m: string) => void; waiting?: Record<string, Waiting[]>; extra?: React.ReactNode }) {
   const lang = useLang();
   return (
     <section aria-labelledby={id} className="rounded-2xl border border-line bg-card p-5">
       <h2 id={id} className="font-display text-xl font-medium">{title} <span className="font-mono text-sm text-ink-soft">({items.length})</span></h2>
-      {items.length === 0 ? <p className="mt-2 text-sm text-ink-soft">{tr(lang, "ib.empty", "Nothing here.")}</p> : <ul className="mt-3">{items.map((i) => <Card key={i.id} item={i} act={act} onMsg={onMsg} />)}</ul>}
+      {items.length > 1 && extra}
+      {items.length === 0 ? <p className="mt-2 text-sm text-ink-soft">{tr(lang, "ib.empty", "Nothing here.")}</p> : <ul className="mt-3">{items.map((i) => <Card key={i.id} item={i} act={act} onMsg={onMsg} waiting={waiting?.[i.id]} />)}</ul>}
     </section>
   );
 }
@@ -144,6 +153,7 @@ export default function InboxView() {
   const open = data.items.filter((i) => i.status !== "done" && i.status !== "dismissed");
   const by = (m: string) => open.filter((i) => i.mode === m && (i.handler === "human"));
   const withAgent = open.filter((i) => i.handler === "agent");
+  const closed = data.items.filter((i) => i.status === "done" || i.status === "dismissed");
   return (
     <div className="space-y-5">
       {error && <p role="alert" className="text-sm text-ember">{error}</p>}
@@ -153,7 +163,21 @@ export default function InboxView() {
           <Section id="ib-todo" title={tr(lang, "ib.todo", "To do")} items={by("action")} act={act} onMsg={onMsg} />
           <Section id="ib-decisions" title={tr(lang, "ib.decisions", "Decisions for you")} items={by("approval")} act={act} onMsg={onMsg} />
           <Section id="ib-consult" title={tr(lang, "ib.consult", "Your input is asked")} items={by("consult")} act={act} onMsg={onMsg} />
-          <Section id="ib-info" title={tr(lang, "ib.info", "For your information")} items={by("inform")} act={act} onMsg={onMsg} />
+          <Section id="ib-info" title={tr(lang, "ib.info", "For your information")} items={by("inform")} act={act} onMsg={onMsg} waiting={data.waiting} extra={<div className="mt-2 flex flex-wrap gap-3"><button type="button" className={btn} onClick={() => void act("dismiss_all", "")}>{tr(lang, "ib.dismissall", "Put all away")}</button><p className="self-center text-xs text-ink-soft">{tr(lang, "ib.archive.note", "Put away is an archive: nothing is deleted. Information is also put away after 14 days.")}</p></div>} />
+          {closed.length > 0 && (
+            <details className="rounded-2xl border border-line bg-card p-5">
+              <summary className="cursor-pointer font-display text-xl font-medium">{tr(lang, "ib.archive", "Archive")} <span className="font-mono text-sm text-ink-soft">({closed.length})</span></summary>
+              <ul className="mt-3 divide-y divide-line text-sm">
+                {closed.slice(0, 50).map((i) => (
+                  <li key={i.id} className="flex flex-wrap items-center gap-x-3 gap-y-1 py-2">
+                    <span className="font-medium">{i.subject}</span>
+                    <span className="text-xs text-ink-soft">{i.status === "done" ? tr(lang, "ib.archive.done", "Done") : tr(lang, "ib.archive.away", "Put away")} · <bdi dir="ltr">{when(i.resolved_at ?? i.created_at)}</bdi></span>
+                    {i.status === "dismissed" && <button type="button" className="ms-auto text-sm underline underline-offset-4" onClick={() => void act("restore", i.id)}>{tr(lang, "ib.restore", "Bring back")}</button>}
+                  </li>
+                ))}
+              </ul>
+            </details>
+          )}
           {withAgent.length > 0 && <Section id="ib-agentwork" title={tr(lang, "ib.agentwork", "Your agent is on these")} items={withAgent} act={act} onMsg={onMsg} />}
         </div>
         <aside className="space-y-5">

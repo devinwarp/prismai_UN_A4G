@@ -2,8 +2,9 @@ import { NextResponse } from "next/server";
 import { bad, forbidden, notFound, requirePermission } from "@/lib/api-auth";
 import { isHumanDecision } from "@/lib/un/raci";
 import { refresh, runAgent, sweepPeople } from "@/lib/un/inbox-service";
-import { countsOf as counts, isOpen } from "@/lib/un/inbox";
-import { loadAgentLog, loadAgentSettings, loadItem, loadItemsOf, updateItem, verifyAgentLog } from "@/lib/un/inbox-store";
+import { countsOf as counts, isOpen, pendingOn } from "@/lib/un/inbox";
+import { loadAgentLog, loadAgentSettings, loadItem, loadItemsOf, loadOpenItems, updateItem, verifyAgentLog } from "@/lib/un/inbox-store";
+import { loadPeople } from "@/lib/un/roles-store";
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
 
@@ -19,14 +20,24 @@ export async function GET(request: Request) {
   if (url.searchParams.get("summary") === "1") return NextResponse.json({ counts: counts(await loadItemsOf(orgId, who.id)) });
   const ran = await refresh(orgId, { id: who.id, legacy_role: who.role }).catch((e: Error) => ({ error: e.message }));
   const [items, settings, log] = await Promise.all([loadItemsOf(orgId, who.id), loadAgentSettings(orgId, who.id), loadAgentLog(orgId, who.id)]);
-  return NextResponse.json({ items, counts: counts(items), settings, log: log.slice(-30).reverse(), log_ok: verifyAgentLog(log).ok, ran });
+  // who an information item is waiting on: the people asked for the same event who have not dealt with it
+  const mine = items.filter((i) => i.mode === "inform" && isOpen(i));
+  const waiting: Record<string, ReturnType<typeof pendingOn>> = {};
+  if (mine.length) {
+    const [open, people] = await Promise.all([loadOpenItems(orgId), loadPeople(orgId)]);
+    const nameOf = (id: string) => { const p = people.find((x) => x.id === id); return p ? { name: p.full_name ?? p.email ?? "Someone", job_title: p.job_title } : undefined; };
+    for (const i of mine) { const w = pendingOn(i, open, nameOf); if (w.length) waiting[i.id] = w; }
+  }
+  return NextResponse.json({ items, counts: counts(items), settings, log: log.slice(-30).reverse(), log_ok: verifyAgentLog(log).ok, ran, waiting });
 }
 
 /**
  * POST { action, id?, ... } on the signed-in person's own items.
  *   read      { id }             mark an item read
  *   done      { id }             a person has dealt with an action item (never an approval: that closes when the decision is made)
- *   dismiss   { id }             put information away
+ *   dismiss   { id }             put information away (archive: it can be restored)
+ *   dismiss_all                  put all my open information away
+ *   restore   { id }             bring put-away information back
  *   send      { id, reply }      send the reply to a consult (the agent's draft, edited), which closes it
  *   run_agent                    let my agent work my items now
  *   sweep                        the People agent looks for unfilled positions now
@@ -39,12 +50,22 @@ export async function POST(request: Request) {
   const act = text(b.action, 20);
   if (act === "run_agent") return NextResponse.json({ ok: true, agent: await runAgent(orgId, { id: who.id, legacy_role: who.role }) });
   if (act === "sweep") return NextResponse.json({ ok: true, ...(await sweepPeople(orgId)) });
-  if (!["read", "done", "dismiss", "send"].includes(act)) return bad("Unknown action");
+  if (act === "dismiss_all") {
+    const now = new Date().toISOString();
+    const open = (await loadItemsOf(orgId, who.id)).filter((i) => i.mode === "inform" && isOpen(i));
+    for (const i of open) await updateItem(orgId, i.id, { status: "dismissed", read_at: i.read_at ?? now, resolved_at: now, resolved_by: who.id });
+    return NextResponse.json({ ok: true, archived: open.length });
+  }
+  if (!["read", "done", "dismiss", "send", "restore"].includes(act)) return bad("Unknown action");
   const item = await loadItem(orgId, text(b.id, 80));
   if (!item) return notFound();
   if (item.user_id !== who.id) return forbidden("That item is not in your inbox");
   const now = new Date().toISOString();
   if (act === "read") return respond(await updateItem(orgId, item.id, { read_at: item.read_at ?? now }));
+  if (act === "restore") {
+    if (item.status !== "dismissed") return bad("Only information that was put away can be brought back");
+    return respond(await updateItem(orgId, item.id, { status: "open", resolved_at: null, resolved_by: null }));
+  }
   if (!isOpen(item)) return bad("That item is already closed");
   if (act === "dismiss") {
     if (item.mode !== "inform") return bad("Only information can be put away; an action or a decision closes when it is dealt with");

@@ -18,12 +18,12 @@ const asItem = (r: Row): InboxItem => ({
   read_at: (r.read_at as string | null) ?? null, resolved_at: (r.resolved_at as string | null) ?? null, resolved_by: (r.resolved_by as string | null) ?? null, created_by: String(r.created_by ?? "system"),
 });
 
-/** Adds items, skipping any whose (user, dedupe key) already has an open item. Returns the items added and an error message, if any. */
+/** Adds items, skipping any whose (user, dedupe key) already has an open item, or information that was put away (it is not raised again). Returns the items added and an error message, if any. */
 export async function addItems(orgId: string, items: NewItem[], now = new Date()): Promise<{ added: InboxItem[]; error: string | null }> {
   if (!items.length) return { added: [], error: null };
   const { data: open, error: readError } = await db().from("un_inbox_items").select("*").eq("org_id", orgId);
   if (readError) return { added: [], error: readError.message };
-  const have = new Set(((open ?? []) as Row[]).map(asItem).filter(isOpen).map((i) => `${i.user_id}|${i.dedupe_key}`));
+  const have = new Set(((open ?? []) as Row[]).map(asItem).filter((i) => isOpen(i) || (i.mode === "inform" && i.status === "dismissed")).map((i) => `${i.user_id}|${i.dedupe_key}`));
   const fresh = items.filter((n) => { const k = `${n.user_id}|${n.dedupe_key}`; if (have.has(k)) return false; have.add(k); return true; });
   const rows = fresh.map((n) => newItem(n, { org_id: orgId, id: randomUUID(), now }));
   if (!rows.length) return { added: [], error: null };

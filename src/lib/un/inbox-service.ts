@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { can, type Subject } from "./authz";
-import { blockToHuman, dueForEscalation, escalateAtFor, isOpen, type InboxItem, type NewItem } from "./inbox";
+import { blockToHuman, dueForEscalation, escalateAtFor, isOpen, staleInfo, type InboxItem, type NewItem } from "./inbox";
 import { holdersOf, type Place } from "./inbox-routing";
 import { addItems, appendAgentLog, loadAgentLog, loadAgentSettings, loadItemsOf, loadOpenItems, loadRaciOverrides, updateItem } from "./inbox-store";
 import { countriesNeedingGovernanceAdmin, missingPositions, needSubject, type PositionNeed } from "./people-agent";
@@ -250,6 +250,7 @@ export async function runAgent(orgId: string, user: Pick<Person, "id" | "legacy_
 export async function refresh(orgId: string, user: Pick<Person, "id" | "legacy_role">, now = new Date()): Promise<{ raised: number; closed: number; escalated: number; agent: AgentRun }> {
   const swept = await sweepPeople(orgId, now);
   const escalated = await escalateDue(orgId, now);
+  for (const i of staleInfo(await loadItemsOf(orgId, user.id), now)) await updateItem(orgId, i.id, { status: "dismissed", resolved_at: now.toISOString(), resolved_by: null });
   const agent = await runAgent(orgId, user, now);
   return { ...swept, escalated, agent };
 }

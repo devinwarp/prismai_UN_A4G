@@ -97,6 +97,26 @@ export const dueForEscalation = (items: InboxItem[], now: Date): InboxItem[] =>
   items.filter((i) => isOpen(i) && i.handler === "human" && !!i.escalate_at && i.escalate_at <= now.toISOString() && !i.escalated_at);
 
 /** What needs the person now: open items they must act on (an action, an approval or a consult), information they have not read, and what their agent is on. */
+/** Information nobody put away is archived after this many days: the inbox does not pile up. */
+export const INFO_KEEP_DAYS = 14;
+
+/** Open information older than the keep period (it is archived, not deleted). */
+export function staleInfo(items: InboxItem[], now: Date): InboxItem[] {
+  const cutoff = now.getTime() - INFO_KEEP_DAYS * 86_400_000;
+  return items.filter((i) => isOpen(i) && i.mode === "inform" && new Date(i.created_at).getTime() < cutoff);
+}
+
+export interface PendingOn { name: string; job_title: string | null; letter: Letter; mode: Mode; handler: Handler }
+
+/** Who the thing is waiting on. An information item tells its reader nothing is needed from them; this names the people who were asked for the same event
+ * (an action, a decision or an input) and have not dealt with it. `open` is every open item of the organisation; `person` names a user. */
+export function pendingOn(item: InboxItem, open: InboxItem[], person: (id: string) => { name: string; job_title: string | null } | undefined): PendingOn[] {
+  if (item.mode !== "inform") return [];
+  return open
+    .filter((o) => o.dedupe_key === item.dedupe_key && o.user_id !== item.user_id && o.mode !== "inform")
+    .flatMap((o) => { const p = person(o.user_id); return p ? [{ name: p.name, job_title: p.job_title, letter: o.letter, mode: o.mode, handler: o.handler }] : []; });
+}
+
 export function countsOf(items: InboxItem[]) {
   const open = items.filter(isOpen);
   return {
