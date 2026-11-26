@@ -7,6 +7,7 @@ import { countriesNeedingGovernanceAdmin, missingPositions, needSubject, type Po
 import { route, STEP_LABELS, type Step } from "./raci";
 import { loadAssignmentRows, loadAssignments, loadPeople, loadUseCaseChoices, type Person } from "./roles-store";
 import { contextOfUseCase, scopeIndex } from "./scope-context";
+import { modelAvailable, modelConsultDraft, type ConsultFacts } from "./consult-draft";
 
 // The service that fills the inbox and runs the agents. Events call notify(); the People agent sweeps for unfilled positions; unanswered human items
 // escalate; and each user's agent works its own items, within that user's permissions. Nothing here signs anything: an explicit decision is always a
@@ -227,8 +228,11 @@ export async function runAgent(orgId: string, user: Pick<Person, "id" | "legacy_
       await appendAgentLog(orgId, user.id, { item_id: i.id, action: "staged_user", outcome: "done", detail: { staged } }, now);
       used++; run.handled++;
     } else if (i.mode === "consult") {
-      await updateItem(orgId, i.id, { handler: "human", status: "open", payload: { ...i.payload, draft: draftConsult(i) }, escalate_at: escalateAtFor(i.mode, now) });
-      await appendAgentLog(orgId, user.id, { item_id: i.id, action: "drafted_reply", outcome: "done" }, now);
+      const ctx = i.payload.context as Record<string, unknown> | undefined;
+      const facts: ConsultFacts = { subject: i.subject, body: i.body, entity: i.entity ?? null, use_case: (ctx?.ext_id as string | undefined) ?? null, summary: ctx?.summary ? String(ctx.summary) : null, step: typeof i.payload.step === "string" ? STEP_LABELS[i.payload.step as Step] ?? null : null };
+      const written = modelAvailable() ? await modelConsultDraft(facts) : null;
+      await updateItem(orgId, i.id, { handler: "human", status: "open", payload: { ...i.payload, draft: written?.text ?? draftConsult(i) }, escalate_at: escalateAtFor(i.mode, now) });
+      await appendAgentLog(orgId, user.id, { item_id: i.id, action: "drafted_reply", outcome: "done", detail: { by: written ? "model" : "rules", ...(written ? { model: written.model } : {}) } }, now);
       used++; run.handled++;
     } else if (i.kind === "governance.appoint") {
       const candidates = (await loadPeople(orgId)).filter((p) => /governance/i.test(p.job_title ?? "")).map((p) => ({ id: p.id, name: p.full_name ?? p.email, job_title: p.job_title }));

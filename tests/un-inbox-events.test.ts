@@ -11,7 +11,7 @@ test("the tuning proposals and a reinstatement are decisions only a person takes
 });
 
 test("each event route tells the inbox, and asks for a decision only where one is needed", () => {
-  assert.match(read("pilot/route.ts"), /noticeInform\([^)]*"pilot\.filed"/s);
+  assert.match(read("pilot/route.ts"), /noticeInform\([^\n]*"pilot\.filed"/);
   assert.match(read("pilot/goals/route.ts"), /noticeAsk\([^\n]*decisionKind: "goals\.approve"/);
   assert.match(read("pilot/goals/route.ts"), /noticeDone\(/);
   assert.match(read("rerun/route.ts"), /noticeAsk\([^\n]*"rerun\.requested"/);
