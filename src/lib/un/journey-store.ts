@@ -1,6 +1,7 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { alignment, type EvalSummary } from "./eval-run";
 import { evalSetFor } from "./evalset";
+import { automationOf, type Automation } from "./automation";
 import { journeyStatus, type Journey } from "./journey";
 import { loadReleaseCached } from "./release-cached";
 import { gateAcceptance } from "./journey-gates";
@@ -8,7 +9,7 @@ import type { UnUseCaseState } from "./model";
 import type { LogEntry } from "./tuning";
 import { replayTestSet, inForce, type TestEntry } from "./test-sets";
 import { replayParams, type ParamEntry } from "./verdict-params";
-import type { WatchEntry } from "./watchdog";
+import { replay as replayWatch, type WatchEntry } from "./watchdog";
 import { checkSopKb } from "./skill-extract";
 import { profileIndex } from "./sop-version-store";
 import type { JobProfile } from "./sop/profiles";
@@ -29,7 +30,7 @@ const asLog = <T,>(rows: Row[] = []): T[] =>
 type JourneyUseCase = Pick<UnUseCaseState, "id" | "ext_id" | "verdict" | "verdict_run_id" | "client_facing" | "affects_rights" | "irreversible">;
 
 /** Journeys and attached SOP IDs for the given use cases, using the same bulk reads. */
-export async function loadJourneyDetails(orgId: string, ucs: JourneyUseCase[]): Promise<{ journeys: Map<string, Journey>; attachedSopIds: Map<string, string> }> {
+export async function loadJourneyDetails(orgId: string, ucs: JourneyUseCase[]): Promise<{ journeys: Map<string, Journey>; attachedSopIds: Map<string, string>; automation: Map<string, Automation> }> {
   const db = createAdminClient();
   const [sops, profiles, evals, tuning, watch, testLog, paramLog, pilots] = await Promise.all([
     db.from("un_use_case_sops").select("*").eq("org_id", orgId),
@@ -48,6 +49,7 @@ export async function loadJourneyDetails(orgId: string, ucs: JourneyUseCase[]): 
   const kb = new Map<string, boolean>();
   const out = new Map<string, Journey>();
   const attachedSopIds = new Map<string, string>();
+  const automation = new Map<string, Automation>();
   const profilesAt = await profileIndex(orgId).catch(() => null);
   const versionOf = new Map((sops.data ?? []).map((r: Row) => [String(r.use_case_id), Number(r.version ?? 1) || 1]));
   for (const u of ucs) {
@@ -56,6 +58,7 @@ export async function loadJourneyDetails(orgId: string, ucs: JourneyUseCase[]): 
     const all = sopId && profilesAt ? profilesAt(sopId, versionOf.get(u.id) ?? 1) : null;
     const on = (ticks.get(u.id) ?? []).filter((r) => r.sop_id === sopId && all?.some((p) => p.name === r.profile));
     if (sopId && !kb.has(sopId)) kb.set(sopId, checkSopKb(sopId).ok);
+    automation.set(u.id, automationOf({ ticked: on.length, deployed: replayWatch(asLog<WatchEntry>(wl.get(u.id))).deployed }));
     const r = runs.get(u.id) ?? [];
     out.set(u.id, journeyStatus({
       sop: { attached: !!sopId, profiles: all?.length ?? 0, ticked: on.length, kbOk: sopId ? !!kb.get(sopId) : false, skills: on.filter((x) => x.skill_sha256).length },
@@ -79,7 +82,7 @@ export async function loadJourneyDetails(orgId: string, ucs: JourneyUseCase[]): 
       ...(ucs.length === 1 && sopId ? { release: await loadReleaseCached(orgId, u.id).then((x) => ({ ready: x.ok, blockers: x.blockers.length })).catch(() => undefined) } : {}),
     }));
   }
-  return { journeys: out, attachedSopIds };
+  return { journeys: out, attachedSopIds, automation };
 }
 
 export async function loadJourneys(orgId: string, ucs: JourneyUseCase[]): Promise<Map<string, Journey>> {

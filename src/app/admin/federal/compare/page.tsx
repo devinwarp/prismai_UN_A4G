@@ -7,7 +7,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { loadChunks } from "@/lib/un/kb";
 import { countryHref } from "@/lib/un/country-context";
 import { loadFederalCountry, loadCountryUseCases } from "@/lib/un/federal-country";
-import { isSuperUser } from "@/lib/un/people-directory";
+import { canCompareCountries } from "@/lib/un/people-directory";
 import { effectiveGates } from "@/lib/un/gates";
 import { loadGov } from "@/lib/un/gates-store";
 import { compareProcesses, flatEvidence, s1EvidenceAt, type ProcessInput } from "@/lib/un/compare";
@@ -35,7 +35,7 @@ export default async function ComparePage({ searchParams }: { searchParams: Prom
   const { user, profile } = await getUserAndProfile();
   if (!user) redirect("/login?next=/admin/federal/compare");
   if (!profile?.org_id) redirect("/login");
-  if (!isSuperUser(user.id, profile.role)) notFound();
+  if (!canCompareCountries(user.id, profile.role)) notFound();
   const { data: org } = await createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle();
 
   const { country, state } = await loadFederalCountry(profile.org_id, sp.country, true);
