@@ -2,7 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { metered, recordToolCalls } from "@/lib/un/cost";
 import { loadRelease } from "@/lib/un/release-store";
 import { NextResponse } from "next/server";
-import { notifyUseCase } from "@/lib/un/inbox-service";
+import { noticeAsk, noticeDone, notifyUseCase } from "@/lib/un/inbox-service";
 import { bad, forbidden, notFound, requireAdmin, requirePermission } from "@/lib/api-auth";
 import { activeCases, evalSetFor } from "@/lib/un/evalset";
 import { alignment, runEvalSet } from "@/lib/un/eval-run";
@@ -76,7 +76,12 @@ export async function POST(request: Request, { params }: Ctx) {
     const entries = appendWindow(watch, w, "watchdog (simulated)", now);
     const err = await appendWatch(who.org_id!, id, entries);
     if (err) return NextResponse.json({ error: err }, { status: 500 });
-    return NextResponse.json({ clean: w.clean, status: replay([...watch, ...entries]).status, entries: entries.map((e) => e.kind) });
+    const after = replay([...watch, ...entries]).status;
+    if (after === "warned" || after === "suspended") {
+      await noticeAsk(who.org_id!, id, { step: "monitor", key: `watch:${id}`, kind: `monitor.${after}`, decisionKind: after === "suspended" ? "reinstate" : undefined, subject: `${uc.ext_id} is ${after === "suspended" ? "taken down" : "on warning"} in production`,
+        body: after === "suspended" ? "A monitoring window failed: the agent was rolled back. A person decides whether to reinstate it, with a comment on what was fixed." : "A monitoring window found a problem. Look at it before the next window.", link: `/admin/federal/use-cases/${id}/production`, by: who.id });
+    }
+    return NextResponse.json({ clean: w.clean, status: after, entries: entries.map((e) => e.kind) });
   }
 
   if (b.action === "reinstate") {
@@ -92,6 +97,7 @@ export async function POST(request: Request, { params }: Ctx) {
       retest: { n: retest.summary.all.n, correct: retest.summary.all.correct, calls: retest.summary.sijil.calls, rejected: retest.summary.sijil.rejected, run_sha256: retest.sha256 },
     }, now());
     const err = await appendWatch(who.org_id!, id, [entry]);
+    if (!err) await noticeDone(who.org_id!, id, { step: "monitor", key: `watch:${id}`, kind: "monitor.reinstated", subject: `${uc.ext_id} was reinstated`, body: `${signer} reinstated the agent on probation. Comment: ${comment}`, link: `/admin/federal/use-cases/${id}/production`, by: who.id, ref: entry.hash.slice(0, 8) });
     return err ? NextResponse.json({ error: err }, { status: 500 }) : NextResponse.json({ ok: true, status: "probation" });
   }
 

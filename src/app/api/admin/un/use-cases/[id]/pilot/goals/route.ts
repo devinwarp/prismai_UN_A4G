@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { noticeAsk, noticeDone } from "@/lib/un/inbox-service";
 import { bad, forbidden, notFound, requirePermission } from "@/lib/api-auth";
 import { resolveApprover } from "@/lib/un/approvers";
 import { approversForUseCase } from "@/lib/un/approvers-store";
@@ -100,6 +101,9 @@ export async function POST(request: Request, { params }: Ctx) {
   const err = await appendReviewLog(who.org_id!, id, profile, entry);
   if (err) return NextResponse.json({ error: /duplicate|unique/i.test(err) ? "Someone else changed the review just now; reload and try again" : err }, { status: /duplicate|unique/i.test(err) ? 409 : 500 });
 
+  const gKey = `goals:${id}:${pilotId.slice(0, 8)}`;
+  if (p.kind === "judged") await noticeAsk(who.org_id!, id, { step: "pilot", key: gKey, kind: "goals.judged", decisionKind: "goals.approve", subject: `Goal judgments need a decision for ${uc.ext_id}`, body: `The model judged the pilot of ${profile}. A person approves, overrides or withdraws the judgments: it is a decision for a person.`, link: `/admin/federal/use-cases/${id}/pilot`, by: who.id });
+  else await noticeDone(who.org_id!, id, { step: "pilot", key: gKey, kind: `goals.${p.kind}`, subject: `Goal judgments ${p.kind} for ${uc.ext_id}`, body: `The goal judgments of ${profile} were ${p.kind}.`, link: `/admin/federal/use-cases/${id}/pilot`, by: who.id, ref: entry.hash.slice(0, 8) });
   if (p.kind !== "approved") {
     const next = replayReviews([...log, entry]).reviews[pilotId];
     return NextResponse.json({ ok: true, kind: p.kind, hash: entry.hash, unjudged: next?.judgments.filter((j) => j.met === null).length ?? 0, not_met: next?.judgments.filter((j) => j.met === false).length ?? 0, judged: next?.judgments.length ?? 0 });

@@ -66,6 +66,28 @@ export async function resolveItems(orgId: string, dedupe: string, by: string | n
   return n;
 }
 
+/** Something needs asking of the people of a step (a decision, a consult, or work): one open request per key, until it is closed. Never throws. */
+export async function noticeAsk(orgId: string, useCaseId: string, o: { step: Step; key: string; kind: string; decisionKind?: string; subject: string; body: string; link: string; by?: string }): Promise<void> {
+  try {
+    await notifyUseCase(orgId, useCaseId, { step: o.step, kind: o.kind, decisionKind: o.decisionKind, subject: o.subject, body: o.body, link: o.link, dedupe: `${o.key}:open`, exclude: o.by ? [o.by] : [], created_by: "system" });
+  } catch { /* the inbox is not there (its SQL is not applied) or failed: the action itself stands */ }
+}
+
+/** What was asked has been dealt with: close the open request and tell the others for information. Never throws. */
+export async function noticeDone(orgId: string, useCaseId: string, o: { step: Step; key: string; kind: string; subject: string; body: string; link: string; by: string; ref: string }): Promise<void> {
+  try {
+    await resolveItems(orgId, `${o.key}:open`, o.by);
+    await notifyUseCase(orgId, useCaseId, { step: o.step, kind: o.kind, subject: o.subject, body: o.body, link: o.link, dedupe: `${o.key}:${o.ref}:done`, exclude: [o.by], inform: true, created_by: "system" });
+  } catch { /* see noticeAsk */ }
+}
+
+/** Something happened that people should know: tell the people of the step for information only. Never throws. */
+export async function noticeInform(orgId: string, useCaseId: string, o: { step: Step; kind: string; subject: string; body: string; link: string; by: string; ref: string }): Promise<void> {
+  try {
+    await notifyUseCase(orgId, useCaseId, { step: o.step, kind: o.kind, subject: o.subject, body: o.body, link: o.link, dedupe: `${o.kind}:${useCaseId}:${o.ref}`, exclude: [o.by], inform: true, created_by: "system" });
+  } catch { /* see noticeAsk */ }
+}
+
 /**
  * An approval step of a use case (its process targets, or its test set and verdict parameters) moved. A request asks the people who must decide, each by their
  * RACI letter (the governance admin is Accountable, so it is a decision for a person). A decision closes that request and tells the others for information.
