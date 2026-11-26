@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import { AR } from "../src/lib/un/i18n/dict.ts";
-import { GROUPS, REASON_EN, STAGE_IDS, journeyStatus, type JourneyInput, type StageId } from "../src/lib/un/journey.ts";
+import { GROUPS, REASON_EN, STAGE_IDS, journeyStatus, stageRules, type JourneyInput, type StageId } from "../src/lib/un/journey.ts";
 import { appendEntry, type LogEntry } from "../src/lib/un/tuning.ts";
 import { appendWindow, runWindow, type WatchEntry } from "../src/lib/un/watchdog.ts";
 import { baselineConfig } from "../src/lib/un/subject.ts";
@@ -10,7 +10,9 @@ import { evalSetFor, noDesignation } from "../src/lib/un/evalset.ts";
 
 const sop = { attached: true, profiles: 4, ticked: 2, kbOk: true, skills: 2 };
 const base = (o: Partial<JourneyInput> = {}): JourneyInput => ({ sop, gates: null, verdict: null, tests: { ticked: 2, ready: 0 }, pilot: { ticked: 2, run: 0, met: 0 }, evalSet: true, evalRuns: 0, evalMet: null, tuning: [], watch: [], ...o });
-const at = (i: JourneyInput, id: StageId) => { const s = journeyStatus(i).stages.find((x) => x.id === id)!; return [s.state, s.reason]; };
+// each stage on its own records (the order control is tested at the end)
+const at = (i: JourneyInput, id: StageId) => stageRules(i)[id];
+const ordered = (i: JourneyInput, id: StageId) => { const s = journeyStatus(i).stages.find((x) => x.id === id)!; return [s.state, s.reason]; };
 let n = 0;
 const T = () => new Date(Date.UTC(2026, 10, 21, 9, 0, n++)).toISOString();
 const log = <K extends string>(prev: { seq: number; hash: string; kind: K }[], kind: K, payload: Record<string, unknown>) =>
@@ -126,4 +128,27 @@ test("stage 5 pilot and verdict: after the tests; needs a run; done only when ev
   assert.deepEqual(at(base({ ...ready, pilot: { ticked: 2, run: 2, met: 1 } }), "pilot"), ["needs_you", "pilot_not_met"], "inconclusive or failing");
   assert.deepEqual(at(base({ ...ready, pilot: { ticked: 2, run: 1, met: 1 } }), "pilot"), ["needs_you", "pilot_not_met"], "one profile has no pilot yet");
   assert.deepEqual(at(base({ ...ready, pilot: { ticked: 2, run: 2, met: 2 } }), "pilot"), ["done", null]);
+});
+
+test("the internal control: a stage cannot be done, need someone or stop the road until the stage before it is done", () => {
+  // UC02 as it was: evals, tuning and approval records exist, but no job profile is ticked (SOP intake is open)
+  const ahead = base({ sop: { ...sop, ticked: 0, skills: 0 }, evalRuns: 1, evalMet: true, tuning: approved() });
+  assert.deepEqual(at(ahead, "approval"), ["done", null], "on its own records approval is done");
+  assert.deepEqual(ordered(ahead, "sop"), ["needs_you", "tick_profile"]);
+  for (const id of STAGE_IDS.filter((x) => x !== "sop")) assert.equal(ordered(ahead, id)[0], "not_yet", id);
+  const j = journeyStatus(ahead);
+  assert.equal(j.done, 0);
+  assert.equal(j.waiting, 1, "only the first open stage waits for someone");
+  assert.equal(j.next, "sop", "nothing starts without SOP intake");
+  // a stage that is simply not yet keeps its own reason; a stage behind an open one reads after_previous
+  assert.deepEqual(ordered(ahead, "approval"), ["not_yet", "after_previous"]);
+  assert.deepEqual(ordered(ahead, "gates"), ["not_yet", "after_sop"]);
+});
+
+test("with every earlier stage done the order control changes nothing", () => {
+  const full = base({ gates: { accepted: true }, verdict: "GO_SUPERVISED", tests: { ticked: 2, ready: 2 }, pilot: { ticked: 2, run: 2, met: 2 }, evalRuns: 1, evalMet: true, tuning: approved(), watch: deployed() });
+  const j = journeyStatus(full);
+  assert.equal(j.done, 9);
+  assert.equal(j.next, null);
+  for (const id of STAGE_IDS) assert.deepEqual(ordered(full, id), at(full, id), id);
 });

@@ -28,6 +28,7 @@ export const JOURNEY_AR: Record<string, string> = {
   "jb.r.kb_missing": "ابنِ قاعدة معرفة الإجراء ومتجهاتها للملفات المحددة.",
   "jb.r.skill_missing": "لا يوجد ملف مهارة لملف وظيفي محدد.",
   "jb.r.after_sop": "تأتي بعد استقبال الإجراء.",
+  "jb.r.after_previous": "تأتي بعد اكتمال المرحلة التي قبلها.",
   "jb.r.gates_unbuilt": "بوابات كل حالة استخدام غير متاحة بعد.",
   "jb.r.accept_gates": "يقبل شخص المؤشرات والبوابات.",
   "jb.r.run_scenario": "شغّل سيناريو ودع شخصاً يوقّع القرار.",

@@ -25,6 +25,7 @@ export const REASON_EN = {
   kb_missing: "Build the SOP knowledge base and its vectors for the ticked profiles.",
   skill_missing: "A ticked profile has no skill file yet.",
   after_sop: "Comes after SOP intake.",
+  after_previous: "Comes after the stage before it is done.",
   gates_unbuilt: "Per-use-case gates are not available yet.",
   accept_gates: "A person accepts the flags and gates.",
   run_scenario: "Run a scenario and have a person sign the verdict.",
@@ -72,9 +73,10 @@ export interface JourneyInput {
 export interface JourneyStage { id: StageId; n: number; group: (typeof GROUPS)[number]; state: StageState; reason: ReasonCode | null }
 export interface Journey { stages: JourneyStage[]; done: number; waiting: number; next: StageId | null }
 
-type R = [StageState, ReasonCode | null];
+export type R = [StageState, ReasonCode | null];
 
-export function journeyStatus(i: JourneyInput): Journey {
+/** Each stage on its own records, before the order is enforced (see journeyStatus). */
+export function stageRules(i: JourneyInput): Record<StageId, R> {
   const sopDone = i.sop.attached && i.sop.ticked > 0 && i.sop.kbOk && i.sop.skills >= i.sop.ticked;
   const sop: R = !i.sop.attached ? ["needs_you", "attach_sop"]
     : i.sop.ticked === 0 ? ["needs_you", "tick_profile"]
@@ -101,8 +103,19 @@ export function journeyStatus(i: JourneyInput): Journey {
     : w.status === "warned" ? ["needs_you", "warned"]
     : w.status === "probation" ? ["needs_you", "probation"]
     : ["done", null];
-  const rows: Record<StageId, R> = { sop, gates, verdict, tests, pilot, evals, tuning, approval, production };
-  const stages = STAGE_IDS.map((id, k): JourneyStage => ({ id, n: k + 1, group: GROUP_OF[id], state: rows[id][0], reason: rows[id][1] }));
+  return { sop, gates, verdict, tests, pilot, evals, tuning, approval, production };
+}
+
+export function journeyStatus(i: JourneyInput): Journey {
+  const rows = stageRules(i);
+  // The internal control: the road is walked in order. A stage cannot be done, need someone, or stop the road until the stage before it is done: nothing
+  // starts without SOP intake, and records that got ahead of an open stage (older data, a reset, a renamed SOP) do not count until that stage is done again.
+  const stages: JourneyStage[] = [];
+  STAGE_IDS.forEach((id, k) => {
+    const open = k > 0 && stages[k - 1].state !== "done";
+    const [state, reason] = open && rows[id][0] !== "not_yet" ? (["not_yet", "after_previous"] as R) : rows[id];
+    stages.push({ id, n: k + 1, group: GROUP_OF[id], state, reason });
+  });
   const waiting = stages.filter((s) => s.state === "needs_you" || s.state === "stopped");
   return { stages, done: stages.filter((s) => s.state === "done").length, waiting: waiting.length, next: waiting[0]?.id ?? null };
 }
