@@ -53,6 +53,29 @@ export type GrantPlan =
 
 const bad = (error: string): GrantPlan => ({ ok: false, error });
 
+/** The entity a grant, revoke or replacement concerns, so an entity admin can be checked against their own entity. Null when it concerns no single entity
+ * (the whole organisation, or a country). */
+export function entityOfAction(a: GrantAction, o: { rows: AssignmentRow[]; useCases: { id: string; entity: string }[] }): string | null {
+  const ofUseCase = (id: string | null | undefined) => (id ? o.useCases.find((u) => u.id === id)?.entity ?? null : null);
+  if (a.type === "grant") return a.entity ?? ofUseCase(a.use_case_id);
+  const r = o.rows.find((x) => x.id === a.assignment_id);
+  return r ? r.scope_entity ?? ofUseCase(r.use_case_id) : null;
+}
+
+/** What an entity admin may do with people: give or take back process owner, test author, operator and viewer roles, for use cases of their own entity
+ * or for their entity as a whole. Never a role that approves or administers, and nothing for another entity. Returns an error, or null. */
+export function entityAdminMay(a: GrantAction, entity: string, o: { rows: AssignmentRow[]; useCases: { id: string; entity: string }[] }): string | null {
+  if (entityOfAction(a, o) !== entity) return "That is outside your entity";
+  if (a.type === "grant") {
+    if (!(ENTITY_GRANTABLE as readonly string[]).includes(a.role)) return "An entity admin can give process owner, test author, operator and viewer roles only";
+    if (a.country && !a.entity) return "An entity admin cannot give a role for a whole country";
+    return null;
+  }
+  const r = o.rows.find((x) => x.id === a.assignment_id);
+  if (!r || !(ENTITY_GRANTABLE as readonly string[]).includes(r.role)) return "An entity admin can take back process owner, test author, operator and viewer roles only";
+  return null;
+}
+
 /** Decide a grant or a revoke against the assignments that exist. `knownUsers` and `knownUseCases` are the ids the
  * organisation has; `by` is the person making the change. */
 export function planGrant(a: GrantAction, o: { rows: AssignmentRow[]; knownUsers: string[]; knownUseCases: string[]; knownEntities?: string[]; knownCountries?: string[]; by: string }): GrantPlan {

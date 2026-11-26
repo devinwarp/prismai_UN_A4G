@@ -160,12 +160,24 @@ function replaceOwner(args: Row): Result {
   return { data: null, error: null };
 }
 
-/** Stands in for both the admin client and the cookie (user) client. */
-export function offlineClient() {
+/** The name of the cookie the offline "sign in as" picker sets (src/app/api/offline/as). Offline only. */
+export const OFFLINE_AS_COOKIE = "prism-offline-as";
+
+/** Stands in for both the admin client and the cookie (user) client. `asUserId` (from the offline picker's cookie) makes the signed-in user another
+ * person of the local store, so each role can be tried; an id that is not in the store falls back to the default offline admin. */
+export function offlineClient(asUserId?: string) {
   return {
     from: (t: string) => new Query(t),
     rpc: async (name: string, args: Row = {}) =>
       name === "un_replace_process_owner" ? replaceOwner(args) : { data: null, error: null },
-    auth: { getUser: async () => ({ data: { user: { ...OFFLINE_USER, user_metadata: {} } }, error: null }) },
+    auth: {
+      getUser: async () => {
+        if (asUserId) {
+          const { data } = (await new Query("profiles").select("id, email").eq("id", asUserId).maybeSingle()) as { data: { id: string; email: string | null } | null };
+          if (data) return { data: { user: { id: data.id, email: data.email ?? "", user_metadata: {} } }, error: null };
+        }
+        return { data: { user: { ...OFFLINE_USER, user_metadata: {} } }, error: null };
+      },
+    },
   };
 }

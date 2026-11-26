@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { planGrant, type AssignmentRow } from "../src/lib/un/role-admin.ts";
+import { entityAdminMay, entityOfAction, planGrant, type AssignmentRow } from "../src/lib/un/role-admin.ts";
 
 const ME = "u-admin", ANA = "u-ana", UC = "uc-1";
 const row = (o: Partial<AssignmentRow>): AssignmentRow => ({ id: "a1", user_id: ANA, role: "operator", use_case_id: null, granted_by: ME, granted_at: "2026-11-21T10:00:00Z", revoked_at: null, revoked_by: null, ...o });
@@ -89,4 +89,48 @@ test("who may switch the tuning agent's automatic changes: only the process owne
   assert.equal(can(as("test_author"), "tuning.run", { use_case_id: UC }).ok, false);
   assert.equal(can(as("process_owner"), "tuning.decide", { use_case_id: UC }).ok, true);
   assert.equal(can(as("operator"), "tuning.decide", { use_case_id: UC }).ok, false);
+});
+
+// ---- country and entity scopes ------------------------------------------------------------------------------------------------------------
+
+const scoped = (rows: AssignmentRow[] = []) => ({ rows, knownUsers: [ANA, BOB, ME], knownUseCases: [UC], knownEntities: ["Marsa", "Wahat"], knownCountries: ["UAE", "SG"], by: ME });
+
+test("a governance admin is held for a country, an entity or the organisation, and an entity admin for one entity only", () => {
+  const g = (role: string, extra: object) => planGrant({ type: "grant", user_id: ANA, role, use_case_id: null, ...extra } as never, scoped());
+  assert.deepEqual(g("governance_admin", { country: "UAE" }), { ok: true, type: "grant", row: { user_id: ANA, role: "governance_admin", use_case_id: null, granted_by: ME, scope_country: "UAE" } });
+  assert.equal(g("entity_admin", { entity: "Marsa", country: "UAE" }).ok, true);
+  assert.match(err(g("entity_admin", {})), /cannot be held for the whole organisation/);
+  assert.match(err(g("entity_admin", { country: "UAE" })), /cannot be held for a country/);
+  assert.match(err(g("platform_admin", { country: "UAE" })), /cannot be held for a country/);
+  assert.match(err(g("process_owner", { country: "UAE" })), /cannot be held for a country/);
+  assert.equal(g("test_author", { entity: "Wahat", country: "UAE" }).ok, true, "a test author per entity");
+});
+
+test("a scope must be known, and a role has one scope only", () => {
+  const g = (extra: object) => planGrant({ type: "grant", user_id: ANA, role: "governance_admin", use_case_id: null, ...extra } as never, scoped());
+  assert.match(err(g({ country: "ZZ" })), /country is not known/);
+  assert.match(err(planGrant({ type: "grant", user_id: ANA, role: "entity_admin", use_case_id: null, entity: "Nowhere", country: "UAE" }, scoped())), /entity is not in this organisation/);
+  assert.match(err(planGrant({ type: "grant", user_id: ANA, role: "operator", use_case_id: UC, entity: "Marsa", country: "UAE" }, scoped())), /one scope/);
+});
+
+test("the same role at the same country or entity is held once", () => {
+  const live = [row({ role: "governance_admin", scope_country: "UAE" })];
+  assert.match(err(planGrant({ type: "grant", user_id: ANA, role: "governance_admin", use_case_id: null, country: "UAE" }, scoped(live))), /already holds/);
+  assert.equal(planGrant({ type: "grant", user_id: ANA, role: "governance_admin", use_case_id: null, country: "SG" }, scoped(live)).ok, true);
+});
+
+test("an entity admin gives and takes back process owner, test author, operator and viewer roles, for their own entity only", () => {
+  const useCases = [{ id: UC, entity: "Marsa" }, { id: "uc-w", entity: "Wahat" }];
+  const rows = [row({ id: "r-op", role: "operator", use_case_id: UC }), row({ id: "r-gov", role: "governance_admin", scope_country: "UAE" }), row({ id: "r-w", role: "operator", use_case_id: "uc-w" })];
+  const o = { rows, useCases };
+  assert.equal(entityOfAction({ type: "grant", user_id: ANA, role: "operator", use_case_id: UC }, o), "Marsa");
+  assert.equal(entityOfAction({ type: "grant", user_id: ANA, role: "test_author", use_case_id: null, entity: "Wahat" }, o), "Wahat");
+  assert.equal(entityOfAction({ type: "revoke", assignment_id: "r-op" }, o), "Marsa");
+  assert.equal(entityOfAction({ type: "grant", user_id: ANA, role: "viewer", use_case_id: null }, o), null, "the whole organisation concerns no single entity");
+  assert.equal(entityAdminMay({ type: "grant", user_id: ANA, role: "operator", use_case_id: UC }, "Marsa", o), null);
+  assert.match(entityAdminMay({ type: "grant", user_id: ANA, role: "operator", use_case_id: "uc-w" }, "Marsa", o) ?? "", /outside your entity/);
+  for (const role of ["governance_admin", "platform_admin", "entity_admin"]) assert.match(entityAdminMay({ type: "grant", user_id: ANA, role, use_case_id: null, entity: "Marsa" }, "Marsa", o) ?? "", /process owner, test author, operator and viewer/);
+  assert.equal(entityAdminMay({ type: "revoke", assignment_id: "r-op" }, "Marsa", o), null);
+  assert.match(entityAdminMay({ type: "revoke", assignment_id: "r-gov" }, "Marsa", o) ?? "", /outside your entity/);
+  assert.match(entityAdminMay({ type: "revoke", assignment_id: "r-w" }, "Marsa", o) ?? "", /outside your entity/);
 });

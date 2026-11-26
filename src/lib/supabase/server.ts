@@ -1,11 +1,12 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import { isOffline } from "./offline-flag";
-import { offlineClient } from "./offline";
+import { OFFLINE_AS_COOKIE, offlineClient } from "./offline";
 
 export async function createClient() {
-  if (isOffline()) return offlineClient() as unknown as ReturnType<typeof createServerClient>;
   const cookieStore = await cookies();
+  // offline, the picker's cookie chooses which person of the local store is signed in (never read when online)
+  if (isOffline()) return offlineClient(cookieStore.get(OFFLINE_AS_COOKIE)?.value) as unknown as ReturnType<typeof createServerClient>;
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

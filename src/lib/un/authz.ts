@@ -63,7 +63,7 @@ export const ACTIONS = {
   "users.manage": def("Assign roles to people", false, ["platform_admin"], true),
   // an entity: its setup and its people (the entity admin holds these for one entity only)
   "entity.setup": entityDef("Set up an entity: its goals and criteria, its use case list and its SOPs", ["entity_admin", "platform_admin"], true),
-  "entity.people": entityDef("Give or take back roles for the people of an entity's use cases", ["entity_admin", "platform_admin"]),
+  "entity.people": entityDef("Give or take back roles for the people of an entity's use cases", ["entity_admin", "platform_admin"], true),
   "user.create": entityDef("Create a user for an entity (an agent only stages one; a person confirms)", ["entity_admin", "platform_admin"]),
 } as const satisfies Record<string, ActionDef>;
 

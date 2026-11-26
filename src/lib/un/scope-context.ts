@@ -2,7 +2,7 @@ import { cache } from "react";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadState } from "./country-actions";
 import { appCountryDeps } from "./country-app";
-import { entityCountryOf, DEFAULT_ENTITY_COUNTRY } from "./country";
+import { allCountries, entityCountryOf, DEFAULT_ENTITY_COUNTRY } from "./country";
 import type { Context } from "./authz";
 
 // Where an action happens, for the permission check: a use case, the entity it belongs to, and the country that entity is linked to. Roles held for a
@@ -15,6 +15,12 @@ const countryState = cache(async (orgId: string) => loadState(appCountryDeps(org
 export async function countryOfEntity(orgId: string, entity: string): Promise<string> {
   const state = await countryState(orgId);
   return state ? entityCountryOf(state, entity) : DEFAULT_ENTITY_COUNTRY;
+}
+
+/** The ids of the countries the organisation knows (built in and created). */
+export async function knownCountryIds(orgId: string): Promise<string[]> {
+  const state = await countryState(orgId);
+  return state ? allCountries(state).map((c) => c.id) : [DEFAULT_ENTITY_COUNTRY];
 }
 
 /** The context of an entity: its name and its country. */
