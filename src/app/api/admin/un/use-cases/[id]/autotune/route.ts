@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { noticeAsk, noticeDone } from "@/lib/un/inbox-service";
 import { bad, forbidden, notFound, requirePermission } from "@/lib/api-auth";
 import { appendAuto, DEFAULT_BUDGET, modelCallsToday, noticeOf, planStart, planSwitch, planThreshold, replayAuto, verifyAuto, type AutoEntry } from "@/lib/un/auto-tune";
 import { appendAutoLog, loadAutoLog } from "@/lib/un/autotune-store";
@@ -89,6 +90,8 @@ export async function POST(request: Request, { params }: Ctx) {
     if (b.decision !== "approve" && b.decision !== "reject") return bad('decision must be "approve" or "reject"');
     try {
       const ver = await decide(ctx, { id: text(b.id, 120), decision: b.decision, actor, comment: text(b.comment, 1000) });
+      const left = (await loadState(ctx)).versions.filter((v) => v.status === "proposed").length;
+      if (left === 0) await noticeDone(who.org_id!, id, { step: "approval", key: `autotune:${id}`, kind: `tuning.${b.decision}d`, subject: `The tuning agent's proposals were decided`, body: `${actor} ${b.decision}d a proposed change.`, link: `/admin/federal/use-cases/${id}/tuning`, by: who.id, ref: String(ver.id).slice(0, 8) });
       return NextResponse.json({ ok: true, id: ver.id, status: ver.status });
     } catch (e) { return bad(e instanceof Error ? e.message : "The request failed"); }
   }
@@ -102,5 +105,7 @@ export async function POST(request: Request, { params }: Ctx) {
   const record = { ...cycle.result, usage: cycle.usage };
   const failEnd = await write("finished", { record });
   if (failEnd) return failEnd;
+  // changes the tuning agent may not apply itself (risky ones, or any above the limit) wait for a person to decide
+  if (record.proposed?.length) await noticeAsk(who.org_id!, id, { step: "approval", key: `autotune:${id}`, kind: "tuning.proposed", decisionKind: "tuning.decide", subject: `The tuning agent proposed ${record.proposed.length} change${record.proposed.length === 1 ? "" : "s"} for a decision`, body: "These changes are not applied until a person approves or rejects them.", link: `/admin/federal/use-cases/${id}/tuning`, by: who.id });
   return NextResponse.json({ ok: true, record });
 }

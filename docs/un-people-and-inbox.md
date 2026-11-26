@@ -126,4 +126,4 @@ If a country has entities and no governance admin, the Country screen shows "app
 
 ## 10. Not built yet
 
-Consult items from more real events, and more events (pilots, goal judgments, rerun requests, tuning proposals). The description of the pull request lists them in order.
+Consult items from more real events. The events themselves are now covered: pilot filed (information), goal judgments (a decision, closed when approved or withdrawn), rerun requests (closed when run), the agent version ready and signed or withheld, the tuning agent's proposals (a decision) and the production monitor (warned or taken down; reinstating is a decision, closed when done).

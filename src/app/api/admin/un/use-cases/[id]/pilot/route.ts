@@ -11,6 +11,7 @@ import { makeDrafter } from "@/lib/un/notice-draft";
 import { prices } from "@/lib/un/price-store";
 import { llmReasoner, llmReflector } from "@/lib/un/react-llm";
 import { loadPilots, savePilot } from "@/lib/un/pilot-store";
+import { noticeInform } from "@/lib/un/inbox-service";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { searchSop } from "@/lib/un/sop-kb";
 import { ALL_CASES, recordedOcr, runCase, SOP_ID } from "@/lib/un/task-evals";
@@ -119,5 +120,6 @@ export async function POST(request: Request, { params }: Ctx) {
   });
   const saved = await savePilot(who.org_id!, id, { at: new Date().toISOString(), actor: who.email ?? who.id, profile, reps: wantReps, runs: runs.length, plan, report, run_records: runs, basis: null });
   if ("error" in saved) return NextResponse.json({ error: saved.error }, { status: 500 });
+  await noticeInform(who.org_id!, id, { step: "pilot", kind: "pilot.filed", subject: `A pilot was filed for ${uc.ext_id}`, body: `${profile}: ${runs.length} runs, ${report.conclusive ? "conclusive" : "not conclusive"}, verdict ${report.verdict}.`, link: `/admin/federal/use-cases/${id}/pilot`, by: who.id, ref: String(saved.id).slice(0, 8) });
   return NextResponse.json({ ok: true, pilot_id: saved.id, agent, runs: runs.length, unexecuted: plan.unexecuted.length, conclusive: report.conclusive, verdict: report.verdict, report_hash: report.report_hash });
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { noticeAsk } from "@/lib/un/inbox-service";
 import { bad, notFound, requireAdmin, requirePermission } from "@/lib/api-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { evalSetFor } from "@/lib/un/evalset";
@@ -42,7 +43,9 @@ export async function POST(_req: Request, { params }: Ctx) {
   }
   const err = await appendLog(who.org_id!, id, out.entries);
   if (err) return NextResponse.json({ error: err }, { status: 500 });
-  return NextResponse.json({ entries: out.entries.length, stopped: out.stopped, version: out.config.version, state: approvalState([...log, ...out.entries]) });
+  const after = approvalState([...log, ...out.entries]);
+  if (after === "ready") await noticeAsk(who.org_id!, id, { step: "approval", key: `version:${id}`, kind: "version.ready", decisionKind: "version.approve", subject: `An agent version is certified and waits for a decision for ${uc.ext_id}`, body: `Version ${out.config.version} met the bar. A person signs or withholds approval: it is a decision for a person.`, link: `/admin/federal/use-cases/${id}/tuning`, by: who.id });
+  return NextResponse.json({ entries: out.entries.length, stopped: out.stopped, version: out.config.version, state: after });
 }
 
 /** DELETE → clear the tuning log and eval runs for a fresh demo; an approved stage goes back to pilot. */

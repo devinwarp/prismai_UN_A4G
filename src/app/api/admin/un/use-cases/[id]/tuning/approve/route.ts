@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { noticeDone } from "@/lib/un/inbox-service";
 import { bad, notFound, requirePermission } from "@/lib/api-auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { isUuid } from "@/lib/un/model";
@@ -51,6 +52,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const entry = appendEntry(log[log.length - 1], "approval", signer, { version: configOf(log)?.version ?? null, decision: b.decision, signer, comment, ...(release ? { release: { reports: release.reports, targets_hash: release.targets ? targetsHash(release.targets) : null }, cost: spent ? { usd: spent.usd, partial: spent.unpriced.length > 0, unpriced: spent.unpriced, gross_calls: spent.gross_calls, elapsed_ms: spent.usage.elapsed_ms ?? 0, model_calls: spent.usage.total.calls, tool_calls: spent.usage.total.tool_calls, by_stage: spent.by_stage } : null } : {}) }, new Date().toISOString());
   const err = await appendLog(who.org_id!, id, [entry]);
   if (err) return NextResponse.json({ error: err }, { status: 500 });
+  await noticeDone(who.org_id!, id, { step: "approval", key: `version:${id}`, kind: `version.${b.decision === "SIGN" ? "signed" : "withheld"}`, subject: `The agent version of ${uc.ext_id} was ${b.decision === "SIGN" ? "approved" : "withheld"}`, body: `${signer} ${b.decision === "SIGN" ? "approved" : "withheld approval of"} the certified agent version.${comment ? ` Comment: ${comment}` : ""}`, link: `/admin/federal/use-cases/${id}/tuning`, by: who.id, ref: entry.hash.slice(0, 8) });
   if (b.decision === "SIGN") await createAdminClient().from("un_use_cases").update({ stage: "approved", updated_at: new Date().toISOString() }).eq("id", id).eq("org_id", who.org_id!);
   return NextResponse.json({ ok: true, decision: b.decision, hash: entry.hash });
 }

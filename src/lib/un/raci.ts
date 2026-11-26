@@ -66,7 +66,7 @@ export type Mode = "action" | "approval" | "consult" | "inform";
 export const modeOf = (l: Letter): Mode => (l === "I" ? "inform" : l === "C" ? "consult" : l === "A" ? "approval" : "action");
 
 /** Explicit decisions: they need a person's input and are never taken by an agent. Always tagged for human review. */
-export const HUMAN_DECISIONS = ["targets.approve", "tests.approve", "version.approve", "verdict.sign", "deploy", "gate.waive", "gate.accept", "goals.approve", "rerun.request"] as const;
+export const HUMAN_DECISIONS = ["targets.approve", "tests.approve", "version.approve", "verdict.sign", "deploy", "gate.waive", "gate.accept", "goals.approve", "rerun.request", "tuning.decide", "reinstate"] as const;
 export type Decision = (typeof HUMAN_DECISIONS)[number];
 export const isHumanDecision = (kind: string): boolean => (HUMAN_DECISIONS as readonly string[]).includes(kind);
 
