@@ -99,7 +99,7 @@ export const S2: GateScenario = {
 };
 
 const line = (deployed: number, pct: number, comp: number, cpct: number, gap: number) =>
-  `deployed ${deployed}/20 (${pct}%), compliant ${comp}/20 (${cpct}%), target 10, gap ${gap}`;
+  `deployed ${deployed}/20 (${pct}%), aligned ${comp}/20 (${cpct}%), target 10, gap ${gap}`;
 
 /** S3: the federal cascade over the 20-use-case dataset. Needs the
  * data/un-use-cases.csv ids; runs on a sandbox copy of the org's use cases. */

@@ -67,7 +67,7 @@ export const UI_A_AR: Record<string, string> = {
   "ua.cancel": "إلغاء",
   "ua.failed": "تعذّر التنفيذ",
   "ua.updated": "تم التحديث.",
-  "ua.legend.compliant": "ممتثلة",
+  "ua.legend.compliant": "متوائمة",
   "ua.noun.entities": "الجهات",
   "ua.noun.quadrants": "الفئات",
 
@@ -98,8 +98,8 @@ export const UI_A_AR: Record<string, string> = {
 
   // dashboard sections and headline
   "ua.nav.aria": "في هذه الصفحة",
-  "ua.hl.sr": "منشورة {a} بالمئة، ممتثلة {b} بالمئة، الهدف {c} بالمئة",
-  "ua.hl.sr.notarget": "منشورة {a} بالمئة، ممتثلة {b} بالمئة",
+  "ua.hl.sr": "منشورة {a} بالمئة، متوائمة {b} بالمئة، الهدف {c} بالمئة",
+  "ua.hl.sr.notarget": "منشورة {a} بالمئة، متوائمة {b} بالمئة",
   "ua.sec.headline": "الخلاصة",
   "ua.sec.progress": "التقدم نحو الهدف الاتحادي",
   "ua.sec.register": "السجل",
@@ -130,9 +130,9 @@ export const UI_A_AR: Record<string, string> = {
   "ua.tp.share": "{p}% من {t} حالة استخدام",
   "ua.tp.met": "تحقق الهدف",
   "ua.tp.gap": "الفجوة: {g} للنشر",
-  "ua.tp.ca": "ممتثلة ومتوافقة",
+  "ua.tp.ca": "متوائمة",
   "ua.tp.vt": "{v} من {t} حالة استخدام؛ الهدف {g}",
-  "ua.tp.line": "خط الهدف: {n} حالة استخدام ({p}%). يُعرض الامتثال بجانب النشر ولا يُدمج فيه أبداً.",
+  "ua.tp.line": "خط الهدف: {n} حالة استخدام ({p}%). تُعرض المواءمة بجانب النشر ولا يُدمج فيه أبداً.",
   "ua.tp.k.gap": "الفجوة عن الهدف",
   "ua.tp.s.none": "لا شيء متبقٍ للنشر",
   "ua.tp.s.left": "حالات استخدام ما زالت بحاجة إلى نشر",
@@ -143,8 +143,8 @@ export const UI_A_AR: Record<string, string> = {
   "ua.tp.nodl": "لم يُحدَّد موعد نهائي",
   "ua.tp.k.pace": "الوتيرة المطلوبة",
   "ua.tp.s.pace": "عمليات نشر في الشهر",
-  "ua.tp.k.stuck": "منشورة وغير ممتثلة",
-  "ua.tp.s.stuck": "منشورة لكنها لا تجتاز الشهادة",
+  "ua.tp.k.stuck": "منشورة وغير متوائمة",
+  "ua.tp.s.stuck": "منشورة لكنها غير متوائمة",
   "ua.tp.s.nofail": "لا شيء مخفق",
 
   // verdict mix and tally
@@ -153,7 +153,7 @@ export const UI_A_AR: Record<string, string> = {
   "ua.mix.notyet2": "لم يُقيَّم بعد",
   "ua.mix.none": "غير مُقيَّمة",
   "ua.mix.cap": "أعداد القرارات",
-  "ua.tally.row": "{d}/{t} منشورة · {c} ممتثلة",
+  "ua.tally.row": "{d}/{t} منشورة · {c} متوائمة",
   "ua.tally.fewer": "عرض أقل",
   "ua.tally.all": "عرض كل {noun} ({n})",
   "ua.tally.cap": "النشر بحسب {noun}",
@@ -162,13 +162,13 @@ export const UI_A_AR: Record<string, string> = {
   "ua.reg.title": "حالات الاستخدام ({n})",
   "ua.reg.nofm": "{a} من {b}",
   "ua.reg.lede": "المرحلة والقرار والامتثال تُقرأ من قاعدة البيانات ولا يمكن تعديلها هنا. القرار يأتي فقط من تشغيل سيناريو موقّع، والامتثال فقط من شهادة سجل ناجحة.",
-  "ua.reg.cap": "حالات الاستخدام مع المرحلة والقرار والامتثال",
+  "ua.reg.cap": "حالات الاستخدام مع المرحلة والقرار والمواءمة",
   "ua.reg.nomatch": "لا توجد حالة استخدام مطابقة.",
   "ua.reg.empty": "لا توجد حالات استخدام بعد. استورد ملف CSV أدناه (يوجد نموذج في",
   "ua.reg.empty2": ").",
   "ua.row.stagefor": "مرحلة {id}",
-  "ua.row.compl": "الامتثال {id}: {yn}",
-  "ua.row.compl.h": "لا يُحدَّد إلا بشهادة سجل ناجحة",
+  "ua.row.compl": "المواءمة {id}: {yn}",
+  "ua.row.compl.h": "تُفترض إلى أن يُدمج سجل",
 
   // policy
   "ua.pol.lede": "لم يحدّد الإطار ما الذي يُعدّ منشوراً، لذا قاعدة العدّ صريحة ويمكنك تغييرها.",

@@ -44,9 +44,17 @@ const START: StartStep[] = [
   { n: 3, k: "start.3", en: "Compare jurisdictions", hintK: "start.3h", hint: "Same processes under UAE, EU and Singapore rules: what changes?", href: "/admin/federal/compare" },
 ];
 const TOUR: TourStep[] = [
-  { target: "headline", k: "tour.dash.headline", title: "The story in one glance", body: "How much is running, how much is provably compliant, and how far that is from the federal target." },
+  { target: "header", k: "tour.dash.header", title: "Country, re-run and people", body: "The country switch changes which country's rules and entities this dashboard shows. An admin can re-run the process at any time, and the people icon opens roles and approvers." },
+  { target: "headline", k: "tour.dash.headline", title: "The story in one glance", body: "How much is running, how much is aligned, and how far that is from the federal target." },
+  { target: "setup", k: "tour.dash.setup", title: "The setup journey", body: "Pick an entity and follow its steps in order: goals, SOPs, rules and a first decision. This is where an entity is configured; nothing else needs setting up elsewhere." },
   { target: "entry", k: "tour.dash.entry", title: "Where to go next", body: "Run a scenario to see a decision made, compare rule sets, search the sources, or read the gaps." },
-  { target: "mix", k: "tour.dash.mix", title: "Which decisions were reached?", body: "Select a bar to filter the register below. Colour is always paired with a symbol and a word." },
+  { target: "mix", k: "tour.dash.mix", title: "Which decisions were reached?", body: "Select a bar to filter the register. Colour is always paired with a symbol and a word." },
+  { target: "stages", k: "tour.dash.stages", title: "Where each use case is in its life", body: "From idea to deployed. Stage is set by the engine, not by hand, so this count can be trusted." },
+  { target: "entities", k: "tour.dash.entities", title: "Which entities are furthest along", body: "One card per entity with its deployed and aligned counts. Select a card to see only that entity." },
+  { target: "filters", k: "tour.dash.filters", title: "Find a use case", body: "Search, or filter by entity, verdict and stage. Clear filters returns to the full register." },
+  { target: "risk", k: "tour.dash.risk", title: "Risk levels and AI disclosure", body: "Client-facing, rights or fees, and irreversible are Yes/No switches in the register. People with permission can change them and save; each change is logged. AI disclosure is a rule on every use case that cannot be removed." },
+  { target: "register", k: "tour.dash.register", title: "The register", body: "Every use case with its SOP, risk levels, stage, verdict, journey and alignment. The verdict comes only from a signed scenario run. Alignment is assumed for every use case until Sijil is integrated." },
+  { target: "vkey", k: "tour.dash.vkey", title: "Reading a verdict", body: "The key explains each verdict in words, so a colour or symbol is never the only signal." },
 ];
 
 const toolBtn = "inline-flex items-center justify-center gap-1.5 rounded-xl border border-line bg-paper px-3.5 py-2 text-sm font-medium text-ink transition-colors hover:border-ink-soft desk:py-1.5";
@@ -179,7 +187,7 @@ export default function FederalPanel({
   };
 
   const noVerdicts = d.total > 0 && useCases.every((u) => !u.verdict);
-  const unproven = d.deployed - d.compliant;
+  const unproven = d.deployed - d.aligned;
   const story = noTarget
     ? tr(lang, "ua.pg.notarget", "No framework target is recorded for this country yet.")
     : noVerdicts
@@ -187,7 +195,7 @@ export default function FederalPanel({
       : d.gap === 0
         ? tr(lang, "story.met", "The federal target is met.")
         : unproven > 0
-          ? tr(lang, "story.unproven", `${d.deployed} use cases are running, but only ${d.compliant} are proven compliant. ${d.gap} more must be cleared to reach the target.`).replace("{a}", String(d.deployed)).replace("{b}", String(d.compliant)).replace("{g}", String(d.gap))
+          ? tr(lang, "story.unproven", `${d.deployed} use cases are running, but only ${d.aligned} are aligned. ${d.gap} more must be cleared to reach the target.`).replace("{a}", String(d.deployed)).replace("{b}", String(d.aligned)).replace("{g}", String(d.gap))
           : tr(lang, "story.gap", `${d.deployed} of ${d.targetCount} needed use cases are cleared to run.`).replace("{a}", String(d.deployed)).replace("{t}", String(d.targetCount));
 
   const hasStagedScenarios = showFederalTools && countryId === "UAE";
@@ -256,7 +264,7 @@ export default function FederalPanel({
           <h3 className="mb-3 text-base font-medium desk:mb-1.5 desk:pe-[4.75rem] desk:text-sm">{tr(lang, "pf.q.mix", "Which decisions have been reached?")}</h3>
           <VerdictMix useCases={useCases} active={verdict} onSelect={pick(setVerdict)} />
         </div>
-        <div className="relative mt-8 desk:mt-0 desk:border-t desk:border-line desk:pt-2">
+        <div data-tour="stages" className="relative mt-8 desk:mt-0 desk:border-t desk:border-line desk:pt-2">
           <h3 id="portfolio-stages" className="mb-3 text-base font-medium desk:mb-1.5 desk:pe-[4.75rem] desk:text-sm">{tr(lang, "pf.q.stage", "Where in its life is each one?")}</h3>
           <StagePipeline byStage={d.byStage} />
         </div>
@@ -274,7 +282,7 @@ export default function FederalPanel({
       >
         <EntityStrip rows={d.byEntity} active={entity} onSelect={pick(changeEntity)} />
 
-        <div className="mt-6 flex flex-wrap items-end gap-x-3 gap-y-2 desk:mt-0 desk:items-center desk:gap-x-2.5">
+        <div data-tour="filters" className="mt-6 flex flex-wrap items-end gap-x-3 gap-y-2 desk:mt-0 desk:items-center desk:gap-x-2.5">
           <h2 id="register-h" tabIndex={-1} className="font-display me-auto text-2xl font-medium tracking-tight whitespace-nowrap desk:text-lg">
             {fill(tr(lang, "ua.reg.title", "Use cases ({n})"), { n: filtering ? fill(tr(lang, "ua.reg.nofm", "{a} of {b}"), { a: filtered.length, b: useCases.length }) : useCases.length })}
           </h2>
@@ -309,6 +317,7 @@ export default function FederalPanel({
           {/* One screen: the verdict key and the rule note open from this button, so the table keeps its height. */}
           <div className="hidden desk:block">
             <Pop
+              dataTour="vkey"
               buttonClass="rounded-md border border-line bg-paper px-2.5 py-1 font-mono text-[11px] hover:border-ink-soft"
               panelClass="w-[min(34rem,calc(100vw-2rem))]"
               label={tr(lang, "dash.verdictkey", "Verdict key")}
@@ -321,18 +330,18 @@ export default function FederalPanel({
                   </li>
                 ))}
               </ul>
-              <p className="mt-3 border-t border-line pt-3 text-sm text-ink-soft">{tr(lang, "ua.reg.lede", "Stage, verdict and compliance are read from the database and cannot be edited here. The verdict comes only from a signed scenario run and compliance only from a passing Sijil attestation.")}</p>
+              <p className="mt-3 border-t border-line pt-3 text-sm text-ink-soft">{tr(lang, "ua.reg.lede", "Stage and verdict are read from the database and cannot be edited here. The verdict comes only from a signed scenario run. Alignment is assumed for every use case until Sijil is integrated.")}</p>
             </Pop>
           </div>
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2 text-xs desk:mt-0">
+        <div data-tour="risk" className="mt-2 flex flex-wrap items-center gap-2 text-xs desk:mt-0">
           <p className="text-ink-soft">{tr(lang, "risk.disclosure", "AI disclosure is required for internal and external outputs.")}</p>
           {riskChanges.length > 0 && <button type="button" className={`${btnPrimary} py-1 text-xs`} disabled={riskSaving} onClick={() => void saveRisks()}>
             {riskSaving ? tr(lang, "ua.saving", "Saving…") : tr(lang, "risk.save", "Save risk changes")}
           </button>}
           {riskResult && <p role={riskResult.error ? "alert" : "status"} className={`whitespace-pre-line ${riskResult.error ? "text-ember" : "text-lit-deep"}`}>{riskResult.text}</p>}
         </div>
-        <p className="mt-3 max-w-[68ch] text-sm leading-relaxed text-ink-soft desk:hidden">{tr(lang, "ua.reg.lede", "Stage, verdict and compliance are read from the database and cannot be edited here. The verdict comes only from a signed scenario run and compliance only from a passing Sijil attestation.")}</p>
+        <p className="mt-3 max-w-[68ch] text-sm leading-relaxed text-ink-soft desk:hidden">{tr(lang, "ua.reg.lede", "Stage and verdict are read from the database and cannot be edited here. The verdict comes only from a signed scenario run. Alignment is assumed for every use case until Sijil is integrated.")}</p>
 
         {noVerdicts && (
           <p className="mt-4 max-w-[68ch] rounded-xl border border-dashed border-line p-3 text-sm text-ink-soft desk:mt-0 desk:max-w-none desk:px-2.5 desk:py-1 desk:text-xs">
@@ -340,9 +349,9 @@ export default function FederalPanel({
             {hasStagedScenarios && <Link href={scopedHref("/admin/federal/scenarios")} className="font-medium text-ink underline underline-offset-2">{tr(lang, "reg.none_cta", "Run one now")}</Link>}
           </p>
         )}
-        <div className="relative mt-4 max-h-[34rem] overflow-auto rounded-2xl border border-line bg-card desk:mt-0 desk:max-h-none desk:min-h-0 desk:flex-1">
+        <div data-tour="register" className="relative mt-4 max-h-[34rem] overflow-auto rounded-2xl border border-line bg-card desk:mt-0 desk:max-h-none desk:min-h-0 desk:flex-1">
           <table className="w-full min-w-[60rem] text-sm desk:min-w-[57rem] desk:text-[13px]">
-            <caption className="sr-only">{tr(lang, "ua.reg.cap", "Use cases with stage, verdict and compliance")}</caption>
+            <caption className="sr-only">{tr(lang, "ua.reg.cap", "Use cases with stage, verdict and alignment")}</caption>
             <thead className="sticky top-0 z-10 bg-card text-start font-mono text-[11px] tracking-wide text-ink-soft uppercase shadow-[0_1px_0_var(--color-line)]">
               <tr>
                 <th scope="col" className="px-4 py-3 font-normal desk:ps-3 desk:py-2">{tr(lang, "ua.col.id", "ID")}</th>
@@ -353,7 +362,7 @@ export default function FederalPanel({
                 <th scope="col" className={th}>{tr(lang, "ua.col.stage", "Stage")}</th>
                 <th scope="col" className={th}>{tr(lang, "ua.col.verdict", "Verdict")}</th>
                 <th scope="col" className={th}><T k="jb.col" en="Journey" /></th>
-                <th scope="col" className="px-2 text-center font-normal">{tr(lang, "hl.compliant", "Compliant")}</th>
+                <th scope="col" className="px-2 text-center font-normal">{tr(lang, "hl.compliant", "Aligned")}</th>
                 <th scope="col" className="px-2 pe-4 text-center font-normal desk:pe-3">{tr(lang, "rr.col", "Rerun")}</th>
               </tr>
             </thead>
@@ -407,7 +416,7 @@ export default function FederalPanel({
                   </td>
                   <td className="px-2 whitespace-nowrap">{journeys[u.id] ? <JourneyLine journey={journeys[u.id]} compact /> : null}</td>
                   <td className="px-2 text-center">
-                    <span aria-label={fill(tr(lang, "ua.row.compl", "Compliant {id}: {yn}"), { id: ltr(u.ext_id), yn: u.compliant ? tr(lang, "ua.yes", "yes") : tr(lang, "ua.no", "no") })} title={tr(lang, "ua.row.compl.h", "Set only by a passing Sijil attestation")}>{u.compliant ? "✓" : "–"}</span>
+                    <span aria-label={fill(tr(lang, "ua.row.compl", "Aligned {id}: {yn}"), { id: ltr(u.ext_id), yn: u.compliant ? tr(lang, "ua.yes", "yes") : tr(lang, "ua.no", "no") })} title={tr(lang, "ua.row.compl.h", "Assumed until Sijil is integrated")}>{u.compliant ? "✓" : "–"}</span>
                   </td>
                   <td className="px-2 pe-4 text-center desk:pe-3">{rerun[u.id] ? <RerunControl ucId={u.id} ext={u.ext_id} ui={rerun[u.id]} /> : null}</td>
                 </tr>

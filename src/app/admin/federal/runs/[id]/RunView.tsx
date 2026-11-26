@@ -23,10 +23,10 @@ import { GateChip, scrollRegion, Section, VerdictBadge, STATUS_META, btnGhost, b
 
 const isVerdict = (s: string): s is Verdict => (VERDICTS as readonly string[]).includes(s);
 const time = (iso: string) => new Date(iso).toLocaleTimeString("en-GB", { timeZone: "Asia/Dubai" });
-/** Portfolio steps: "deployed 6/20 (30%), compliant 4/20 (20%), target 10, gap 4 ..." */
+/** Portfolio steps: "deployed 6/20 (30%), aligned 4/20 (20%), target 10, gap 4 ..." */
 function dash(outcome: string) {
-  const m = /deployed (\d+)\/(\d+).*?compliant (\d+)\/\d+.*?target (\d+)/.exec(outcome);
-  return m ? { deployed: +m[1], total: +m[2], compliant: +m[3], target: +m[4] } : null;
+  const m = /deployed (\d+)\/(\d+).*?aligned (\d+)\/\d+.*?target (\d+)/.exec(outcome);
+  return m ? { deployed: +m[1], total: +m[2], aligned: +m[3], target: +m[4] } : null;
 }
 
 function PortfolioBars({ outcome, lang }: { outcome: string; lang: Lang }) {
@@ -36,14 +36,14 @@ function PortfolioBars({ outcome, lang }: { outcome: string; lang: Lang }) {
   return (
     <div className="mt-3">
       <p className="mb-1 inline-block rounded-md border border-ember/60 px-2 py-0.5 font-mono text-[11px] font-medium text-ember">{tr(lang, SANDBOX_KEY, SANDBOX_EN)}</p>
-      <div role="img" aria-label={`${tr(lang, SANDBOX_KEY, SANDBOX_EN)}. ${tr(lang, "uc.run.pf_aria", "Deployed {d} of {n}, compliant {c}, target {t}").replace("{d}", String(d.deployed)).replace("{n}", String(d.total)).replace("{c}", String(d.compliant)).replace("{t}", String(d.target))}`}>
+      <div role="img" aria-label={`${tr(lang, SANDBOX_KEY, SANDBOX_EN)}. ${tr(lang, "uc.run.pf_aria", "Deployed {d} of {n}, aligned {c}, target {t}").replace("{d}", String(d.deployed)).replace("{n}", String(d.total)).replace("{c}", String(d.aligned)).replace("{t}", String(d.target))}`}>
         <div className="relative h-3 rounded-full bg-paper-deep">
           <div className="absolute inset-y-0 start-0 rounded-full bg-lit" style={{ width: w(d.deployed) }} />
-          <div className="absolute inset-y-0 start-0 rounded-full" style={{ width: w(d.compliant), background: "var(--color-v-sup)" }} />
+          <div className="absolute inset-y-0 start-0 rounded-full" style={{ width: w(d.aligned), background: "var(--color-v-sup)" }} />
           <div aria-hidden className="absolute -top-1 -bottom-1 w-0.5 bg-ink" style={{ insetInlineStart: `calc(${w(d.target)} - 1px)` }} />
         </div>
       </div>
-      <p className="mt-1 font-mono text-[11px] text-ink-soft">{tr(lang, "uc.run.pf_legend", "deployed {d} (green) · compliant {c} (blue) · target line {t} of {n}").replace("{d}", String(d.deployed)).replace("{c}", String(d.compliant)).replace("{t}", String(d.target)).replace("{n}", String(d.total))}</p>
+      <p className="mt-1 font-mono text-[11px] text-ink-soft">{tr(lang, "uc.run.pf_legend", "deployed {d} (green) · aligned {c} (blue) · target line {t} of {n}").replace("{d}", String(d.deployed)).replace("{c}", String(d.aligned)).replace("{t}", String(d.target)).replace("{n}", String(d.total))}</p>
     </div>
   );
 }

@@ -27,6 +27,6 @@ test("C2-8: a partly released run exports only what was released, and a mismatch
 });
 
 test("C2-8: the dashboard lines of portfolio steps export too, and commas in the dashboard line are quoted in CSV", async () => {
-  const rows = expectedVsActual([{ step: "T1", expected: "deployed 6/20 (30%), compliant 0/20", outcome: "deployed 6/20 (30%), compliant 0/20", match: true }]);
-  assert.match(expectedCsv(rows), /"deployed 6\/20 \(30%\), compliant 0\/20"/);
+  const rows = expectedVsActual([{ step: "T1", expected: "deployed 6/20 (30%), aligned 0/20", outcome: "deployed 6/20 (30%), aligned 0/20", match: true }]);
+  assert.match(expectedCsv(rows), /"deployed 6\/20 \(30%\), aligned 0\/20"/);
 });

@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { withAlignment } from "./alignment";
 import { engineValues } from "./guard";
 import { parseGoals, type EntityGoal } from "./goals";
 import type { HitlConfig } from "./hitl";
@@ -27,8 +28,8 @@ export async function loadUnUseCases(orgId: string): Promise<UnUseCaseState[]> {
     .select("*")
     .eq("org_id", orgId)
     .order("ext_id");
-  // Only engine-written verdicts and attested compliance reach the dashboard (I-1).
-  return ((data ?? []) as UnUseCaseState[]).map(engineValues);
+  // Only engine-written verdicts reach the dashboard (I-1); alignment is read per alignment.ts (assumed until Sijil is integrated).
+  return ((data ?? []) as UnUseCaseState[]).map(engineValues).map(withAlignment);
 }
 
 /** Re-import updates descriptive fields only; stage/verdict/compliant keep

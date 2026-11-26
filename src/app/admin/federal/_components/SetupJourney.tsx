@@ -73,7 +73,7 @@ export default function SetupJourney({ country, countryReady, entities, entity, 
     },
   ];
   return (
-    <section aria-labelledby="setup-heading" id="setup-journey" className="min-w-0 rounded-xl border border-line bg-card px-4 py-3 desk:col-span-2 desk:px-3 desk:py-2">
+    <section aria-labelledby="setup-heading" id="setup-journey" data-tour="setup" className="min-w-0 rounded-xl border border-line bg-card px-4 py-3 desk:col-span-2 desk:px-3 desk:py-2">
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2">
         <h2 id="setup-heading" className="font-display text-xl font-medium desk:text-lg">{tr(lang, "setup.title", "Setup journey")}</h2>
         {entities.length > 0 && <label className="flex min-w-0 flex-wrap items-center gap-2 text-xs font-medium">
