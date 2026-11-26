@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
+import { noticeApproval } from "@/lib/un/inbox-service";
 import { bad, forbidden, notFound, requirePermission } from "@/lib/api-auth";
 import { resolveApprover } from "@/lib/un/approvers";
+import { withGovernance } from "@/lib/un/approvers";
 import { approversForUseCase } from "@/lib/un/approvers-store";
 import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
@@ -58,7 +60,7 @@ export async function POST(request: Request, { params }: Ctx) {
   let action: ParamAction;
   if (act === "propose") action = { type: "propose", params: b.params, note: text(b.note, 500) || undefined };
   else if (act === "approve") {
-    const a = resolveApprover(b.approver, await approversForUseCase(who.org_id!, id));
+    const a = resolveApprover(b.approver, withGovernance(await approversForUseCase(who.org_id!, id)));
     if (!a.ok) return bad(a.error);
     action = { type: "approve", approver: a.approver, self_approval_reason: text(b.self_approval_reason, 500) || undefined };
   } else action = { type: "withdraw", reason: text(b.reason, 500) };
@@ -69,5 +71,6 @@ export async function POST(request: Request, { params }: Ctx) {
   const err = await appendParamLog(who.org_id!, id, profile, entry);
   if (err) return NextResponse.json({ error: /duplicate|unique/i.test(err) ? "Someone else changed the parameters just now; reload and try again" : err }, { status: /duplicate|unique/i.test(err) ? 409 : 500 });
   const next = replayParams([...log, entry]);
+  await noticeApproval(who.org_id!, id, { step: "tests", what: "Verdict parameters", event: p.kind === "proposed" ? "request" : p.kind === "approved" ? "approved" : "withdrawn", ext: uc.ext_id, by: who.id, link: `/admin/federal/use-cases/${id}/tests`, ref: entry.hash.slice(0, 8) });
   return NextResponse.json({ ok: true, kind: p.kind, hash: entry.hash, version: next.approved?.version ?? 0, pending: next.pending?.version ?? null, ...(p.kind === "approved" ? { params_hash: p.payload.hash } : {}) });
 }

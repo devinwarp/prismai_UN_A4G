@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
 import { mayReadUseCase } from "@/lib/un/federal-read-access";
 import { getUserAndProfile } from "@/lib/auth";
+import { withGovernance } from "@/lib/un/approvers";
 import { approversForUseCase } from "@/lib/un/approvers-store";
 import { isUuid } from "@/lib/un/model";
 import { permissionsFor } from "@/lib/un/permissions-server";
@@ -52,7 +53,7 @@ export default async function TestsPage({ params, searchParams }: { params: Prom
       let glog: Awaited<ReturnType<typeof loadGenLog>> = [];
       let genError: string | null = null;
       try { glog = await loadGenLog(profile.org_id, id, current.name); } catch (e) { genError = e instanceof Error ? e.message : "The proposal log could not be read"; }
-      const approvers = (await approversForUseCase(profile.org_id, id)).map((a) => ({ title: a.title, source: a.source }));
+      const approvers = withGovernance(await approversForUseCase(profile.org_id, id)).map((a) => ({ title: a.title, source: a.source }));
       body = (
         <>
           <TestSetEditor

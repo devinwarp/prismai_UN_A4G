@@ -44,6 +44,13 @@ export function approverOptions(o: { sopText?: string | null; profiles?: string[
   return out.length ? out : governanceApprovers();
 }
 
+/** The approvers for what the governance admin of the country signs off (process targets, test sets, verdict parameters): the use case's own list, plus the
+ * governance roles, so the governance admin can always be named (their job title is "Head of AI governance"). */
+export function withGovernance(list: Approver[]): Approver[] {
+  const have = new Set(list.map((a) => a.title.trim().toLowerCase()));
+  return [...list, ...governanceApprovers().filter((a) => !have.has(a.title.toLowerCase()))];
+}
+
 export type ApproverResult = { ok: true; approver: Approver } | { ok: false; error: string };
 
 /** Checks a submitted approver against the allowed list. An empty choice falls back to the process owner when the

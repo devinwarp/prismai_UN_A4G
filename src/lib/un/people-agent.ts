@@ -52,4 +52,4 @@ export function countriesNeedingGovernanceAdmin(o: { countriesWithEntities: stri
 }
 
 export const needSubject = (n: PositionNeed) =>
-  n.kind === "job_profile" ? `Create a user for the position "${n.title}" (${n.ext_id}, ${n.entity})` : `Appoint a ${n.title.toLowerCase()} for ${n.ext_id} (${n.entity})`;
+  n.kind === "job_profile" ? `Create a user for the position "${n.title}" (${n.ext_id}, ${n.entity})` : `Appoint ${/^[aeiou]/i.test(n.title) ? "an" : "a"} ${n.title.toLowerCase()} for ${n.ext_id} (${n.entity})`;

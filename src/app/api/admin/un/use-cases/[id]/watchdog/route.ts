@@ -2,6 +2,7 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { metered, recordToolCalls } from "@/lib/un/cost";
 import { loadRelease } from "@/lib/un/release-store";
 import { NextResponse } from "next/server";
+import { notifyUseCase } from "@/lib/un/inbox-service";
 import { bad, forbidden, notFound, requireAdmin, requirePermission } from "@/lib/api-auth";
 import { activeCases, evalSetFor } from "@/lib/un/evalset";
 import { alignment, runEvalSet } from "@/lib/un/eval-run";
@@ -54,6 +55,7 @@ export async function POST(request: Request, { params }: Ctx) {
     if (err) return NextResponse.json({ error: err }, { status: 500 });
     // the stage label says "deployed" only once the agent really is in production
     await createAdminClient().from("un_use_cases").update({ stage: "deployed", updated_at: now() }).eq("id", id).eq("org_id", who.org_id!);
+    await notifyUseCase(who.org_id!, id, { step: "deploy", kind: "deploy.done", subject: `${uc.ext_id} is in production`, body: `${uc.ext_id} (${uc.title}) was deployed by ${signer}.`, link: `/admin/federal/use-cases/${id}/production`, dedupe: `deploy:${id}:${entry.hash.slice(0, 8)}`, exclude: [who.id], inform: true }).catch(() => {});
     return NextResponse.json({ ok: true, status: "active" });
   }
 

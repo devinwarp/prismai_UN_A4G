@@ -27,6 +27,8 @@ export interface Notice {
   created_by?: string;
   /** people who must not be told (the person who did it) */
   exclude?: string[];
+  /** tell everyone involved for information only (a decision has been made), instead of asking each by their RACI letter */
+  inform?: boolean;
 }
 
 /** Tells the people who hold the positions of this step where it happened, each according to their RACI letter. Returns the items added. */
@@ -34,7 +36,7 @@ export async function notify(orgId: string, n: Notice, now = new Date()): Promis
   const [people, rows, overrides] = await Promise.all([loadPeople(orgId), loadAssignmentRows(orgId), loadRaciOverrides(orgId)]);
   const holders = holdersOf(people, rows, n.place);
   const mine = overrides.filter((o) => o.step === n.step && (o.use_case_id ? o.use_case_id === n.place.use_case_id : !o.entity || o.entity === n.place.entity));
-  const recipients = route(n.step, holders, mine).filter((r) => !(n.exclude ?? []).includes(r.user_id));
+  const recipients = route(n.step, holders, mine).filter((r) => !(n.exclude ?? []).includes(r.user_id)).map((r) => (n.inform ? { ...r, letter: "I" as const, escalated_from: undefined } : r));
   const items: NewItem[] = recipients.map((r) => ({
     kind: r.letter === "A" ? n.decisionKind ?? n.kind : n.kind,
     user_id: r.user_id,
@@ -51,6 +53,34 @@ export async function notify(orgId: string, n: Notice, now = new Date()): Promis
 export async function notifyUseCase(orgId: string, useCaseId: string, n: Omit<Notice, "place">, now = new Date()): Promise<InboxItem[]> {
   const c = await contextOfUseCase(orgId, useCaseId);
   return notify(orgId, { ...n, place: { entity: c.entity ?? null, country: c.country ?? null, use_case_id: useCaseId } }, now);
+}
+
+/** Closes every open item with this dedupe key (the thing it asked for has been dealt with). Returns how many. */
+export async function resolveItems(orgId: string, dedupe: string, by: string | null, now = new Date()): Promise<number> {
+  let n = 0;
+  for (const i of await loadOpenItems(orgId)) {
+    if (i.dedupe_key === dedupe && !(await updateItem(orgId, i.id, { status: "done", resolved_at: now.toISOString(), resolved_by: by }))) n++;
+  }
+  return n;
+}
+
+/**
+ * An approval step of a use case (its process targets, or its test set and verdict parameters) moved. A request asks the people who must decide, each by their
+ * RACI letter (the governance admin is Accountable, so it is a decision for a person). A decision closes that request and tells the others for information.
+ * Never throws: a missing inbox must not stop the action that caused it.
+ */
+export async function noticeApproval(orgId: string, useCaseId: string, o: { step: "targets" | "tests"; what: string; event: "request" | "approved" | "withdrawn"; ext: string; by: string; link: string; ref: string }): Promise<void> {
+  try {
+    const key = `${o.step}:${useCaseId}:open`;
+    if (o.event === "request") {
+      await notifyUseCase(orgId, useCaseId, { step: o.step, kind: `${o.step}.proposed`, decisionKind: `${o.step}.approve`, subject: `${o.what}: approval needed for ${o.ext}`,
+        body: `${o.what} for ${o.ext} are ready. The business owner proposes and the governance admin of the country approves: a person decides.`, link: o.link, dedupe: key, exclude: [o.by], created_by: "system" });
+      return;
+    }
+    await resolveItems(orgId, key, o.by);
+    await notifyUseCase(orgId, useCaseId, { step: o.step, kind: `${o.step}.${o.event}`, subject: `${o.what} ${o.event} for ${o.ext}`, body: `${o.what} for ${o.ext} were ${o.event}.`, link: o.link,
+      dedupe: `${o.step}:${useCaseId}:${o.ref}:${o.event}`, exclude: [o.by], inform: true, created_by: "system" });
+  } catch { /* the inbox is not there yet (its SQL is not applied) or failed: the action itself stands */ }
 }
 
 // ---- the People agent: positions nobody holds, and countries without a governance admin ---------------------------------------------------------------
@@ -169,7 +199,7 @@ export async function runAgent(orgId: string, user: Pick<Person, "id" | "legacy_
       const title = need?.title ?? "";
       const staged = { job_title: need?.kind === "operator" || need?.kind === "process_owner" ? null : title, role: need?.kind === "operator" ? "operator" : need?.kind === "process_owner" ? "process_owner" : null,
         entity: i.entity, use_case_id: i.use_case_id, ext_id: need?.ext_id ?? null, suggested_email: `${slug(title || need?.kind || "user")}.${slug((i.entity ?? "entity").split(" ")[0])}@${slug((i.entity ?? "entity").split(" ")[0])}.example` };
-      await updateItem(orgId, i.id, { handler: "human", status: "open", payload: { ...i.payload, staged }, escalate_at: escalateAtFor(i.mode, now), body: `${i.body}\n\nYour agent staged a user for you to confirm. An account is only created when you confirm.` });
+      await updateItem(orgId, i.id, { handler: "human", status: "open", payload: { ...i.payload, staged }, escalate_at: escalateAtFor(i.mode, now) });
       await appendAgentLog(orgId, user.id, { item_id: i.id, action: "staged_user", outcome: "done", detail: { staged } }, now);
       used++; run.handled++;
     } else if (i.mode === "consult") {

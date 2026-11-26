@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { sweepPeople } from "@/lib/un/inbox-service";
 import { randomUUID } from "node:crypto";
 import { bad, notFound, requirePermission } from "@/lib/api-auth";
 import { recordChange } from "@/lib/un/country-actions";
@@ -51,6 +52,7 @@ export async function POST(request: Request, { params }: Ctx) {
     const err = await attachSop(orgId, id, b.sop_id, who.id, latest.version);
     if (err) return fail(err);
     const audited = await audit("sop_changed", { from: before, to: b.sop_id, version: latest.version });
+    await sweepPeople(orgId).catch(() => {}); // the job profiles changed: the People agent looks for positions nobody holds
     return NextResponse.json({ ok: true, sop_id: b.sop_id, version: latest.version, audited });
   }
 
@@ -114,6 +116,7 @@ export async function POST(request: Request, { params }: Ctx) {
     const skill = b.automate && kb?.ok ? writeSkill(sopId, b.profile) : null;
     const err = await saveTick(orgId, id, sopId, b.profile, b.automate, who.id, skill?.ok ? { path: skill.path, sha256: skill.sha256 } : null);
     if (err) return fail(err);
+    await sweepPeople(orgId).catch(() => {}); // the job profiles changed: the People agent looks for positions nobody holds
     return NextResponse.json({ ok: true, kb, skill });
   }
   void baseOf;

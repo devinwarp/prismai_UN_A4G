@@ -95,3 +95,13 @@ export const isOpen = (i: InboxItem) => i.status === "open" || i.status === "age
 /** Items whose escalation time has passed and that a person still has not dealt with, each to be handed one level up. */
 export const dueForEscalation = (items: InboxItem[], now: Date): InboxItem[] =>
   items.filter((i) => isOpen(i) && i.handler === "human" && !!i.escalate_at && i.escalate_at <= now.toISOString() && !i.escalated_at);
+
+/** What needs the person now: open items they must act on (an action, an approval or a consult), information they have not read, and what their agent is on. */
+export function countsOf(items: InboxItem[]) {
+  const open = items.filter(isOpen);
+  return {
+    todo: open.filter((i) => i.handler === "human" && i.mode !== "inform").length,
+    info: open.filter((i) => i.mode === "inform" && !i.read_at).length,
+    agent: open.filter((i) => i.handler === "agent").length,
+  };
+}

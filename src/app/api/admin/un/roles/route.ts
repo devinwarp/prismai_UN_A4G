@@ -3,6 +3,7 @@ import { bad, caller, forbidden, requirePermission } from "@/lib/api-auth";
 import { entityAdminMay, entityOfAction, OWNER_EXISTS, planGrant, type GrantAction } from "@/lib/un/role-admin";
 import { insertAssignment, loadAssignmentRows, loadPeople, loadUseCaseChoices, replaceProcessOwner, revokeAssignment } from "@/lib/un/roles-store";
 import { loadMembers } from "@/lib/un/entity-store";
+import { sweepPeople } from "@/lib/un/inbox-service";
 import { countryOfEntity, knownCountryIds } from "@/lib/un/scope-context";
 import { scopePeople } from "@/lib/un/people-directory";
 
@@ -56,5 +57,6 @@ export async function POST(request: Request) {
   }
   const err = p.type === "grant" ? await insertAssignment(who.org_id!, p.row) : await revokeAssignment(who.org_id!, p.assignment_id, p.revoked_by);
   if (err) return NextResponse.json({ error: err }, { status: err === OWNER_EXISTS ? 409 : 500 });
+  await sweepPeople(me.org_id).catch(() => {}); // a position may now be filled (or empty again): the People agent looks
   return NextResponse.json({ ok: true, type: p.type });
 }

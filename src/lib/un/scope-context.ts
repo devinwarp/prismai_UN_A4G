@@ -40,6 +40,8 @@ export interface ScopeIndex {
   /** the context of a use case, or just its id when it is unknown */
   useCase: (id: string) => Context;
   entity: (name: string) => Context;
+  /** every use case of the organisation */
+  all: () => Context[];
 }
 
 /** The contexts of every use case and entity of the organisation, for a page that checks several rows: one read of the use cases and one of the country state. */
@@ -49,5 +51,5 @@ export async function scopeIndex(orgId: string): Promise<ScopeIndex> {
   const countryOf = (entity: string) => (state ? entityCountryOf(state, entity) : DEFAULT_ENTITY_COUNTRY);
   const byId = new Map<string, Context>();
   for (const r of (data ?? []) as { id: string; entity: string }[]) byId.set(r.id, { use_case_id: r.id, entity: r.entity, country: countryOf(r.entity) });
-  return { useCase: (id) => byId.get(id) ?? { use_case_id: id }, entity: (name) => ({ entity: name, country: countryOf(name) }) };
+  return { useCase: (id) => byId.get(id) ?? { use_case_id: id }, entity: (name) => ({ entity: name, country: countryOf(name) }), all: () => [...byId.values()] };
 }

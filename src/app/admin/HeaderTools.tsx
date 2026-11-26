@@ -15,6 +15,8 @@ export default function HeaderTools({ country = false, previewCountry }: { /** S
   const lang = useStoredLang();
   const router = useRouter();
   const [info, setInfo] = useState<Info | null>(null);
+  // what needs this person in the inbox: the count on the bell (read only; opening the inbox is what makes anything happen)
+  const [inbox, setInbox] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [note, setNote] = useState<string | null>(null);
@@ -22,6 +24,7 @@ export default function HeaderTools({ country = false, previewCountry }: { /** S
   useEffect(() => {
     let live = true;
     fetch("/api/admin/un/country/summary").then((r) => (r.ok ? r.json() : null)).then((d) => { if (live && d && Array.isArray(d.countries)) setInfo(d as Info); }).catch(() => {});
+    fetch("/api/admin/un/inbox?summary=1").then((r) => (r.ok ? r.json() : null)).then((d) => { if (live && d?.counts) setInbox(Number(d.counts.todo) + Number(d.counts.info)); }).catch(() => {});
     return () => { live = false; };
   }, []);
   if (!info || (!country && !info.canViewPeople)) return null;
@@ -91,6 +94,12 @@ export default function HeaderTools({ country = false, previewCountry }: { /** S
       )}
       {country && note && !error && <span role="status" className="hidden max-w-56 truncate text-xs text-ink-soft md:inline" title={note}>{note}</span>}
       {country && error && <span role="alert" className="max-w-48 truncate text-xs text-[color:var(--color-v-nogo)]" title={error}>{error}</span>}
+      {inbox !== null && (
+        <Link href="/admin/federal/inbox" aria-label={inbox > 0 ? tr(lang, "ib.bell.n", "Inbox: {n} need you").replace("{n}", String(inbox)) : tr(lang, "ib.bell", "Inbox")} title={tr(lang, "ib.bell", "Inbox")} className="relative inline-flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-soft hover:text-ink">
+          <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><path d="M6 16.5V11a6 6 0 0 1 12 0v5.5l1.5 1.5h-15z" /><path d="M10 20.5a2 2 0 0 0 4 0" /></svg>
+          {inbox > 0 && <span aria-hidden className="absolute -end-1 -top-1 inline-flex min-w-4 items-center justify-center rounded-full bg-lit-deep px-1 font-mono text-[10px] leading-4 text-paper">{inbox > 99 ? "99+" : inbox}</span>}
+        </Link>
+      )}
       {info.canViewPeople && (
         <Link href="/admin/federal/people" aria-label={people} title={people} className="inline-flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-soft hover:text-ink">
           <svg aria-hidden viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="8" r="3.2" /><path d="M2.8 20c.4-3.4 3-5.2 6.2-5.2s5.8 1.8 6.2 5.2" /><path d="M16 5.2a3 3 0 0 1 0 5.6M17.5 14.9c2.2.5 3.5 2.2 3.7 5.1" /></svg>

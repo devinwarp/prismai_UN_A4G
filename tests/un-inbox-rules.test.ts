@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { addWorkingDays, blockToHuman, dueForEscalation, escalateAtFor, failAttempt, handlerFor, MAX_ATTEMPTS, newItem } from "../src/lib/un/inbox.ts";
+import { addWorkingDays, countsOf, blockToHuman, dueForEscalation, escalateAtFor, failAttempt, handlerFor, MAX_ATTEMPTS, newItem } from "../src/lib/un/inbox.ts";
 import { countriesNeedingGovernanceAdmin, missingPositions } from "../src/lib/un/people-agent.ts";
 import { holdersOf } from "../src/lib/un/inbox-routing.ts";
 import { DEFAULT_RACI, HUMAN_DECISIONS, isHumanDecision, modeOf, POSITIONS, route, STEPS, validateRaci, type Holder, type Step } from "../src/lib/un/raci.ts";
@@ -116,4 +116,14 @@ test("who holds a position where something happened: by organisation, country, e
   assert.deepEqual(at({ entity: "Marsa", country: "UAE", use_case_id: "u1" }), { root: "platform", g: "governance_admin", ea: "entity_admin", op: "operator" });
   assert.deepEqual(at({ entity: "Wahat", country: "UAE", use_case_id: "u2" }), { root: "platform", g: "governance_admin", po: "owner" }, "another entity: no Marsa admin");
   assert.deepEqual(at({ entity: "Marsa", country: "SG" }), { root: "platform" }, "another country: no UAE governance admin, no UAE-scoped entity admin");
+});
+
+test("the bell counts what needs a person: open human actions, approvals and consults, and unread information; agent items are counted apart", () => {
+  const mk = (over: object) => ({ ...newItem({ kind: "k", user_id: "u", subject: "s", body: "b", letter: "AR", dedupe_key: "d" }, { org_id: "o", id: "i", now: NOW }), ...over });
+  const items = [
+    mk({ handler: "human", mode: "action" }), mk({ handler: "human", mode: "approval", letter: "A" }), mk({ handler: "human", mode: "consult", letter: "C" }),
+    mk({ handler: "human", mode: "inform", letter: "I" }), mk({ handler: "human", mode: "inform", letter: "I", read_at: "2026-11-26T09:00:00Z" }),
+    mk({ handler: "agent", mode: "action" }), mk({ handler: "human", mode: "action", status: "done" }),
+  ];
+  assert.deepEqual(countsOf(items), { todo: 3, info: 1, agent: 1 });
 });
