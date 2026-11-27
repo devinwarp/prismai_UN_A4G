@@ -1,3 +1,6 @@
+import { certificationPayload, guidanceHash } from "@/lib/un/sop-deployment";
+import { appendEntry, verifyChain } from "@/lib/un/tuning";
+import { appendLog, loadLog } from "@/lib/un/tuning-store";
 import { randomUUID } from "node:crypto";
 import { after, NextResponse } from "next/server";
 import { bad, forbidden, notFound, requirePermission, type Authorised } from "@/lib/api-auth";
@@ -175,7 +178,19 @@ async function recordReport(scope: PilotScope, who: Authorised, job: SopPilotJob
   const saved = await savePilot(scope.orgId, scope.useCaseId, { at: new Date().toISOString(), actor: who.email ?? who.id, profile: scope.profile, reps: job.reps ?? 1, runs: built.runs.length, plan: built.plan, report: built.report, run_records: built.runs, basis: null });
   if ("error" in saved) return { ...job, status: "error", message: `The pilot ran but its report could not be saved: ${saved.error}` };
   await noticeInform(scope.orgId, scope.useCaseId, { step: "pilot", kind: "pilot.filed", subject: `A pilot was filed for ${uc.ext_id}`, body: `${scope.profile}: ${built.runs.length} runs, ${built.report.conclusive ? "conclusive" : "not conclusive"}, verdict ${built.report.verdict}.`, link: `/admin/federal/use-cases/${scope.useCaseId}/pilot?profile=${encodeURIComponent(scope.profile)}`, by: who.id, ref: saved.id.slice(0, 8) });
-  return { ...job, reportId: saved.id, message: job.exempt ?? null, report: { conclusive: built.report.conclusive, failed: built.report.failed, insufficient: built.report.insufficient, verdict: built.report.verdict } };
+  // a met report is a CERTIFICATION: what was certified (the skill and the tuned guidance, the tests, the parameters, the report) goes into the tuning log, where the
+  // business process owner signs it and where the deployment step reads it to freeze the skill and the guidance together
+  const guidance = (job.rounds[0].instructions ?? "").trim();
+  const met = built.report.conclusive && built.report.failed.length === 0;
+  if (met) {
+    const log = await loadLog(scope.orgId, scope.useCaseId);
+    if (!verifyChain(log).ok) return { ...job, status: "error", message: "The pilot report was saved, but the tuning log failed verification, so the certification was not recorded." };
+    const attached = await loadAttachment(scope.orgId, scope.useCaseId);
+    const entry = appendEntry(log[log.length - 1] ?? null, "certification", who.email ?? who.id, certificationPayload({ met: true, profile: scope.profile, sop_id: suite.sopId, sop_version: attached?.version ?? 1, skill_sha256: suite.skill.sha256, skill_markdown: suite.skill.markdown, guidance, report_id: saved.id, test_hash: suite.testHash, params_hash: suite.paramsHash }), new Date().toISOString());
+    const err = await appendLog(scope.orgId, scope.useCaseId, [entry]);
+    if (err) return { ...job, status: "error", message: `The pilot report was saved, but the certification could not be recorded: ${err}` };
+  }
+  return { ...job, reportId: saved.id, guidance: { sha256: guidanceHash(guidance), chars: guidance.length }, message: job.exempt ?? null, report: { conclusive: built.report.conclusive, failed: built.report.failed, insufficient: built.report.insufficient, verdict: built.report.verdict } };
 }
 
 /** Drive a run on the server until it ends, the time for this invocation is up (then a fresh invocation takes over, with the same session), or a limit stops it. */

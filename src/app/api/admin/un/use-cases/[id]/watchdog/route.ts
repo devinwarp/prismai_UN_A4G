@@ -1,6 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { metered, recordToolCalls } from "@/lib/un/cost";
 import { loadRelease } from "@/lib/un/release-store";
+import { deployedSnapshot, sopCertifications, snapshotOf, snapshotProblems } from "@/lib/un/sop-deployment";
+import { loadProfileRows } from "@/lib/un/profiles-store";
+import { loadAttachment } from "@/lib/un/sop-version-store";
 import { NextResponse } from "next/server";
 import { noticeAsk, noticeDone, notifyUseCase } from "@/lib/un/inbox-service";
 import { bad, forbidden, notFound, requireAdmin, requirePermission } from "@/lib/api-auth";
@@ -34,7 +37,6 @@ export async function POST(request: Request, { params }: Ctx) {
   const uc = await loadUseCase(who.org_id!, id);
   if (!uc) return notFound();
   const all = evalSetFor(uc.ext_id);
-  if (!all.length) return bad(`No eval set for ${uc.ext_id} yet`);
 
   const [tuning, watch] = await Promise.all([loadLog(who.org_id!, id), loadWatch(who.org_id!, id)]);
   const v = verifyChain(watch);
@@ -43,6 +45,33 @@ export async function POST(request: Request, { params }: Ctx) {
   const signer = who.email ?? who.id;
   const certified = configOf(tuning);
   const now = () => new Date().toISOString();
+
+  // An SOP-based use case has no hand-written eval set: it goes into production from its pilot. What is deployed is the certified SKILL together with the TUNED
+  // GUIDANCE, frozen into one snapshot whose hash is generated here (sop-deployment.ts). The business process owner has already signed the final pilot result (the
+  // approval entry of the tuning log); deploying again, for a newer SOP version, needs a new certification and a new approval, and supersedes the snapshot.
+  if (!all.length) {
+    const deployedSop = deployedSnapshot(watch);
+    if (b.action !== "deploy") return bad(deployedSop ? "Monitoring windows and reinstatement are not available for SOP-based agents yet." : `No eval set for ${uc.ext_id} yet`);
+    if (!sopCertifications(tuning).size) return bad(`No eval set for ${uc.ext_id} yet, and no job profile has a certified pilot.`);
+    if (approvalState(tuning) !== "approved") return NextResponse.json({ error: "Only a pilot result the business process owner has approved can go into production." }, { status: 409 });
+    const release = await loadRelease(who.org_id!, id);
+    if (!release.ok) return NextResponse.json({ error: `Going into production needs a met pilot. Not ready: ${release.blockers.slice(0, 6).map((x) => x.message).join(" ")}${release.blockers.length > 6 ? ` (and ${release.blockers.length - 6} more)` : ""}`, blockers: release.blockers }, { status: 409 });
+    const att = await loadAttachment(who.org_id!, id);
+    if (!att) return bad("This use case has no SOP attached.");
+    const rows = (await loadProfileRows(who.org_id!, id, att.sop_id)).filter((r) => r.automate);
+    const certs = sopCertifications(tuning);
+    const { snapshot, sha256 } = snapshotOf(rows.flatMap((r) => (certs.get(r.profile) ? [certs.get(r.profile)!] : [])));
+    const problems = snapshotProblems(snapshot, { ticked: rows.map((r) => r.profile), sop_id: att.sop_id, sop_version: att.version, skill_sha256: Object.fromEntries(rows.map((r) => [r.profile, r.skill_sha256])) });
+    if (problems.length) return NextResponse.json({ error: `Not deployable as it stands: ${problems.join(" ")}`, problems }, { status: 409 });
+    if (state.deployed && !deployedSop) return NextResponse.json({ error: "Already in production. Reset to start again." }, { status: 409 });
+    if (deployedSop && deployedSop.sha256 === sha256) return NextResponse.json({ error: "Already in production with exactly this skill and guidance." }, { status: 409 });
+    const entry = appendEntry<WatchEntry["kind"]>(watch[watch.length - 1] ?? null, "deployed", signer, { kind: "sop", version: att.version, snapshot_sha256: sha256, snapshot, supersedes: deployedSop?.sha256 ?? null, tuning_head_hash: tuning[tuning.length - 1].hash }, now());
+    const err = await appendWatch(who.org_id!, id, [entry]);
+    if (err) return NextResponse.json({ error: err }, { status: 500 });
+    await createAdminClient().from("un_use_cases").update({ stage: "deployed", updated_at: now() }).eq("id", id).eq("org_id", who.org_id!);
+    await notifyUseCase(who.org_id!, id, { step: "deploy", kind: "deploy.done", subject: `${uc.ext_id} ${deployedSop ? "was redeployed on a newer SOP version" : "is in production"}`, body: `${uc.ext_id} (${uc.title}) was ${deployedSop ? "redeployed" : "deployed"} by ${signer}: SOP ${att.sop_id} version ${att.version}, snapshot ${sha256.slice(0, 12)} (skill and tuned guidance together).`, link: `/admin/federal/use-cases/${id}/production`, dedupe: `deploy:${id}:${entry.hash.slice(0, 8)}`, exclude: [who.id], inform: true }).catch(() => {});
+    return NextResponse.json({ ok: true, status: "active", snapshot_sha256: sha256, profiles: snapshot.profiles.map((p) => ({ profile: p.profile, skill_sha256: p.skill_sha256, guidance_sha256: p.guidance_sha256 })) });
+  }
 
   if (b.action === "deploy") {
     if (approvalState(tuning) !== "approved" || !certified) return NextResponse.json({ error: "Only an approved agent version can go into production." }, { status: 409 });
