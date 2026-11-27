@@ -90,6 +90,7 @@ export function TestgenPanel({ useCaseId, profile, state, chain, tasks, model, m
               <p className="font-mono text-[11px] text-ink-soft">{c.id} · {c.family} · {tr(lang, "tg.conf", "confidence")} {c.confidence}</p>
             </div>
             <p className="mt-1 text-sm">{tr(lang, "tg.expect", "Expected")}: {c.expect.summary}</p>
+            {c.input.kind === "sop" && <p className="mt-1 whitespace-pre-wrap break-words text-sm"><span className="font-medium">Test input </span>{c.input.request}</p>}
             <ul className="mt-1 list-disc ps-5 font-mono text-xs text-ink-soft" dir="ltr">
               {c.expect.assertions.map((a, i) => <li key={i}>{a.path} {a.op}{a.value === undefined ? "" : ` ${JSON.stringify(a.value)}`}</li>)}
             </ul>

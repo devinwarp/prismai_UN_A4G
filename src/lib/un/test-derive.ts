@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
 import type { SopChunk } from "./sop-kb.ts";
-import type { Expectation, GenInput } from "./testgen.ts";
+import type { Expectation, GenInput, SopGenInput } from "./testgen.ts";
 import { canon } from "./tuning.ts";
 
 // Pilot tests derived from a skill. Pure: no I/O.
@@ -50,10 +50,12 @@ export interface Blueprint {
    * result with (the machine-checkable assertions). It is part of the blueprint, so the approved set's hash covers it: an approved
    * case cannot be changed without breaking the approval. */
   gen?: GenSpec;
+  /** Coverage slot that requires a reviewed executable proposal. */
+  requiresExecution?: string;
 }
 
 /** The part of a generated case the pilot needs: its id in the proposal log, the model that wrote it, the input, the expectation. */
-export interface GenSpec { case_id: string; model: string; input: GenInput; expect: Expectation }
+export interface GenSpec { case_id: string; model: string; input: GenInput | SopGenInput; expect: Expectation }
 
 export interface DeriveInput {
   sopId: string;
@@ -230,7 +232,8 @@ export function coverage(set: Blueprint[], required: Blueprint[]): { gaps: Gap[]
   const slots = [...new Map(required.map((r) => [r.slot, r])).values()];
   let covered = 0;
   for (const r of slots) {
-    const mine = set.filter((b) => b.slot === r.slot);
+    const mine = set.filter((b) => b.slot === r.slot && (!r.requiresExecution ||
+      (b.family === r.family && b.gen?.input.kind === "sop" && b.gen.input.task === r.task && b.gen.input.context_hash === r.requiresExecution)));
     if (mine.some((b) => b.status === "active")) { covered++; continue; }
     if (mine.some((b) => b.status === "retired" && b.retired?.waiver_approver?.trim())) { covered++; continue; }
     if (mine.some((b) => b.status === "retired")) gaps.push({ code: "retired_without_waiver", slot: r.slot, task: r.task, message: `${r.title}: retired without a named approver` });

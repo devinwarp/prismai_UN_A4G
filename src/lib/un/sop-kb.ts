@@ -22,6 +22,8 @@ export interface SopMeta {
   entity: string;
   /** repo-relative path of the source, shown as the citation url */
   sourcePath: string;
+  /** Shown as each chunk's jurisdiction. Absent: the demo's "Marsa (fictitious)". */
+  jurisdiction?: string;
 }
 
 export interface SopChunk extends Chunk {
@@ -129,7 +131,7 @@ export function chunkSop(md: string, meta: SopMeta): SopChunk[] {
         title: b.h3 ? `${title}: ${b.h3}` : `${title}: ${b.h2}`,
         url: meta.sourcePath,
         issuer: meta.entity,
-        jurisdiction: "Marsa (fictitious)",
+        jurisdiction: meta.jurisdiction ?? "Marsa (fictitious)",
         instrument_type: "sop",
         binding: false,
         date: null,
@@ -186,6 +188,12 @@ export function loadSop(sopId: string): { chunks: SopChunk[]; vectors: VectorFil
   return out;
 }
 
+/** Put a knowledge base that was built or loaded elsewhere (the live build, or the store) into this process's cache,
+ * replacing what loadSop found (or did not find) on disk. */
+export function primeSop(sopId: string, value: { chunks: SopChunk[]; vectors: VectorFile | null }): void {
+  cache.set(sopId, value);
+}
+
 /** Search one SOP. BM25 always; fused with vector similarity when vectors exist and
  * KB_VECTOR=on, exactly as for the regulatory KB. Every hit is a citable chunk id. */
 export async function searchSop(sopId: string, query: string, opts: { k?: number; kind?: string } = {}): Promise<HybridResult> {
@@ -238,7 +246,11 @@ export interface SkillFile { name: string; path: string; markdown: string; chunk
  * and the rule to retrieve and cite before acting. Throws if the SOP is not vectorised. */
 export function extractSkill(sopId: string, profile: string): SkillFile {
   requireVectorised(sopId);
-  const { chunks } = loadSop(sopId);
+  return skillFromChunks(sopId, profile, loadSop(sopId).chunks);
+}
+
+/** Render the same skill from an explicitly selected SOP version. */
+export function skillFromChunks(sopId: string, profile: string, chunks: SopChunk[]): SkillFile {
   const roleChunk = chunks.find((c) => c.topics.includes("role") && c.title.toLowerCase().includes(profile.toLowerCase()));
   if (!roleChunk) throw new Error(`no job profile named "${profile}" in ${sopId}`);
   const tasks = chunks.filter((c) => c.topics.includes("task") && c.job_profile?.toLowerCase() === profile.toLowerCase());

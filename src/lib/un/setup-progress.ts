@@ -4,7 +4,7 @@
 //   goals    the entity's service goals each carry a measurement and a target value
 //   cases    the entity's use cases are registered (the upload, with an optional file of process targets)
 //   targets  every use case has an APPROVED set of process targets
-//   sop      every use case has an SOP attached
+//   sop      every use case's SOP stage is ready: an SOP attached, its knowledge base built, at least one job profile ticked for automation, and a skill for each
 //
 // Each step opens only when the one before it is done. This is a prerequisite chain, not the nine-stage lifecycle
 // journey (journey.ts), which starts once the SOP is attached.
@@ -26,6 +26,8 @@ export interface SetupFacts {
   targetsProposed: number;
   /** Use cases with an SOP attached. */
   attached: number;
+  /** Use cases whose SOP stage is done (journey.ts): attached, knowledge base ready, a profile ticked, skills built. */
+  sopReady: number;
 }
 
 export interface SetupStep {
@@ -47,12 +49,12 @@ export function setupProgress(f: SetupFacts): SetupProgress {
     goals: f.goalsReady,
     cases: f.cases > 0,
     targets: f.cases > 0 && f.targetsApproved === f.cases,
-    sop: f.cases > 0 && f.attached === f.cases,
+    sop: f.cases > 0 && f.sopReady === f.cases,
   };
   const counts: Record<SetupStepId, SetupStep["count"]> = {
     country: null, goals: null, cases: null,
     targets: { done: f.targetsApproved, of: f.cases },
-    sop: { done: f.attached, of: f.cases },
+    sop: { done: f.sopReady, of: f.cases },
   };
   let open = true;
   const steps = SETUP_STEPS.map((id, k): SetupStep => {

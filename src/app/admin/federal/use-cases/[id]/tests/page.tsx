@@ -56,6 +56,7 @@ export default async function TestsPage({ params, searchParams }: { params: Prom
       const approvers = withGovernance(await approversForUseCase(profile.org_id, id)).map((a) => ({ title: a.title, source: a.source }));
       body = (
         <>
+          {need.sop && <p className="mt-4 max-w-[74ch] text-sm text-ink-soft">Create the test set, then use Testgen for each task below. Accept a normal-output case and an authority case for each task, then approve the set and the verdict parameters before running Pilot.</p>}
           <TestSetEditor
             useCaseId={id}
             profile={current.name}

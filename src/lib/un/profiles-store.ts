@@ -1,13 +1,19 @@
 import { createAdminClient } from "@/lib/supabase/admin";
+import { ensureSopKb } from "./sop-kb-app";
 
 // Which SOP a use case uses and which of its job profiles are ticked "Automate"
 // (supabase/un-profiles.sql). Empty if the tables are absent.
 
 export interface ProfileRow { profile: string; automate: boolean; skill_path: string | null; skill_sha256: string | null }
 
+/** The SOP a use case is on. It also makes that SOP's knowledge base available in this process: every page and route that reads the SOP's chunks
+ * (loadSop) learns the SOP id here first, and an uploaded SOP's chunks live in the store, not on disk (sop-kb-live.ts). A failure to load them is
+ * not an error here: the checks that need the knowledge base report it. */
 export async function loadAttachedSop(orgId: string, ucId: string): Promise<string | null> {
   const { data } = await createAdminClient().from("un_use_case_sops").select("sop_id").eq("org_id", orgId).eq("use_case_id", ucId).maybeSingle();
-  return (data?.sop_id as string | undefined) ?? null;
+  const sopId = (data?.sop_id as string | undefined) ?? null;
+  if (sopId) await ensureSopKb(orgId, sopId).catch(() => {});
+  return sopId;
 }
 
 /** Attaches an SOP to a use case at one version (1 for a shipped sample, or the version a use case is moved to). */

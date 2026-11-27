@@ -14,7 +14,10 @@ import { permissionsFor } from "@/lib/un/permissions-server";
 import { RULESETS } from "@/lib/un/rulesets";
 import { loadAssignmentRows, loadPeople } from "@/lib/un/roles-store";
 import { setupProgress, type SetupStepId } from "@/lib/un/setup-progress";
-import { loadSopIntakeSummaries } from "@/lib/un/sop-version-store";
+import { loadAttachment, loadSopIntakeSummaries, profilesForUseCase } from "@/lib/un/sop-version-store";
+import { loadJourneyDetails } from "@/lib/un/journey-store";
+import { loadAttachedSop, loadProfileRows } from "@/lib/un/profiles-store";
+import { checkSopKbFor } from "@/lib/un/sop-kb-app";
 import { loadPolicy, loadUnUseCases } from "@/lib/un/store";
 import { loadEntityOverview, loadGoalsResolved, loadTargetLog } from "@/lib/un/target-store";
 import { loadEntityRows } from "@/lib/un/entity-store";
@@ -27,6 +30,7 @@ import { CountryPanel } from "../country/CountryPanel";
 import { TargetsEditor } from "../use-cases/[id]/targets/TargetsEditor";
 import ImportCsv from "../_components/ImportCsv";
 import SopIntake from "../_components/SopIntake";
+import AutomationConfirm, { type AutomationRow } from "./AutomationConfirm";
 import SetupSection, { SetupBar } from "../_components/SetupSection";
 import ToolWorkspace from "../_components/ToolWorkspace";
 import { scrollRegion } from "../_components/ui";
@@ -72,6 +76,21 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
   const countryList = visibleCountries(state).map((c) => ({ id: c.id, name: c.name }));
   const cases = entity ? useCases.filter((u) => u.entity === entity.name && mayRead(u.id)).sort((a, b) => a.ext_id.localeCompare(b.ext_id)) : [];
   const intake = await loadSopIntakeSummaries(orgId, cases.map((c) => c.id));
+  // each use case's SOP stage (the journey's first): attached, knowledge base ready, a profile ticked, skills built. The SOP step is done only when it is.
+  const { journeys } = await loadJourneyDetails(orgId, cases);
+  const sopReady = cases.filter((c) => journeys.get(c.id)?.stages[0]?.state === "done").length;
+  // the job profiles of each attached SOP with their ticks, for the automation choice at the end of the SOP step
+  const automation: AutomationRow[] = await Promise.all(cases.map(async (c): Promise<AutomationRow> => {
+    const base = { id: c.id, code: c.ext_id, title: c.title, frozen: c.stage === "deployed" };
+    const sopId = await loadAttachedSop(orgId, c.id).catch(() => null);
+    if (!sopId) return { ...base, kb: null, profiles: [] };
+    const version = (await loadAttachment(orgId, c.id).catch(() => null))?.version ?? 1;
+    const [profiles, ticks, kb] = await Promise.all([profilesForUseCase(orgId, c.id, sopId).catch(() => null), loadProfileRows(orgId, c.id, sopId).catch(() => []), checkSopKbFor(orgId, sopId, version).catch(() => ({ ok: false, reason: "The knowledge base could not be checked." }))]);
+    return { ...base, kb, profiles: (profiles ?? []).map((p) => {
+      const tick = ticks.find((r) => r.profile === p.name);
+      return { name: p.name, tasks: p.tasks.length, clientFacing: !!p.flags.client_facing, affectsRights: !!p.flags.affects_rights, irreversible: !!p.flags.irreversible, automate: !!tick?.automate, skill: !!tick?.skill_sha256 };
+    }) };
+  }));
   const governanceAppointed = countriesNeedingGovernanceAdmin({ countriesWithEntities: [country.id], assignments: assignmentRows }).length === 0;
   const coverageCases = (entity?.use_cases ?? []).filter((u) => mayRead(u.id));
   const targetStates = new Map((entity?.use_cases ?? []).map((u) => [u.id, u.state]));
@@ -90,6 +109,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
     targetsApproved: cases.filter((c) => targetStates.get(c.id)?.approved).length,
     targetsProposed: cases.filter((c) => targetStates.get(c.id)?.pending).length,
     attached: cases.filter((c) => intake[c.id]).length,
+    sopReady,
   });
   const stateOf = (id: SetupStepId) => progress.steps.find((s) => s.id === id)!;
   const count = (id: SetupStepId) => { const c = stateOf(id).count; return c ? `${c.done}/${c.of}` : undefined; };
@@ -202,27 +222,41 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
         </SetupSection>
 
         <SetupSection id="sop" n={5} state={stateOf("sop").state} waitingFor={opens(progress.next)}
-          summary={<TV k="setup.sop_count" en="{a} of {n} SOPs attached" v={{ a: stateOf("sop").count?.done ?? 0, n: cases.length }} />}
+          summary={<TV k="su.sop.sum" en="{r} of {n} use cases ready: SOP attached, knowledge base built, job profiles chosen. {a} SOPs attached." v={{ r: stateOf("sop").count?.done ?? 0, n: cases.length, a: cases.filter((c) => intake[c.id]).length }} />}
           openWhenDone={open("sop")}>
           <div className="flex flex-wrap items-center gap-3">
             <SopIntake key={entity?.name} country={country.id} entity={entity?.name} canEdit={canEdit}
               rows={cases.map((uc) => ({ id: uc.id, code: uc.ext_id, title: uc.title, frozen: uc.stage === "deployed", sop: intake[uc.id] }))} />
             <Link className="text-sm underline" href={countryHref("/admin/federal", country.id, entity?.name)}><T k="su.done.go" en="Go to the dashboard" /></Link>
           </div>
+          <AutomationConfirm rows={automation} canEdit={canEdit} />
         </SetupSection>
         {entity && (
           <section aria-labelledby="coverage-h" className="rounded-xl border border-line bg-card p-4">
             <h2 id="coverage-h" className="font-display text-2xl font-medium"><T k="workspace.goals.matrix" en="Goals and use-case targets" /></h2>
             <p className="mt-1 text-sm"><span className="font-medium">{entity.name}</span> <span className="text-xs text-ink-soft">· {entity.goals.length} <T k="gl.goals" en="goals" /> · {coverageCases.length} <T k="gl.ucs" en="use cases" /></span></p>
             <div className="mt-3 overflow-x-auto rounded-lg border border-line" {...scrollRegion("coverage-h")}>
-              <table className="w-full min-w-[30rem] text-start text-sm [&_td:first-child]:ps-3 [&_th:first-child]:ps-3">
+              <table className="w-full min-w-[44rem] text-start text-sm">
                 <caption className="sr-only"><T k="workspace.goals.matrix" en="Goals and use-case targets" /></caption>
-                <thead className="bg-paper-deep"><tr className="text-xs text-ink-soft"><th className="py-1 pe-3 text-start font-medium"><T k="gl.col.goal" en="Goal" /></th><th className="py-1 pe-3 text-start font-medium"><T k="gl.col.crit" en="Criterion" /></th><th className="py-1 pe-3 text-start font-medium"><T k="en.measure.value" en="Target value" /></th>{coverageCases.map((u) => <th key={u.id} className="py-1 pe-3 text-start font-medium"><Link className="underline" href={`${countryHref("/admin/federal/setup", country.id, entity.name)}&uc=${encodeURIComponent(u.ext_id)}&step=targets#step-targets`}>{u.ext_id}</Link></th>)}</tr></thead>
+                <thead className="bg-paper-deep">
+                  <tr className="text-xs text-ink-soft">
+                    <th scope="col" className="px-3 py-1 text-start font-medium"><T k="gl.col.goal" en="Goal" /></th>
+                    <th scope="col" className="py-1 pe-3 text-start font-medium whitespace-nowrap"><T k="gl.col.tag" en="Scoring tag" /></th>
+                    <th scope="col" className="min-w-56 py-1 pe-3 text-start font-medium"><T k="gl.col.measure" en="Measurable criterion" /></th>
+                    <th scope="col" className="py-1 pe-3 text-start font-medium whitespace-nowrap"><T k="en.measure.value" en="Target value" /></th>
+                    {coverageCases.map((u) => (
+                      <th scope="col" key={u.id} className="py-1 pe-3 text-start font-medium">
+                        <Link className="underline" href={`${countryHref("/admin/federal/setup", country.id, entity.name)}&uc=${encodeURIComponent(u.ext_id)}&step=targets#step-targets`}>{u.ext_id}</Link>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
                 <tbody>
                   {entity.goals.map((g) => (
                     <tr key={g.id} className="border-t border-line align-top">
-                      <td className="py-2 pe-3"><span className="font-mono text-xs">{g.id}</span> · {g.text}</td>
-                      <td className="py-2 pe-3 text-xs text-ink-soft">{g.measurement?.criterion ?? g.criterion ?? "—"}</td>
+                      <th scope="row" className="px-3 py-2 text-start font-normal"><span className="font-mono text-xs">{g.id}</span> · {g.text}</th>
+                      <td className="py-2 pe-3 text-xs text-ink-soft">{g.criterion ?? "—"}</td>
+                      <td className="py-2 pe-3 text-xs">{g.measurement?.criterion ?? "—"}</td>
                       <td className="py-2 pe-3 text-xs text-ink-soft">{g.measurement ? <><span aria-hidden="true">{g.measurement.comparison === "at_least" ? "≥" : "≤"}</span><span className="sr-only">{g.measurement.comparison === "at_least" ? <T k="en.measure.min" en="At least" /> : <T k="en.measure.max" en="At most" />}</span> {g.measurement.value} {g.measurement.unit}</> : "—"}</td>
                       {coverageCases.map((u) => {
                         const approved = u.state?.approved ? coverage([g], u.state.approved.targets)[0].targets : [];
@@ -235,7 +269,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
                       })}
                     </tr>
                   ))}
-                  {entity.goals.length === 0 && <tr><td className="py-2 text-sm font-medium" colSpan={3 + coverageCases.length}><T k="gl.nogoals" en="This entity has no goals on record." /></td></tr>}
+                  {entity.goals.length === 0 && <tr><td className="px-3 py-2 text-sm font-medium" colSpan={4 + coverageCases.length}><T k="gl.nogoals" en="This entity has no goals on record." /></td></tr>}
                 </tbody>
               </table>
             </div>

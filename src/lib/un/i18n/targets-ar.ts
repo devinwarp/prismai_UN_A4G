@@ -53,6 +53,8 @@ export const TARGETS_AR: Record<string, string> = {
   "gl.ucs": "حالات استخدام",
   "gl.col.goal": "الهدف",
   "gl.col.crit": "المعيار",
+  "gl.col.tag": "وسم التقييم",
+  "gl.col.measure": "المعيار القابل للقياس",
   "gl.proposed": "مقترح وغير معتمد",
   "gl.gap": "لا هدف",
   "gl.nogoals": "لا توجد أهداف مسجّلة لهذه الجهة.",

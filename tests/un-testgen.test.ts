@@ -219,7 +219,7 @@ test("the route checks permission before reading any state, and never weakens it
   assert.match(post, /requirePermission\(\["scenario\.propose", "scenario\.edit", "goals\.approve"\]/);
   assert.ok(post.indexOf("who.decide(") < post.indexOf("loadUseCase"), "permission before state");
   assert.match(post, /act === "generate" \? "scenario\.propose" : act === "rule" \? "goals\.approve" : "scenario\.edit"/);
-  assert.match(src, /requirePermission\("view"\)/);
+  assert.match(src, /requirePermission\("view",\s*\{ useCaseId: id \}\)/);
 });
 
 test("a case must be runnable: fee tasks need a complete file, prepare is for verification tasks, text fields take text operators", () => {

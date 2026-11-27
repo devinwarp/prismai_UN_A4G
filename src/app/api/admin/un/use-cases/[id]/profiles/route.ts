@@ -5,11 +5,13 @@ import { bad, notFound, requirePermission } from "@/lib/api-auth";
 import { recordChange } from "@/lib/un/country-actions";
 import { appCountryDeps } from "@/lib/un/country-app";
 import { isUuid } from "@/lib/un/model";
-import { attachSop, loadAttachedSop, saveTick } from "@/lib/un/profiles-store";
+import { attachSop, loadAttachedSop, loadProfileRows, saveTick } from "@/lib/un/profiles-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
-import { checkSopKb, writeSkill } from "@/lib/un/skill-extract";
+import type { KbCheck } from "@/lib/un/skill-extract";
+import { buildSopKb, checkSopKbFor, ensureSopKb, writeSkillFor } from "@/lib/un/sop-kb-app";
+import type { LiveBuildResult } from "@/lib/un/sop-kb-live";
 import { rollOut } from "@/lib/un/sop-rollout";
-import { baseOf, discardSopDraft, latestOf, loadCustomRoots, profilesForUseCase, saveVersion } from "@/lib/un/sop-version-store";
+import { baseOf, discardSopDraft, getVersion, latestOf, loadAttachment, loadCustomRoots, profilesForUseCase, saveVersion } from "@/lib/un/sop-version-store";
 import { customSopFromText, type ProfileOp } from "@/lib/un/sop/custom";
 import { MAX_SOP_CHARS } from "@/lib/un/sop/custom-limits";
 import { SAMPLES, loadBaseline } from "@/lib/un/sop/data";
@@ -25,8 +27,10 @@ type Ctx = { params: Promise<{ id: string }> };
  *      { action: "profile", op: "add" | "update" | "remove", name, new_name?, tasks? }  edit a job profile of the attached SOP: this too makes a new version.
  *      { action: "tick", profile, automate }  tick or untick Automate on one job profile.
  * A deployed use case's SOP is frozen: it cannot be switched here, and a new version reaches it only through a change request from its business process
- * owner (sop-change route). Every change is written to the hash-chained country log. A custom SOP has no knowledge base, so it can be ticked (and assessed)
- * but has no skill file or generated tests. */
+ * owner (sop-change route). Every change is written to the hash-chained country log. An uploaded SOP gets its knowledge base built here (chunks and vectors, in
+ * the knowledge-base store) when it is attached or gets a new version, and ticking a profile builds it if it is missing, stale or was built without vectors.
+ * A build that cannot embed says so: the SOP is then not usable by an automated agent until it is built again.
+ *      { action: "build_kb" }  build (or rebuild) the knowledge base of the attached SOP now, and record the skills of the profiles that are already ticked. */
 export async function POST(request: Request, { params }: Ctx) {
   const { id } = await params;
   if (!isUuid(id)) return notFound();
@@ -41,6 +45,16 @@ export async function POST(request: Request, { params }: Ctx) {
   const audit = (kind: "sop_changed" | "profile_changed" | "sop_version", payload: Record<string, unknown>) => recordChange(appCountryDeps(orgId), actor, kind, { use_case: uc.ext_id, ...payload });
   const fail = (err: string) => NextResponse.json({ error: err }, { status: 500 });
   const frozen = uc.stage === "deployed";
+  /** The knowledge base of an SOP, built now when it is missing, stale for this version or was built without vectors. A repo SOP built on disk is only checked. */
+  const readyKb = async (sopId: string, version: number): Promise<KbCheck & { built?: LiveBuildResult }> => {
+    if ((await ensureSopKb(orgId, sopId)) === "disk") return checkSopKbFor(orgId, sopId, version);
+    const check = await checkSopKbFor(orgId, sopId, version);
+    if (check.ok) return check;
+    const v = (await getVersion(orgId, sopId, version)) ?? (await latestOf(orgId, sopId));
+    if (!v) return check;
+    const built = await buildSopKb(orgId, { sopId, title: v.title, version: v.version, body: v.body, useCaseExt: uc.ext_id, entity: uc.entity });
+    return { ok: built.ready, reason: built.ready ? "vectors current" : built.reason, built };
+  };
   const FROZEN = "This use case is deployed, so its SOP is frozen. Its business process owner can ask to move it to a newer version, with a reason and a plan.";
 
   if (b.action === "attach") {
@@ -53,7 +67,8 @@ export async function POST(request: Request, { params }: Ctx) {
     if (err) return fail(err);
     const audited = await audit("sop_changed", { from: before, to: b.sop_id, version: latest.version });
     await sweepPeople(orgId).catch(() => {}); // the job profiles changed: the People agent looks for positions nobody holds
-    return NextResponse.json({ ok: true, sop_id: b.sop_id, version: latest.version, audited });
+    const kb = await readyKb(b.sop_id, latest.version);
+    return NextResponse.json({ ok: true, sop_id: b.sop_id, version: latest.version, audited, kb });
   }
 
   if (b.action === "attach_custom") {
@@ -81,7 +96,9 @@ export async function POST(request: Request, { params }: Ctx) {
     const change = { from: before, to: made.sop_id, version: 1, custom: true, profiles: made.profiles.map((p) => p.name) };
     let audited = await audit("sop_changed", change);
     for (let attempt = 0; onlyIfVacant && !audited && attempt < 2; attempt++) audited = await audit("sop_changed", change);
-    return NextResponse.json({ ok: true, sop_id: made.sop_id, version: 1, profiles: made.profiles.length, audited });
+    // the knowledge base (chunks and vectors) of the SOP just attached: a failure to embed does not undo the attach, it is reported
+    const kb = await buildSopKb(orgId, { sopId: made.sop_id, title: made.title, version: 1, body: made.body, useCaseExt: uc.ext_id, entity: uc.entity });
+    return NextResponse.json({ ok: true, sop_id: made.sop_id, version: 1, profiles: made.profiles.length, audited, kb });
   }
 
   if (b.action === "new_version" || b.action === "profile") {
@@ -104,7 +121,8 @@ export async function POST(request: Request, { params }: Ctx) {
     if (e1) return fail(e1);
     const rollout = await rollOut(orgId, next.version, who.id);
     const audited = await audit(b.action === "profile" ? "profile_changed" : "sop_version", { sop_id: sopId, version: next.version.version, from: prev.version, profiles: next.version.changes?.profiles, moved: rollout.moved, frozen: rollout.frozen });
-    return NextResponse.json({ ok: true, version: next.version.version, changes: next.version.changes, rollout, audited });
+    const kb = await buildSopKb(orgId, { sopId, title: next.version.title, version: next.version.version, body: next.version.body, useCaseExt: uc.ext_id, entity: uc.entity });
+    return NextResponse.json({ ok: true, version: next.version.version, changes: next.version.changes, rollout, audited, kb });
   }
 
   if (b.action === "tick") {
@@ -112,13 +130,29 @@ export async function POST(request: Request, { params }: Ctx) {
     if (!sopId) return bad("Attach an SOP first");
     if (typeof b.profile !== "string" || typeof b.automate !== "boolean") return bad("profile and automate are required");
     if (!(await profilesForUseCase(orgId, id, sopId))?.some((p) => p.name === b.profile)) return bad("Unknown job profile");
-    const kb = b.automate ? checkSopKb(sopId) : null;
-    const skill = b.automate && kb?.ok ? writeSkill(sopId, b.profile) : null;
+    const version = (await loadAttachment(orgId, id))?.version ?? 1;
+    const kb = b.automate ? await readyKb(sopId, version) : null;
+    const skill = b.automate && kb?.ok ? await writeSkillFor(orgId, sopId, b.profile, version) : null;
     const err = await saveTick(orgId, id, sopId, b.profile, b.automate, who.id, skill?.ok ? { path: skill.path, sha256: skill.sha256 } : null);
     if (err) return fail(err);
     await sweepPeople(orgId).catch(() => {}); // the job profiles changed: the People agent looks for positions nobody holds
     return NextResponse.json({ ok: true, kb, skill });
   }
+  if (b.action === "build_kb") {
+    const att = await loadAttachment(orgId, id);
+    if (!att) return bad("Attach an SOP first");
+    const kb = await readyKb(att.sop_id, att.version);
+    // the profiles already ticked get their skill recorded now that the knowledge base is usable
+    const skills: { profile: string; ok: boolean; reason?: string }[] = [];
+    if (kb.ok) {
+      for (const row of (await loadProfileRows(orgId, id, att.sop_id)).filter((r) => r.automate)) {
+        const sk = await writeSkillFor(orgId, att.sop_id, row.profile, att.version);
+        if (sk.ok) await saveTick(orgId, id, att.sop_id, row.profile, true, who.id, { path: sk.path, sha256: sk.sha256 });
+        skills.push(sk.ok ? { profile: row.profile, ok: true } : { profile: row.profile, ok: false, reason: sk.reason });
+      }
+    }
+    return NextResponse.json({ ok: kb.ok, kb, skills });
+  }
   void baseOf;
-  return bad('action must be "attach", "attach_custom", "new_version", "profile" or "tick"');
+  return bad('action must be "attach", "attach_custom", "new_version", "profile", "tick" or "build_kb"');
 }

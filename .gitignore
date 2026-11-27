@@ -82,3 +82,6 @@ var/
 # Supabase CLI link/temp files (project ref); local only
 supabase/supabase/.temp/
 supabase/.temp/
+
+# session handoff notes live only in the folder
+/.claude/handoff-*.md

@@ -19,6 +19,8 @@ import { AgentLine } from "./AgentLine";
 import { GeneratedCases } from "./GeneratedCases";
 import { GoalReview } from "./GoalReview";
 import { RunPilot } from "./PilotControls";
+import { SopPilotControls } from "./SopPilotControls";
+import { usesLicensingReference } from "@/lib/un/sop-test-context";
 import { SealLine } from "../../../_components/SealLine";
 
 export const metadata: Metadata = { title: "Pilot and verdict", robots: { index: false, follow: false } };
@@ -37,13 +39,15 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
   if (!uc) notFound();
   const perms = await permissionsFor(profile, user.id);
   const mayRun = perms.can("pilot.run", id);
+  const mayTune = perms.can("tuning.run", id);
   const mayApproveGoals = perms.can("goals.approve", id);
 
   const sopId = await loadAttachedSop(profile.org_id, id);
   const names = new Set(sopId ? (await loadProfileRows(profile.org_id, id, sopId)).filter((r) => r.automate).map((r) => r.profile) : []);
   const profiles = ((sopId && (await profilesForUseCase(profile.org_id, id, sopId))) || []).filter((p) => names.has(p.name));
   const current = profiles.find((p) => p.name === pick) ?? profiles[0] ?? null;
-  const pilots = current ? await loadPilots(profile.org_id, id, current.name) : [];
+  const reference = usesLicensingReference(uc.ext_id, sopId);
+  const pilots = current && reference ? await loadPilots(profile.org_id, id, current.name) : [];
   const last = pilots[0] ?? null;
   const original = pilots.find((p) => !p.basis) ?? null;
   const review = original && current ? (replayReviews(await loadReviewLog(profile.org_id, id, current.name)).reviews[original.id] ?? null) : null;
@@ -54,10 +58,10 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
   return (
     <LangShell>
       <main className="mx-auto max-w-6xl px-4 py-10 sm:px-6">
-        <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase"><T k="pi.eyebrow" en="Pilot and verdict" /></p>
-        <h1 className="font-display mt-2 text-3xl font-medium tracking-tight sm:text-4xl"><TV k="pi.h1" en="What the pilot of {uc} measured" v={{ uc: uc.ext_id }} /></h1>
-        <p className="mt-3 max-w-[68ch] text-base text-ink-soft"><T k="pi.lede" en="The approved tests run on the real agent, under the approved thresholds. Tests with no executable case are listed, not scored. The verdict below rests on the measured gates only; reviewer gates are not recorded here yet." /></p>
-        <p className="mt-3"><Link className="text-sm underline" href={`/admin/federal/use-cases/${id}/tests${current ? `?profile=${encodeURIComponent(current.name)}` : ""}`}><T k="pi.tests" en="Tests and verdict parameters" /></Link><Link className="ms-4 text-sm underline" href={`/admin/federal/use-cases/${id}/improve`}><T k="im.link" en="Improve the agent" /></Link></p>
+        {reference && <p className="font-mono text-xs tracking-[0.25em] text-ink-soft uppercase"><T k="pi.eyebrow" en="Pilot and verdict" /></p>}
+        <h1 className="font-display mt-2 text-3xl font-medium tracking-tight sm:text-4xl">{reference ? <TV k="pi.h1" en="What the pilot of {uc} measured" v={{ uc: uc.ext_id }} /> : <>Pilot for {uc.ext_id}</>}</h1>
+        {reference && <p className="mt-3 max-w-[68ch] text-base text-ink-soft"><T k="pi.lede" en="The approved tests run on the real agent, under the approved thresholds. Tests with no executable case are listed, not scored. The verdict below rests on the measured gates only; reviewer gates are not recorded here yet." /></p>}
+        <p className="mt-3"><Link className="text-sm underline" href={`/admin/federal/use-cases/${id}/tests${current ? `?profile=${encodeURIComponent(current.name)}` : ""}`}><T k="pi.tests" en="Tests and verdict parameters" /></Link>{reference && <Link className="ms-4 text-sm underline" href={`/admin/federal/use-cases/${id}/improve`}><T k="im.link" en="Improve the agent" /></Link>}</p>
 
         {!current ? (
           <section className={`${card} mt-6`}><p className="text-sm font-medium"><T k="ts.none" en="Attach an SOP and tick Automate on a job profile first: tests are written for the agent that will do its work." /></p></section>
@@ -69,6 +73,7 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
               ))}
             </nav>
 
+            {!reference ? <SopPilotControls key={current.name} useCaseId={id} profile={current.name} mayRun={mayRun} mayTune={mayTune} /> : <>
             <section className={`${card} mt-6`} aria-labelledby="pi-run">
               <h2 id="pi-run" className="font-display text-xl font-medium">{current.name}</h2>
               {mayRun ? <div className="mt-3"><RunPilot useCaseId={id} profile={current.name} /></div> : <p className="mt-3 text-sm font-medium"><T k="pi.readonly" en="Read only. Running the pilot needs the pilot run permission." /></p>}
@@ -149,6 +154,7 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
             )}
             {original?.report.generated && current && <GeneratedCases useCaseId={id} profile={current.name} pilotId={original.id} block={original.report.generated} rulings={rulings} mayRule={mayApproveGoals} />}
             {original && <GoalReview useCaseId={id} profile={current.name} pilotId={original.id} review={review} approvers={approvers} mayRun={mayRun} mayApprove={mayApproveGoals} modelConfigured={!!(process.env.LLM_API_KEY ?? process.env.OPENROUTER_API_KEY)} />}
+            </>}
           </>
         )}
       </main>

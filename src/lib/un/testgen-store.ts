@@ -7,6 +7,7 @@ import { extractSkill, loadSop } from "./sop-kb";
 import { profilesOf } from "./sop/data";
 import { fieldsOf, relatedChunks } from "./test-derive";
 import { appendGenLogTo, loadGenLogFrom, testgenModel, type ChatFn, type Ctx, type GateInfo, type GenEntry, type GenScenario, type SopLine } from "./testgen";
+import { taskPassages, type SopTestContext } from "./sop-test-context";
 
 export const loadGenLog = (orgId: string, useCaseId: string, profile: string) => loadGenLogFrom(createAdminClient(), orgId, useCaseId, profile);
 export const appendGenLog = (orgId: string, useCaseId: string, profile: string, entry: GenEntry) => appendGenLogTo(createAdminClient(), orgId, useCaseId, profile, entry);
@@ -18,6 +19,27 @@ export const defaultChat = (model = testgenModel()): ChatFn => ({ system, user }
 const FEE_TASK = /fee|payment|amount/i;
 
 export type Built = { ok: true; scenario: GenScenario; skill: string; lines: SopLine[]; ctx: Ctx } | { ok: false; error: string; status: number };
+
+export function buildSopScenario(sopId: string, sop: SopTestContext, task: string, existingIds: Set<string>): Built {
+  const job = sop.profile;
+  const t = job.tasks.find((item) => item.id === task);
+  if (!t) return { ok: false, error: `"${task}" is not assigned to ${job.name}`, status: 400 };
+  if (!sop.skill) return { ok: false, error: "Build the job profile skill before generating tests", status: 409 };
+  const lines = taskPassages(sop.chunks, t);
+  const risk = {
+    client_facing: sop.risk.client_facing || t.flags.client_facing,
+    affects_rights: sop.risk.affects_rights || t.flags.affects_rights,
+    irreversible: sop.risk.irreversible || t.flags.irreversible,
+  };
+  const gates = applicableGates(risk.client_facing).map((id) => ({ id, label: GATES[id].label, testable: GATES[id].evidence === "eval" }));
+  const scenario: GenScenario = {
+    context_hash: sop.hash, id: `${sopId}/${job.name}/${task}`, title: t.title, sop_id: sopId,
+    profile: job.name, task, skill_id: `${sop.skill.name}@${sop.skill.sha256.slice(0, 12)}`, risk, gates,
+  };
+  return { ok: true, scenario, skill: sop.skill.markdown,
+    lines, ctx: { scenario, chunkIds: new Set(lines.map((line) => line.chunk_id)), profileTasks: job.tasks.map((item) => item.id),
+      fixtures: { licences: [], docs: [], today: "" }, model: testgenModel(), existingIds } };
+}
 
 /** Everything the generator needs for one task of one job profile: the scenario with its skill, risk and gates, the
  * skill text, the SOP lines retrieved for it (BM25 over the SOP chunks, plus the passages the task names) and the

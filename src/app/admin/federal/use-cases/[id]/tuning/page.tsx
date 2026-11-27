@@ -11,6 +11,8 @@ import { loadReleaseCached } from "@/lib/un/release-cached";
 import { loadRun } from "@/lib/un/runs";
 import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
+import { loadAttachedSop } from "@/lib/un/profiles-store";
+import { usesLicensingReference } from "@/lib/un/sop-test-context";
 import type { SubjectConfig } from "@/lib/un/subject";
 import { approvalState, configOf, verifyChain, type Advisory, type LogEntry, type Proposal } from "@/lib/un/tuning";
 import { loadLog } from "@/lib/un/tuning-store";
@@ -133,10 +135,11 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
   if (!(await mayReadUseCase(profile.org_id, user.id, profile.role, id))) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
-  const [log] = await Promise.all([
-    loadLog(profile.org_id, id),
-  ]);
   const hasSet = evalSetFor(uc.ext_id).length > 0;
+  const sopId = await loadAttachedSop(profile.org_id, id);
+  const sopPilot = !!sopId && !usesLicensingReference(uc.ext_id, sopId);
+  if (sopPilot && !hasSet) redirect(`/admin/federal/use-cases/${id}/pilot#sop-pilot`);
+  const log = await loadLog(profile.org_id, id);
   const state = approvalState(log);
   const release = await loadReleaseCached(profile.org_id, id);
   // the same check the approve route makes (409 otherwise): say it up front instead of offering a button that fails
@@ -180,6 +183,7 @@ export default async function TuningPage({ params }: { params: Promise<{ id: str
             </section>
           )}
           <p className="mt-3 text-sm">
+            {sopPilot && <><Link href={`/admin/federal/use-cases/${id}/pilot#sop-pilot`} className="underline underline-offset-4">Automatic tuning with approved SOP tests</Link>{" · "}</>}
             <Link href={`/admin/federal/use-cases/${id}/evals`} className="underline underline-offset-4"><T k="ev.link.evals" en="Pilot evals: expected against actual output" /></Link>
             {" · "}
             <Link href={`/admin/federal/use-cases/${id}/production`} className="underline underline-offset-4"><T k="pr.link" en="Production monitoring" /></Link>

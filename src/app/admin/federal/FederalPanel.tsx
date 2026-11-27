@@ -240,7 +240,8 @@ export default function FederalPanel({
       <div className="desk:col-span-2"><HeadlineBand d={d} policy={policy} noTarget={noTarget} asOf={asOf} story={story} /></div>
 
       {showFederalTools && <SetupJourney country={countryId} countryReady={countryReady} policyReady={policyReady} governanceAppointed={governanceAppointed} entities={setupEntities} entity={setupEntity}
-        selectEntity={changeEntity} canEdit={canEdit} cases={setupCases.length} attached={setupCases.filter((uc) => sops[uc.id] && !sops[uc.id].sample).length} />}
+        selectEntity={changeEntity} canEdit={canEdit} cases={setupCases.length} attached={setupCases.filter((uc) => sops[uc.id] && !sops[uc.id].sample).length}
+        sopReady={setupCases.filter((uc) => journeys[uc.id]?.stages[0]?.state === "done").length} />}
 
       <div className="flex flex-col gap-10 desk:hidden">
         {hasStagedScenarios && <StartHere steps={startSteps.map((step) => ({ ...step, href: scopedHref(step.href!) }))} onTour={() => setTour(true)} />}

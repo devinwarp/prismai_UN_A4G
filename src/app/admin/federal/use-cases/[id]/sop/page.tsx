@@ -10,7 +10,7 @@ import { getVersion, latestOf, loadAttachment, loadChangeRequests, profilesForUs
 import { permissionsFor } from "@/lib/un/permissions-server";
 import { RULESETS } from "@/lib/un/rulesets";
 import { loadUseCase } from "@/lib/un/sijil-store";
-import { checkSopKb } from "@/lib/un/skill-extract";
+import { checkSopKbFor } from "@/lib/un/sop-kb-app";
 import { sampleInput, sampleSopIdForUseCase, SAMPLES } from "@/lib/un/sop/data";
 import { assessProfiles, EVIDENCE_KEYS } from "@/lib/un/sop/profiles";
 import LangShell, { T, TV } from "../../../_components/Lang";
@@ -57,7 +57,7 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
   const ticked = new Set(rows.filter((r) => r.automate).map((r) => r.profile));
   const rs = RULESETS.find((r) => KEY[r.id] === j) ?? RULESETS[0];
   const a = assessProfiles(profiles ?? [], ticked, rs, uc.entity, { ext: uc.ext_id, gov: await loadGov(profile.org_id) });
-  const kb = sopId ? checkSopKb(sopId) : null;
+  const kb = sopId ? await checkSopKbFor(profile.org_id, sopId, version ?? undefined) : null;
   const skill = new Map(rows.map((r) => [r.profile, r.skill_sha256]));
   const th = "px-3 py-2 text-start font-normal";
 

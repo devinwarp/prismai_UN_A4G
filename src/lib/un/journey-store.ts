@@ -10,7 +10,7 @@ import type { LogEntry } from "./tuning";
 import { replayTestSet, inForce, type TestEntry } from "./test-sets";
 import { replayParams, type ParamEntry } from "./verdict-params";
 import { replay as replayWatch, type WatchEntry } from "./watchdog";
-import { checkSopKb } from "./skill-extract";
+import { checkSopKbFor } from "./sop-kb-app";
 import { profileIndex } from "./sop-version-store";
 import type { JobProfile } from "./sop/profiles";
 
@@ -57,11 +57,12 @@ export async function loadJourneyDetails(orgId: string, ucs: JourneyUseCase[]): 
     if (sopId) attachedSopIds.set(u.id, sopId);
     const all = sopId && profilesAt ? profilesAt(sopId, versionOf.get(u.id) ?? 1) : null;
     const on = (ticks.get(u.id) ?? []).filter((r) => r.sop_id === sopId && all?.some((p) => p.name === r.profile));
-    if (sopId && !kb.has(sopId)) kb.set(sopId, checkSopKb(sopId).ok);
+    const kbKey = `${sopId}@${versionOf.get(u.id) ?? 1}`;
+    if (sopId && !kb.has(kbKey)) kb.set(kbKey, (await checkSopKbFor(orgId, sopId, versionOf.get(u.id) ?? 1).catch(() => ({ ok: false }))).ok);
     automation.set(u.id, automationOf({ ticked: on.length, deployed: replayWatch(asLog<WatchEntry>(wl.get(u.id))).deployed }));
     const r = runs.get(u.id) ?? [];
     out.set(u.id, journeyStatus({
-      sop: { attached: !!sopId, profiles: all?.length ?? 0, ticked: on.length, kbOk: sopId ? !!kb.get(sopId) : false, skills: on.filter((x) => x.skill_sha256).length },
+      sop: { attached: !!sopId, profiles: all?.length ?? 0, ticked: on.length, kbOk: sopId ? !!kb.get(kbKey) : false, skills: on.filter((x) => x.skill_sha256).length },
       gates: await gateAcceptance(orgId, u, tickedFlags(on, all)),
       verdict: u.verdict,
       tests: {

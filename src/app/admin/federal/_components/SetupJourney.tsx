@@ -12,7 +12,7 @@ import { btnPrimary } from "./ui";
 export type SetupEntity = { name: string; hasGoals: boolean; goalsReady: boolean; targetsApproved: number };
 
 /** The five setup steps and how far the chosen entity has got. The inputs themselves are on the setup page: each step here links to its section. */
-export default function SetupJourney({ country, countryReady, policyReady = true, governanceAppointed = true, entities, entity, selectEntity, canEdit, cases, attached }: {
+export default function SetupJourney({ country, countryReady, policyReady = true, governanceAppointed = true, entities, entity, selectEntity, canEdit, cases, attached, sopReady }: {
   country: string;
   countryReady: boolean;
   /** the country has a policy target (the UAE always does) */
@@ -25,11 +25,13 @@ export default function SetupJourney({ country, countryReady, policyReady = true
   canEdit: boolean;
   cases: number;
   attached: number;
+  /** use cases whose SOP stage is done: attached, knowledge base ready, a profile ticked, skills built */
+  sopReady: number;
 }) {
   const lang = useLang();
   const progress = setupProgress({
     countryReady, policyReady, governanceAppointed, goalsReady: !!entity?.goalsReady, cases,
-    targetsApproved: entity?.targetsApproved ?? 0, targetsProposed: 0, attached,
+    targetsApproved: entity?.targetsApproved ?? 0, targetsProposed: 0, attached, sopReady,
   });
   const href = (id: SetupStepId) => countryHref(`/admin/federal/setup?step=${id}#step-${id}`, country, entity?.name);
   const counts: Partial<Record<SetupStepId, string>> = {};
