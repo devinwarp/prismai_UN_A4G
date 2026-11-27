@@ -7,6 +7,7 @@ import { approversForUseCase } from "@/lib/un/approvers-store";
 import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { appendTargetLog, loadGoalsResolved, loadTargetLog } from "@/lib/un/target-store";
+import { draftTargetsFor } from "@/lib/un/targets-agent";
 import { appendTargets, coverage, describeTargetStoreError, planTargets, replayTargets, verifyTargets, type TargetAction } from "@/lib/un/targets";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -31,8 +32,10 @@ export async function GET(_request: Request, { params }: Ctx) {
 
 /** POST { action, ... } → one change to the targets of a use case.
  *   propose  { targets, note? }     the whole list of targets, each linked to a goal of the entity
- *   approve  { approver?, self_approval_reason? }   lock the proposal at its hash
+ *   approve  { approver?, self_approval_reason?, targets? }   lock the proposal at its hash; with targets, the approver's own
+ *            edited list is what is locked, and the log keeps the hash of the proposal it came from
  *   withdraw { reason }
+ *   draft    {}                      ask the targets agent to draft the targets again (it leaves an approved set or a person's proposal alone)
  * Proposing needs scenario.edit; approving or withdrawing needs scenario.approve, like the verdict parameters. The
  * approver is chosen from the use case's list, never typed. Every change is one entry of a hash-chained log. */
 export async function POST(request: Request, { params }: Ctx) {
@@ -44,10 +47,14 @@ export async function POST(request: Request, { params }: Ctx) {
   const act = b.action;
   const may = act === "approve" || act === "withdraw" ? who.decide("scenario.approve") : who.decide("scenario.edit");
   if (!may.ok) return forbidden(may.reason);
-  if (!["propose", "approve", "withdraw"].includes(String(act))) return bad("Unknown action");
+  if (!["propose", "approve", "withdraw", "draft"].includes(String(act))) return bad("Unknown action");
   const uc = await loadUseCase(who.org_id!, id);
   if (!uc) return notFound();
 
+  if (act === "draft") {
+    const r = await draftTargetsFor(who.org_id!, uc, { model: true });
+    return NextResponse.json({ ok: r.outcome !== "failed", ...r }, { status: r.outcome === "failed" ? 500 : 200 });
+  }
   let log;
   try { log = await loadTargetLog(who.org_id!, id); } catch (e) { return unreadable(e); }
   const v = verifyTargets(log);
@@ -60,7 +67,7 @@ export async function POST(request: Request, { params }: Ctx) {
   else if (act === "approve") {
     const a = resolveApprover(b.approver, withGovernance(await approversForUseCase(who.org_id!, id)));
     if (!a.ok) return bad(a.error);
-    action = { type: "approve", approver: a.approver, self_approval_reason: text(b.self_approval_reason, 500) || undefined };
+    action = { type: "approve", approver: a.approver, self_approval_reason: text(b.self_approval_reason, 500) || undefined, ...(b.targets !== undefined ? { targets: b.targets } : {}) };
   } else action = { type: "withdraw", reason: text(b.reason, 500) };
 
   const p = planTargets(state, action, who.id, goals);

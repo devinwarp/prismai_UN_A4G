@@ -157,7 +157,7 @@ export function replayTargets(entries: TargetEntry[]): TargetState {
 
 export type TargetAction =
   | { type: "propose"; targets: unknown; note?: string }
-  | { type: "approve"; approver: { title: string; source: string }; self_approval_reason?: string }
+  | { type: "approve"; approver: { title: string; source: string }; self_approval_reason?: string; /** The approver's own edits of the proposal: what is approved is this list, not the proposal, and the log keeps the hash of the proposal it came from. */ targets?: unknown }
   | { type: "withdraw"; reason: string };
 
 export type TargetPlan = { ok: true; kind: TargetKind; payload: Record<string, unknown> } | { ok: false; error: string };
@@ -176,11 +176,18 @@ export function planTargets(state: TargetState, a: TargetAction, by: string, goa
   }
   if (a.type === "approve") {
     if (!state.pending) return bad("There is no proposal waiting for approval");
-    const errs = validateTargets(state.pending.targets, goals);
+    let final = state.pending.targets;
+    if (a.targets !== undefined) {
+      const errs = validateTargets(a.targets, goals);
+      if (errs.length) return bad(`Your edits do not pass: ${first(errs)}`);
+      final = (a.targets as Target[]).map((x) => ({ ...x, id: x.id.trim(), statement: x.statement.trim(), evidence: x.evidence.trim() }));
+    }
+    const errs = validateTargets(final, goals);
     if (errs.length) return bad(`The proposal no longer fits the entity's goals: ${errs[0]}`);
     const own = !!by && state.pending.by === by;
     if (own && !str(a.self_approval_reason).trim()) return bad("You proposed these targets, so you cannot also approve them unless you give the reason (recorded in the log)");
-    return { ok: true, kind: "approved", payload: { version: state.pending.version, hash: targetsHash(state.pending.targets), targets: state.pending.targets, approver: a.approver.title, approver_source: a.approver.source, ...(own ? { self_approval_reason: a.self_approval_reason!.trim() } : {}), by } };
+    const edited = targetsHash(final) !== targetsHash(state.pending.targets);
+    return { ok: true, kind: "approved", payload: { version: state.pending.version, hash: targetsHash(final), targets: final, approver: a.approver.title, approver_source: a.approver.source, ...(edited ? { edited_from: targetsHash(state.pending.targets) } : {}), ...(own ? { self_approval_reason: a.self_approval_reason!.trim() } : {}), by } };
   }
   if (!state.approved) return bad("There is no approval to withdraw");
   if (str(a.reason).trim().length < 3) return bad("Withdrawing an approval needs a reason");

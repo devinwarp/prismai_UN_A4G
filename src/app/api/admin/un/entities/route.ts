@@ -5,6 +5,8 @@ import { countryIn } from "@/lib/un/country";
 import { appCountryDeps } from "@/lib/un/country-app";
 import { planEntity, type EntityAction } from "@/lib/un/entity-admin";
 import { loadKnownEntities, registerEntity, saveEntity } from "@/lib/un/entity-store";
+import { draftTargetsForAll } from "@/lib/un/targets-agent";
+import { loadUnUseCases } from "@/lib/un/store";
 
 /** POST { action: "add", name, country, sector?, goals } | { action: "set_goals", name, goals } | { action: "set_hidden", name, hidden }. Admin only.
  * Hiding is reversible: a hidden entity's use cases leave the dashboard counts and the lists, nothing is deleted. Every change is also written
@@ -52,5 +54,7 @@ export async function POST(request: Request) {
   }
   if (err) return NextResponse.json({ error: err }, { status: 500 });
   const audited = await recordChange(deps, actor, kind, payload);
-  return NextResponse.json({ ok: true, audited, ...(plan.type === "set_goals" ? { goals: plan.goals } : {}) });
+  // new or changed goals: the targets agent drafts the entity's use cases again. It leaves an approved set and a person's proposal alone.
+  const drafted = plan.type === "set_goals" ? (await draftTargetsForAll(orgId, (await loadUnUseCases(orgId)).filter((u) => u.entity === plan.name))).filter((d) => d.outcome === "drafted").map((d) => d.ext_id) : [];
+  return NextResponse.json({ ok: true, audited, ...(plan.type === "set_goals" ? { goals: plan.goals, targets_drafted: drafted } : {}) });
 }

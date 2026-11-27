@@ -14,6 +14,7 @@ import { PILOT_AR } from "./pilot-ar.ts";
 import { DRILLDOWN_AR } from "./drilldown-ar.ts";
 import { TESTGEN_AR } from "./testgen-ar.ts";
 import { TARGETS_AR } from "./targets-ar.ts";
+import { SETUP_AR } from "./setup-ar.ts";
 import { AUTOTUNE_AR } from "./autotune-ar.ts";
 import { USECASE_UI_AR } from "./usecase-ui-ar.ts";
 import { SIJIL_RUN_AR } from "./sijil-run-ar.ts";
@@ -361,6 +362,7 @@ export const AR: Record<string, string> = {
   ...DRILLDOWN_AR,
   ...TESTGEN_AR,
   ...TARGETS_AR,
+  ...SETUP_AR,
   ...AUTOTUNE_AR,
   ...USECASE_UI_AR,
   ...SIJIL_RUN_AR,
