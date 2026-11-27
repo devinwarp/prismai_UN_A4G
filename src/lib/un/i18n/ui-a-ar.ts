@@ -473,6 +473,7 @@ export const UI_A_AR: Record<string, string> = {
   "en.goals.edit_targets": "تعديل الأهداف والقيم المستهدفة",
   "en.goals.measure_hint": "حدّد طريقة قياس نتيجة الخدمة، ثم أدخل القيمة المستهدفة ووحدتها.",
   "en.goals.save_targets": "حفظ الأهداف والقيم المستهدفة",
+  "en.goals.invalid": "يحتاج كل هدف إلى نص النتيجة، ومعيار قياس لا يقل عن 5 أحرف، وقيمة مستهدفة رقمية ووحدة (قيمة % لا تتجاوز 100).",
   "en.goals.add": "إضافة هدف",
   "en.goals.remove": "إزالة",
   "en.goals.text": "الهدف",
