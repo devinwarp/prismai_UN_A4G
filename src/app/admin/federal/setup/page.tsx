@@ -1,3 +1,5 @@
+import { replayStructure } from "@/lib/un/sop-structure";
+import { loadStructureLog } from "@/lib/un/sop-structure-store";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -76,6 +78,8 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
   const countryList = visibleCountries(state).map((c) => ({ id: c.id, name: c.name }));
   const cases = entity ? useCases.filter((u) => u.entity === entity.name && mayRead(u.id)).sort((a, b) => a.ext_id.localeCompare(b.ext_id)) : [];
   const intake = await loadSopIntakeSummaries(orgId, cases.map((c) => c.id));
+  // use cases whose SOP was analysed at intake and needs structuring: a draft waits for a person (not attached until approved)
+  const structureDrafts = new Set((await Promise.all(cases.filter((c) => !intake[c.id]).map(async (c) => (replayStructure(await loadStructureLog(orgId, c.id).catch(() => [])).pending ? c.id : null)))).filter((x): x is string => !!x));
   // each use case's SOP stage (the journey's first): attached, knowledge base ready, a profile ticked, skills built. The SOP step is done only when it is.
   const { journeys } = await loadJourneyDetails(orgId, cases);
   const sopReady = cases.filter((c) => journeys.get(c.id)?.stages[0]?.state === "done").length;
@@ -226,7 +230,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
           openWhenDone={open("sop")}>
           <div className="flex flex-wrap items-center gap-3">
             <SopIntake key={entity?.name} country={country.id} entity={entity?.name} canEdit={canEdit}
-              rows={cases.map((uc) => ({ id: uc.id, code: uc.ext_id, title: uc.title, frozen: uc.stage === "deployed", sop: intake[uc.id] }))} />
+              rows={cases.map((uc) => ({ id: uc.id, code: uc.ext_id, title: uc.title, frozen: uc.stage === "deployed", sop: intake[uc.id], draft: structureDrafts.has(uc.id) }))} />
             <Link className="text-sm underline" href={countryHref("/admin/federal", country.id, entity?.name)}><T k="su.done.go" en="Go to the dashboard" /></Link>
           </div>
           <AutomationConfirm rows={automation} canEdit={canEdit} />

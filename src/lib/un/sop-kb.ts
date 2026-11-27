@@ -1,3 +1,4 @@
+import { compileSkill, isStructuredSop } from "./skill-compile.ts";
 import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
@@ -263,6 +264,12 @@ export function extractSkill(sopId: string, profile: string): SkillFile {
 
 /** Render the same skill from an explicitly selected SOP version. */
 export function skillFromChunks(sopId: string, profile: string, chunks: SopChunk[]): SkillFile {
+  // an SOP that went through the structuring step is read as data and its skill is compiled (skill-compile.ts); every other SOP keeps the skill below unchanged
+  if (isStructuredSop(chunks)) {
+    const compiled = compileSkill(sopId, profile, chunks);
+    if (!compiled.report.ok) throw new Error(`The skill for "${profile}" cannot be compiled: ${compiled.report.errors.join(" ")}`);
+    return compiled;
+  }
   const roleChunk = chunks.find((c) => c.topics.includes("role") && c.title.toLowerCase().includes(profile.toLowerCase()));
   if (!roleChunk) throw new Error(`no job profile named "${profile}" in ${sopId}`);
   const tasks = chunks.filter((c) => c.topics.includes("task") && c.job_profile?.toLowerCase() === profile.toLowerCase());

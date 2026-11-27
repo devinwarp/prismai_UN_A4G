@@ -17,6 +17,7 @@ import LangShell, { T, TV } from "../../../_components/Lang";
 import { btnGhost, card, scrollRegion, VerdictBadge } from "../../../_components/ui";
 import { AttachButton, AutomateBox } from "./ProfileControls";
 import { SopEditor } from "./SopEditor";
+import SopStructure from "./SopStructure";
 
 export const metadata: Metadata = { title: "SOP and job profiles", robots: { index: false, follow: false } };
 
@@ -103,6 +104,8 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
             />
           )}
         </section>
+
+        {(canEdit || sopId) && <SopStructure ucId={id} canEdit={canEdit} frozen={frozen} attached={sopId} />}
 
         {sopId && (
           <section id="risk" className="mt-8 scroll-mt-4" aria-label="Job profiles">

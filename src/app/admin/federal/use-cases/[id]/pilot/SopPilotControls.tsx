@@ -19,6 +19,7 @@ const CHECK_WORDS: Record<string, string> = {
   human_review: "It was not marked as a draft for a person to review",
   outcome: "The output did not match the expected result",
   sijil_block: "Sijil blocked a request that should have been answered",
+  tool_allowlist: "It asked for a tool that is not on this job profile's allow-list",
 };
 const checkWord = (check: string) => CHECK_WORDS[check] ?? `Expected ${check.replace(/^output\./, "")} did not hold`;
 
