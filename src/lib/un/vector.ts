@@ -101,27 +101,47 @@ export function loadVectors(chunks: Chunk[]): VectorFile | null {
 }
 
 type Embedder = (text: string, opts: { pooling: string; normalize: boolean }) => Promise<{ data: ArrayLike<number> }>;
-let embedder: Promise<Embedder | null> | undefined;
+export type EmbeddingFailure = "runtime" | "model" | "timeout" | "inference";
+type EmbeddingResult<T> = { value: T } | { failure: EmbeddingFailure };
+let embedder: Promise<EmbeddingResult<Embedder>> | undefined;
 
-/** The shared embedder (transformers.js, nomic-embed-text-v1.5), or null if the package is missing, the model
- * cannot load (blocked download) or loading outlasts `limitMs`. The load keeps going so later calls can use it.
- * Runs locally: no API key. The first use downloads the model unless it is cached under the temp folder. */
-async function getEmbedder(limitMs: number): Promise<Embedder | null> {
-  embedder ??= (async () => {
-    try {
-      const pkg = "@huggingface/transformers"; // optional dependency, resolved at run time
-      const tf = (await import(/* webpackIgnore: true */ /* turbopackIgnore: true */ pkg)) as {
-        pipeline: (t: string, m: string) => Promise<Embedder>;
-        env: { cacheDir: string; allowLocalModels: boolean };
-      };
-      tf.env.cacheDir = path.join(os.tmpdir(), "hf-cache"); // the function filesystem is read-only except tmp
-      tf.env.allowLocalModels = false;
-      return await tf.pipeline("feature-extraction", "nomic-ai/nomic-embed-text-v1.5");
-    } catch {
-      return null;
-    }
-  })();
-  return Promise.race([embedder, new Promise<null>((r) => setTimeout(() => r(null), limitMs))]);
+async function loadEmbedder(): Promise<EmbeddingResult<Embedder>> {
+  const pkg = "@huggingface/transformers"; // resolved at runtime
+  const tf = await import(/* webpackIgnore: true */ /* turbopackIgnore: true */ pkg).catch((error: unknown) => {
+    console.warn("Could not load the embedding runtime.", error);
+    return null;
+  }) as {
+    pipeline: (t: string, m: string) => Promise<Embedder>;
+    env: { cacheDir: string; allowLocalModels: boolean };
+  } | null;
+  if (!tf) return { failure: "runtime" };
+  try {
+    tf.env.cacheDir = path.join(os.tmpdir(), "hf-cache"); // the function filesystem is read-only except tmp
+    tf.env.allowLocalModels = false;
+    return { value: await tf.pipeline("feature-extraction", "nomic-ai/nomic-embed-text-v1.5") };
+  } catch (error) {
+    console.warn("Could not initialize the Nomic embedding model.", error);
+    return { failure: "model" };
+  }
+}
+
+/** Share a model load across callers. A failed load can be retried, while a timed-out caller leaves the load in progress. */
+async function getEmbedder(limitMs: number): Promise<EmbeddingResult<Embedder>> {
+  embedder ??= loadEmbedder().then((result) => {
+    if ("failure" in result) embedder = undefined;
+    return result;
+  });
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      embedder,
+      new Promise<EmbeddingResult<Embedder>>((resolve) => {
+        timer = setTimeout(() => resolve({ failure: "timeout" }), limitMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /** Embed a query with transformers.js, or null if vectors are switched off
@@ -132,10 +152,10 @@ export async function embedQuery(query: string, opts: { force?: boolean } = {}):
   if (!opts.force && process.env.KB_VECTOR !== "on") return null;
   // The first call may have to download the model (cold start). Wait a bounded
   // time, then answer from BM25; the load keeps going so later calls can use it.
-  const e = await getEmbedder(Number(process.env.KB_VECTOR_TIMEOUT_MS) || (opts.force ? 30000 : 8000));
-  if (!e) return null;
+  const model = await getEmbedder(Number(process.env.KB_VECTOR_TIMEOUT_MS) || (opts.force ? 30000 : 8000));
+  if ("failure" in model) return null;
   try {
-    const out = await e(`search_query: ${query}`, { pooling: "mean", normalize: true });
+    const out = await model.value(`search_query: ${query}`, { pooling: "mean", normalize: true });
     return Array.from(out.data);
   } catch {
     return null;
@@ -145,17 +165,23 @@ export async function embedQuery(query: string, opts: { force?: boolean } = {}):
 /** Embed documents with the same model ("search_document: " prefix), for a knowledge base built live
  * (country-build.ts). Independent of KB_VECTOR. Null if the embedder is unavailable or too slow; never throws. */
 export async function embedDocuments(texts: string[], limitMs = 20000): Promise<number[][] | null> {
-  const t0 = Date.now();
-  const e = await getEmbedder(limitMs);
-  if (!e) return null;
+  const result = await embedDocumentsWithStatus(texts, limitMs);
+  return "value" in result ? result.value : null;
+}
+
+export async function embedDocumentsWithStatus(texts: string[], limitMs: number): Promise<EmbeddingResult<number[][]>> {
+  const deadline = Date.now() + limitMs;
+  const model = await getEmbedder(limitMs);
+  if ("failure" in model) return model;
   try {
     const out: number[][] = [];
-    for (let i = 0; i < texts.length; i += 8) {
-      if (Date.now() - t0 > limitMs) return null;
-      for (const t of texts.slice(i, i + 8)) out.push(Array.from((await e(`search_document: ${t}`, { pooling: "mean", normalize: true })).data).map((x) => Math.round(x * 1e5) / 1e5));
+    for (const text of texts) {
+      if (Date.now() >= deadline) return { failure: "timeout" };
+      const embedding = await model.value(`search_document: ${text}`, { pooling: "mean", normalize: true });
+      out.push(Array.from(embedding.data, (x) => Math.round(x * 1e5) / 1e5));
     }
-    return out;
+    return Date.now() >= deadline ? { failure: "timeout" } : { value: out };
   } catch {
-    return null;
+    return { failure: "inference" };
   }
 }

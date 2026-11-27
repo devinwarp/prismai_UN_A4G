@@ -7,7 +7,7 @@ import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { entityRegistrationReady, indexOfCountry } from "@/lib/un/country-actions";
-import { countryHref, type CountryQuery } from "@/lib/un/country-context";
+import { countryHref, knownCountries, type CountryQuery } from "@/lib/un/country-context";
 import { allCountries, entityCountryOf, visibleCountries } from "@/lib/un/country";
 import { loadFederalCountry } from "@/lib/un/federal-country";
 import { loadFederalReadAccess } from "@/lib/un/federal-read-access";
@@ -162,6 +162,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
           openWhenDone={open("country")}>
           <div className="space-y-4">
             <CountryPanel key={country.id} canEdit={canEdit} active={active.id} selected={country.id}
+              countryOptions={{ en: knownCountries("en"), ar: knownCountries("ar") }}
               countries={infos.map(({ c, info }) => ({ id: c.id, name: c.name, ruleset: c.ruleset, currency: c.currency, ready: !!info, onDemand: c.built === "on_demand", custom: !!c.custom, hidden: !!c.hidden }))}
               rulesets={RULESETS.map((r) => ({ id: r.id, name: r.name }))} staged={euStaged} euBuilt={!!state.policies.EU} />
             {countryPolicy && <CountryPolicy key={country.id} policy={countryPolicy} noTarget={country.id !== "UAE" && !countryTarget} countryId={country.id} />}

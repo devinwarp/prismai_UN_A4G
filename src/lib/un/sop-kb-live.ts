@@ -4,7 +4,7 @@ import path from "node:path";
 import type { ChunkRow, KbStore, SopRow } from "./kb-store.ts";
 import { checkSopKb, writeSkill, type KbCheck, type SkillResult } from "./skill-extract.ts";
 import { chunkSop, extractSkill, loadSop, primeSop, retrievablePart, vectorStatus, type SopChunk, type SopVectorFile } from "./sop-kb.ts";
-import { embedDocuments } from "./vector.ts";
+import { embedDocumentsWithStatus, type EmbeddingFailure } from "./vector.ts";
 
 // The SOP knowledge base built INSIDE the app, for an SOP a person uploaded. Until now only the command-line script
 // scripts/build_sop_kb.ts built one (into kb/sop/<id>/ on disk), so an uploaded SOP could never reach the stage that needs a
@@ -24,6 +24,12 @@ export interface LiveBuildResult {
   reason: string;
 }
 type Embed = (texts: string[]) => Promise<number[][] | null>;
+const embeddingFailureText: Record<EmbeddingFailure, string> = {
+  runtime: "The server could not load the embedding runtime. Check the deployed runtime and its native libraries.",
+  model: "The embedding runtime started, but could not load the model. Check model download access and the server logs.",
+  timeout: "Embedding took longer than the build budget. Try building the knowledge base again.",
+  inference: "The embedding model loaded, but failed while processing the SOP passages.",
+};
 
 const sha = (s: string) => createHash("sha256").update(s).digest("hex");
 const message = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -50,13 +56,17 @@ function withVectors(chunks: SopChunk[], vecs: number[][] | null, sourceSha: str
 }
 
 /** Chunk, embed and store the SOP, and put it in this process's cache. Never throws. */
-export async function buildLiveSopKb(store: KbStore, i: LiveBuildInput, embed: Embed = (t) => embedDocuments(t, 25_000)): Promise<LiveBuildResult> {
+export async function buildLiveSopKb(store: KbStore, i: LiveBuildInput, embed?: Embed): Promise<LiveBuildResult> {
   const none = (reason: string): LiveBuildResult => ({ stored: false, chunks: 0, vectors: false, ready: false, reason });
   try {
     const chunks = liveChunks(i);
     if (!chunks.length) return none("The SOP has no text before its Annex to build a knowledge base from.");
     if (new Set(chunks.map((c) => c.chunk_id)).size !== chunks.length) return none("The SOP produced duplicate passage ids; check its headings.");
-    const vecs = await embed(chunks.map((c) => c.text)).catch(() => null);
+    const texts = chunks.map((c) => c.text);
+    const result = embed
+      ? { value: await embed(texts).catch(() => null) }
+      : await embedDocumentsWithStatus(texts, 120_000);
+    const vecs = "value" in result ? result.value : null;
     const sourceSha = sha(retrievablePart(i.body));
     const built = withVectors(chunks, vecs, sourceSha);
     const sop: SopRow = { sop_id: i.sopId, title: i.title, version: String(i.version), issuer: i.entity, source_path: sourcePathOf(i), source_sha256: sourceSha, synthetic: true };
@@ -66,7 +76,7 @@ export async function buildLiveSopKb(store: KbStore, i: LiveBuildInput, embed: E
     loadedAt.set(i.sopId, Date.now());
     return built.vectors
       ? { stored: true, chunks: chunks.length, vectors: true, ready: true, reason: "Built with vectors." }
-      : { stored: true, chunks: chunks.length, vectors: false, ready: false, reason: "Built WITHOUT vectors: the embedding model was not available, so an automated agent cannot use this SOP yet. Build it again once the model loads." };
+      : { stored: true, chunks: chunks.length, vectors: false, ready: false, reason: `Built WITHOUT vectors. ${"failure" in result ? embeddingFailureText[result.failure] : "The embedder returned no complete set of vectors."}` };
   } catch (e) {
     return none(`The knowledge base could not be built: ${message(e)}`);
   }
