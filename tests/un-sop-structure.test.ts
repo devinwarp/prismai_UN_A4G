@@ -109,10 +109,10 @@ test("the systems a task uses become tools the role needs, listed but not callab
 });
 
 test("an SOP that was not structured keeps its existing skill, unchanged", () => {
-  const md = readFileSync("data/sop/uc09-recruitment-onboarding-sop.md", "utf8");
-  const chunks = chunkSop(md, { sopId: "SOP-REC-011", version: "1.0", useCaseId: "UC09", entity: "E", sourcePath: "x" });
+  const md = readFileSync("data/sops/uc02-trade-licence-renewal-sop.md", "utf8");
+  const chunks = chunkSop(md, { sopId: "SOP-LIC-014", version: "2.3", useCaseId: "UC02", entity: "E", sourcePath: "x" });
   assert.equal(isStructuredSop(chunks), false);
-  const skill = skillFromChunks("SOP-REC-011", "Screening Analyst", chunks);
+  const skill = skillFromChunks("SOP-LIC-014", "Document Verification Analyst", chunks);
   assert.ok(!skill.markdown.includes("compiled: true"));
   assert.match(skill.markdown, /## Before you act/);
 });
@@ -146,7 +146,7 @@ test("the log: a draft is pending until it is approved or withdrawn", () => {
 
 test("intake analysis: an SOP in the Prism layout is attached as it is, a loose one needs structuring, and a structured one is fine", () => {
   const baseline = loadBaseline();
-  const strict = assessSop({ title: "Recruitment", text: readFileSync("data/sop/uc09-recruitment-onboarding-sop.md", "utf8"), entity: "E", baseline });
+  const strict = assessSop({ title: "Trade licence renewal", text: readFileSync("data/sops/uc02-trade-licence-renewal-sop.md", "utf8"), entity: "E", baseline });
   assert.equal(strict.needsStructuring, false, strict.reasons.join(" | "));
   assert.ok(strict.profiles >= 4 && strict.skills === strict.profiles);
   const loose = assessSop({ title: "Leave", text: SOURCE, entity: "E", baseline });
