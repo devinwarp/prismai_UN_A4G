@@ -137,7 +137,13 @@ export function AddEntity({ country, ready, initialOpen = false, onSetupPage = f
 export function EntityTools({ name, goals, hidden, requireMeasurement = false, initialOpen = false, idSuffix = "" }: { name: string; goals: EntityGoal[]; hidden: boolean; requireMeasurement?: boolean; initialOpen?: boolean; /** Keeps element ids unique when the editor appears twice on a page. */ idSuffix?: string }) {
   const lang = useLang();
   const router = useRouter();
+  // The same entity's editor can appear twice on the setup page; each keeps its own rows, so when the goals change
+  // underneath (the other editor saved, or a refresh brought new data) the stale rows must not stay editable —
+  // a save from them would silently revert the newer goals. Resync during render when the prop signature changes.
+  const signature = JSON.stringify(goals);
+  const [seen, setSeen] = useState(signature);
   const [rows, setRows] = useState<Row[]>(() => goalRows(goals));
+  if (signature !== seen) { setSeen(signature); setRows(goalRows(goals)); }
   const [open, setOpen] = useState(initialOpen);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
@@ -154,6 +160,7 @@ export function EntityTools({ name, goals, hidden, requireMeasurement = false, i
   }
   const needsTargets = goals.length === 0 || goals.some((goal) => !goal.measurement);
   const needsMeasurement = (row: Row) => requireMeasurement || !row.id || goals.some((goal) => goal.id === row.id && !!goal.measurement);
+  const invalidRows = rows.filter((r) => !validGoal(r, needsMeasurement(r)));
   const id = name.replace(/\W+/g, "-") + idSuffix;
   return (
     <div className="mt-3">
@@ -190,7 +197,8 @@ export function EntityTools({ name, goals, hidden, requireMeasurement = false, i
           </ul>
           <div className="mt-3 flex flex-wrap gap-2">
             {rows.length < MAX_GOALS && <button type="button" className={btnGhost} onClick={() => setRows((r) => [...r, blankGoal])}>{tr(lang, "en.goals.add", "Add a goal")}</button>}
-            <button type="button" className={btnPrimary} disabled={busy || rows.some((r) => !validGoal(r, needsMeasurement(r)))} onClick={() => void run({ action: "set_goals", goals: rows.map(goalPayload) })}>{tr(lang, "en.goals.save_targets", "Save goals and targets")}</button>
+            <button type="button" className={btnPrimary} disabled={busy || invalidRows.length > 0} onClick={() => void run({ action: "set_goals", goals: rows.map(goalPayload) })}>{tr(lang, "en.goals.save_targets", "Save goals and targets")}</button>
+            {invalidRows.length > 0 && <p className="w-full text-xs text-ink-soft">{tr(lang, "en.goals.invalid", "Each goal needs its outcome text, and a measurement criterion of at least 5 characters, a numeric target and a unit (a % target is at most 100).")}</p>}
           </div>
         </div>
       )}
