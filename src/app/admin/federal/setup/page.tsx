@@ -235,6 +235,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
           <section aria-labelledby="coverage-h" className="rounded-xl border border-line bg-card p-4">
             <h2 id="coverage-h" className="font-display text-2xl font-medium"><T k="workspace.goals.matrix" en="Goals and use-case targets" /></h2>
             <p className="mt-1 text-sm"><span className="font-medium">{entity.name}</span> <span className="text-xs text-ink-soft">· {entity.goals.length} <T k="gl.goals" en="goals" /> · {coverageCases.length} <T k="gl.ucs" en="use cases" /></span></p>
+            {canEdit && <EntityTools key={entity.name} idSuffix="-matrix" name={entity.name} goals={entity.goals} hidden={false} requireMeasurement initialOpen={!hasMeasuredGoals(entity.goals)} />}
             <div className="mt-3 overflow-x-auto rounded-lg border border-line" {...scrollRegion("coverage-h")}>
               <table className="w-full min-w-[44rem] text-start text-sm">
                 <caption className="sr-only"><T k="workspace.goals.matrix" en="Goals and use-case targets" /></caption>

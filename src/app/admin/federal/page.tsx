@@ -1,3 +1,4 @@
+import { loadRunCosts } from "@/lib/un/cost-register-store";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
@@ -100,6 +101,8 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
   }));
   // The rerun icon of each row: whether there is an earlier run to repeat, whether a deployed use case has a request from its process owner, whether
   // the rules or SOP changed since its last run, and what this person may do (the same checks the route makes).
+  // what each use case's runs have cost and how long they worked (read-only; a table that cannot be read counts as no usage)
+  const runCosts = await loadRunCosts(profile.org_id).catch(() => ({}) as Awaited<ReturnType<typeof loadRunCosts>>);
   const perms = await permissionsFor(profile, user.id);
   const people = await loadPeople(profile.org_id).catch(() => []);
   const rv = await loadRerunView(profile.org_id, scoped, { log: loaded?.entries ?? [], countryOf: () => active.id }).catch(() => ({}) as Awaited<ReturnType<typeof loadRerunView>>);
@@ -166,6 +169,7 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
             editableRisks={scoped.filter((uc) => perms.can("risk.edit", uc.id)).map((uc) => uc.id)}
             gatesAdded={gatesAdded}
             journeys={Object.fromEntries(journeys)}
+            runCosts={runCosts}
             work={Object.fromEntries(automation)}
             sops={sops}
             rerun={rerun}

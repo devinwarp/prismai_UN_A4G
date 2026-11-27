@@ -127,11 +127,12 @@ async function getEmbedder(limitMs: number): Promise<Embedder | null> {
 /** Embed a query with transformers.js, or null if vectors are switched off
  * (KB_VECTOR is not "on"), the package is not installed, or the model cannot load
  * (blocked download, cold start too slow). Never throws. */
-export async function embedQuery(query: string): Promise<number[] | null> {
-  if (process.env.KB_VECTOR !== "on") return null; // BM25 is the default; vector search is opt-in
+export async function embedQuery(query: string, opts: { force?: boolean } = {}): Promise<number[] | null> {
+  // BM25 is the default for the regulatory search; vector search is opt-in there. An automated agent's retrieval is not optional (`force`): see searchSopRequired.
+  if (!opts.force && process.env.KB_VECTOR !== "on") return null;
   // The first call may have to download the model (cold start). Wait a bounded
   // time, then answer from BM25; the load keeps going so later calls can use it.
-  const e = await getEmbedder(Number(process.env.KB_VECTOR_TIMEOUT_MS) || 8000);
+  const e = await getEmbedder(Number(process.env.KB_VECTOR_TIMEOUT_MS) || (opts.force ? 30000 : 8000));
   if (!e) return null;
   try {
     const out = await e(`search_query: ${query}`, { pooling: "mean", normalize: true });

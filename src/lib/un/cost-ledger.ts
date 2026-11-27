@@ -13,6 +13,8 @@ export interface LedgerInput {
   reviews: { profile: string; entries: Logged[] }[];
   tuning: Logged[];
   watch: Logged[];
+  /** The SOP pilot's runs (baseline, tuning, certify): each run's own meter, which the run kept as it worked. */
+  sopJobs?: { profile: string; id: string; at: string; mode: string; meter: unknown }[];
 }
 
 const isUsage = (u: unknown): u is UsageSnapshot => !!u && typeof u === "object" && !!(u as UsageSnapshot).total && typeof (u as UsageSnapshot).total.calls === "number" && !!(u as UsageSnapshot).by_model;
@@ -39,6 +41,8 @@ export function buildLedger(i: LedgerInput, prices: PriceTable): Ledger {
     add("tuning", e.at, "Auto-tuning cycle", e.at, (e.payload.record as { usage?: unknown } | undefined)?.usage);
   }
   for (const e of i.watch) if (e.kind === "window") add("production", `window ${String(e.payload.window_no ?? "")}`.trim(), "Production monitoring window", e.at, e.payload.usage);
+  // a certify run's report carries no cost line of its own, so a run is counted once, here
+  for (const j of i.sopJobs ?? []) add(j.mode === "tune" ? "tuning" : "pilot", j.id, `SOP ${j.mode === "tune" ? "tuning run" : j.mode === "certify" ? "certify run" : "baseline pilot"}, ${j.profile}`, j.at, j.meter);
   out.sort((a, b) => (a.at < b.at ? -1 : 1));
   return { entries: out, summary: summarise(out) };
 }

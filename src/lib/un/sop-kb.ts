@@ -236,6 +236,18 @@ export async function searchSopForAgent(sopId: string, query: string, opts: { k?
   return r;
 }
 
+/** Retrieval the SOP pilot's agent relies on. The rule for an automated agent is no silent downgrade to keyword search, so this REFUSES (throws) when the SOP
+ * is not vectorised and current, or when the query cannot be embedded. It does not depend on the KB_VECTOR switch, which only governs the regulatory search. */
+export async function searchSopRequired(sopId: string, query: string, opts: { k?: number } = {}): Promise<HybridResult> {
+  requireVectorised(sopId);
+  const { chunks, vectors } = loadSop(sopId);
+  const qv = await embedQuery(query, { force: true });
+  if (!qv) throw new Error("Vector retrieval is required for an automated agent, but the query could not be embedded: the embedding model did not load. Nothing was answered from keyword search.");
+  const r = await hybridSearch(chunks, vectors, qv, query, { k: opts.k ?? 5 });
+  if (r.mode !== "hybrid") throw new Error("Vector retrieval is required for an automated agent but the search ran without vectors.");
+  return r;
+}
+
 const body = (c: SopChunk) => c.text.split("\n").slice(1).join("\n").trim();
 const slugify = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
 
