@@ -121,3 +121,48 @@ test("a control target has no goal link; an outcome target needs one; an untagge
   assert.equal(checksOf([control]).length, 1);
   assert.ok(coverage(goals, [control]).every((c) => c.targets.length === 0));
 });
+
+test("an approver may edit the proposal as part of approving it: the edited list is locked and the log keeps the proposal's hash", () => {
+  const proposed = planTargets(EMPTY_TARGETS, { type: "propose", targets: [t(), t({ id: "T2", goal_id: "MARSA-G2", value: 95 })] }, "agent:targets", goals);
+  assert.ok(proposed.ok);
+  const state = replayTargets([appendTargets(null, "proposed", "Targets agent", proposed.payload, "2026-11-27T08:00:00.000Z")]);
+  const edits = [t({ value: 99 }), t({ id: "T2", goal_id: "MARSA-G2", value: 95 })];
+  const p = planTargets(state, { type: "approve", approver, targets: edits }, "governance-admin", goals);
+  assert.ok(p.ok);
+  assert.equal((p.payload.targets as Target[])[0].value, 99);
+  assert.equal(p.payload.hash, targetsHash(edits));
+  assert.equal(p.payload.edited_from, targetsHash(state.pending!.targets));
+  assert.equal(p.payload.self_approval_reason, undefined, "the proposer was the agent, so a person approving needs no self-approval reason");
+});
+
+test("approving without edits, or with edits that change nothing, records no edited_from", () => {
+  const list = [t()];
+  const proposed = planTargets(EMPTY_TARGETS, { type: "propose", targets: list }, "agent:targets", goals);
+  assert.ok(proposed.ok);
+  const state = replayTargets([appendTargets(null, "proposed", "Targets agent", proposed.payload, "2026-11-27T08:00:00.000Z")]);
+  const plain = planTargets(state, { type: "approve", approver }, "someone", goals);
+  const same = planTargets(state, { type: "approve", approver, targets: [t()] }, "someone", goals);
+  assert.ok(plain.ok && same.ok);
+  assert.equal(plain.payload.edited_from, undefined);
+  assert.equal(same.payload.edited_from, undefined);
+});
+
+test("edits that do not pass the same checks as a proposal are refused, and nothing is approved", () => {
+  const proposed = planTargets(EMPTY_TARGETS, { type: "propose", targets: [t()] }, "agent:targets", goals);
+  assert.ok(proposed.ok);
+  const state = replayTargets([appendTargets(null, "proposed", "Targets agent", proposed.payload, "2026-11-27T08:00:00.000Z")]);
+  const bad = planTargets(state, { type: "approve", approver, targets: [t({ goal_id: "OTHER-G1" })] }, "someone", goals);
+  assert.ok(!bad.ok);
+  assert.match(bad.error, /Your edits do not pass: .*not a goal of this entity/);
+  const empty = planTargets(state, { type: "approve", approver, targets: [] }, "someone", goals);
+  assert.ok(!empty.ok);
+});
+
+test("a person who proposed the targets still cannot approve their own edits without giving a reason", () => {
+  const proposed = planTargets(EMPTY_TARGETS, { type: "propose", targets: [t()] }, "owner", goals);
+  assert.ok(proposed.ok);
+  const state = replayTargets([appendTargets(null, "proposed", "owner@x", proposed.payload, "2026-11-27T08:00:00.000Z")]);
+  const own = planTargets(state, { type: "approve", approver, targets: [t({ value: 97 })] }, "owner", goals);
+  assert.ok(!own.ok);
+  assert.match(own.error, /you cannot also approve/);
+});

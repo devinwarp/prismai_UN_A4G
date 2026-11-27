@@ -99,7 +99,7 @@ export async function noticeApproval(orgId: string, useCaseId: string, o: { step
     const key = `${o.step}:${useCaseId}:open`;
     if (o.event === "request") {
       await notifyUseCase(orgId, useCaseId, { step: o.step, kind: `${o.step}.proposed`, decisionKind: `${o.step}.approve`, subject: `${o.what}: approval needed for ${o.ext}`,
-        body: `${o.what} for ${o.ext} are ready. The business owner proposes and the governance admin of the country approves: a person decides.`, link: o.link, dedupe: key, exclude: [o.by], created_by: "system" });
+        body: o.by.startsWith("agent:") ? `${o.what} for ${o.ext} were drafted by the targets agent from the entity goals and the use case. Read them, change anything that is wrong, then approve: only a person can approve.` : `${o.what} for ${o.ext} are ready. The business owner proposes and the governance admin of the country approves: a person decides.`, link: o.link, dedupe: key, exclude: [o.by], created_by: "system" });
       return;
     }
     await resolveItems(orgId, key, o.by);

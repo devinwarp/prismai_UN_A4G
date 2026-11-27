@@ -12,9 +12,9 @@ import { computeDashboard } from "@/lib/un/model";
 import { effectiveGates } from "@/lib/un/gates";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { loadJourneyDetails } from "@/lib/un/journey-store";
-import { loadSopIntakeSummaries } from "@/lib/un/sop-version-store";
 import { sampleSopIdForUseCase } from "@/lib/un/sop/data";
 import { loadEntityRows } from "@/lib/un/entity-store";
+import { loadEntityOverview } from "@/lib/un/target-store";
 import { ENTITY_GOALS, hasMeasuredGoals } from "@/lib/un/goals";
 import { permissionsFor } from "@/lib/un/permissions-server";
 import { buttonFor } from "@/lib/un/rerun";
@@ -68,13 +68,15 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
   ]);
   const hiddenEntities = new Set(entities.filter((entry) => entry.hidden).map((entry) => entry.name));
   const scoped = (cs ? entityUseCases(cs, useCases, active.id) : useCases).filter((u) => !hiddenEntities.has(u.entity) && (access.allCases || access.caseIds.has(u.id)));
+  // how many of each entity's use cases have an approved set of process targets (the setup strip's fourth step)
+  const approvedTargets = new Map<string, number>(access.allCases ? (await loadEntityOverview(profile.org_id).catch(() => [])).map((e) => [e.name, e.use_cases.filter((u) => u.state?.approved).length] as [string, number]) : []);
   const setupEntities = access.allCases ? [...new Set([...scoped.map((u) => u.entity), ...entities.map((e) => e.name), ...Object.keys(ENTITY_GOALS)])]
     .filter((name) => !hiddenEntities.has(name) && (cs ? entityCountryOf(cs, name) === active.id : active.id === "UAE"))
     .sort((a, b) => a.localeCompare(b))
     .map((name) => {
       const saved = entities.find((e) => e.name === name)?.goals;
       const goals = saved?.length ? saved : ENTITY_GOALS[name] ?? [];
-      return { name, hasGoals: goals.length > 0, goalsReady: hasMeasuredGoals(goals) };
+      return { name, hasGoals: goals.length > 0, goalsReady: hasMeasuredGoals(goals), targetsApproved: (approvedTargets.get(name) ?? 0) };
     }) : [];
   const initialEntity = typeof entity === "string" && (setupEntities.some((e) => e.name === entity) || scoped.some((u) => u.entity === entity)) ? entity : "";
   const gatesAdded = Object.fromEntries(scoped.map((u) => [u.ext_id, effectiveGates({ ext: u.ext_id, facts: factsOf(u), gov }).added.length]));
@@ -90,10 +92,7 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
   const dashboard = computeDashboard(shown, scoped);
   // a country with entities must have a governance admin: until one is appointed, the setup journey's country step is not done
   const governanceAppointed = !scoped.length || countriesNeedingGovernanceAdmin({ countriesWithEntities: [active.id], assignments: await loadAssignmentRows(profile.org_id) }).length === 0;
-  const [{ journeys, attachedSopIds, automation }, intakeSummaries] = await Promise.all([
-    loadJourneyDetails(profile.org_id, scoped),
-    access.allCases ? loadSopIntakeSummaries(profile.org_id, scoped.map((entry) => entry.id)) : {},
-  ]);
+  const { journeys, attachedSopIds, automation } = await loadJourneyDetails(profile.org_id, scoped);
   const sops = Object.fromEntries(scoped.flatMap((u) => {
     const attached = attachedSopIds.get(u.id);
     const id = attached ?? sampleSopIdForUseCase(u);
@@ -156,6 +155,7 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
             showFederalTools={access.allCases}
             countryReady={countryReady}
             governanceAppointed={governanceAppointed}
+            policyReady={hasTarget}
             setupEntities={setupEntities}
             initialEntity={initialEntity}
             hasLicenceDemo={scoped.some((u) => sampleSopIdForUseCase(u))}
@@ -168,7 +168,6 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
             journeys={Object.fromEntries(journeys)}
             work={Object.fromEntries(automation)}
             sops={sops}
-            intakeSummaries={intakeSummaries}
             rerun={rerun}
             asOf={new Date().toISOString()}
           />

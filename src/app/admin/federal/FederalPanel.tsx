@@ -17,7 +17,6 @@ import { VerdictBadge, btnPrimary, field } from "./_components/ui";
 import { fill, ltr, quadLabel, stageLabel, verdictHint, verdictName, VERDICT_META } from "./_components/labels";
 import HeadlineBand from "./_components/HeadlineBand";
 import SetupJourney, { type SetupEntity } from "./_components/SetupJourney";
-import type { SopIntakeRow } from "./_components/SopIntake";
 import Pop from "./_components/Pop";
 import { RerunControl, type RerunUi } from "./_components/RerunButton";
 import { RISK_FIELDS, type RiskField } from "@/lib/un/hitl";
@@ -76,7 +75,7 @@ function SopLinkStatus() {
 }
 
 export default function FederalPanel({
-  lead, emptyState, policy, dashboard: d, useCases, canEdit, editableRisks, asOf, gatesAdded = {}, journeys = {}, work = {}, governanceAppointed = true, sops, intakeSummaries, rerun = {}, noTarget = false, countryId, hasLicenceDemo, canCompare, showFederalTools, countryReady, setupEntities, initialEntity,
+  lead, emptyState, policy, dashboard: d, useCases, canEdit, editableRisks, asOf, gatesAdded = {}, journeys = {}, work = {}, governanceAppointed = true, policyReady = true, sops, rerun = {}, noTarget = false, countryId, hasLicenceDemo, canCompare, showFederalTools, countryReady, setupEntities, initialEntity,
 }: {
   /** The rerun icon of each use case, by id (see page.tsx). */
   rerun?: Record<string, RerunUi>;
@@ -88,6 +87,7 @@ export default function FederalPanel({
   countryReady: boolean;
   /** a country with entities needs a governance admin before its targets and test sets can be approved */
   governanceAppointed?: boolean;
+  policyReady?: boolean;
   setupEntities: SetupEntity[];
   initialEntity: string;
   /** The page title and its one-line summary, drawn by the server page; sits at the left of the toolbar. */
@@ -102,7 +102,6 @@ export default function FederalPanel({
   dashboard: Dashboard;
   useCases: UnUseCaseState[];
   sops: Record<string, { id: string; sample: boolean }>;
-  intakeSummaries: Record<string, SopIntakeRow["sop"]>;
   canEdit: boolean;
   editableRisks: string[];
   asOf: string;
@@ -178,14 +177,6 @@ export default function FederalPanel({
   };
   const resetCaseFilters = () => { setQ(""); setStage(""); setVerdict("all"); setMissingSops(false); };
   const clear = () => { resetCaseFilters(); changeEntity(""); };
-  const reviewSetup = (onlyMissing: boolean) => {
-    resetCaseFilters();
-    changeEntity(setupEntity?.name ?? "");
-    setMissingSops(onlyMissing);
-    const heading = document.getElementById("register-h");
-    heading?.focus({ preventScroll: true });
-    document.getElementById("use-cases")?.scrollIntoView({ block: "nearest" });
-  };
   // On a phone the register is further down the page, so a pick scrolls to it; on the one-screen desktop it is already in view (and scrolling would shift the fixed layout).
   const pick = <T,>(setter: (v: T) => void) => (v: T) => {
     setter(v);
@@ -248,10 +239,8 @@ export default function FederalPanel({
 
       <div className="desk:col-span-2"><HeadlineBand d={d} policy={policy} noTarget={noTarget} asOf={asOf} story={story} /></div>
 
-      {showFederalTools && <SetupJourney country={countryId} countryReady={countryReady} governanceAppointed={governanceAppointed} entities={setupEntities} entity={setupEntity}
-        selectEntity={changeEntity} canEdit={canEdit} cases={setupCases.length} attached={setupCases.filter((uc) => sops[uc.id] && !sops[uc.id].sample).length}
-        existingIds={setupCases.map((uc) => uc.ext_id)} review={reviewSetup}
-        sopRows={setupCases.map((uc) => ({ id: uc.id, code: uc.ext_id, title: uc.title, frozen: uc.stage === "deployed", sop: intakeSummaries[uc.id] }))} />}
+      {showFederalTools && <SetupJourney country={countryId} countryReady={countryReady} policyReady={policyReady} governanceAppointed={governanceAppointed} entities={setupEntities} entity={setupEntity}
+        selectEntity={changeEntity} canEdit={canEdit} cases={setupCases.length} attached={setupCases.filter((uc) => sops[uc.id] && !sops[uc.id].sample).length} />}
 
       <div className="flex flex-col gap-10 desk:hidden">
         {hasStagedScenarios && <StartHere steps={startSteps.map((step) => ({ ...step, href: scopedHref(step.href!) }))} onTour={() => setTour(true)} />}

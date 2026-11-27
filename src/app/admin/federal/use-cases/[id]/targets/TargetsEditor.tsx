@@ -37,6 +37,11 @@ export function TargetsEditor({ useCaseId, entity, goals, goalsSource, state, ch
   };
   const targets = () => rows.map((r) => ({ id: r.id.trim(), kind: r.kind, ...(r.kind === "outcome" ? { goal_id: r.goal_id } : {}), statement: r.statement, comparator: r.comparator, value: r.value.trim() === "" ? NaN : Number(r.value), unit: r.unit, measured_by: r.measured_by, evidence: r.evidence, ...(r.param_key ? { param_key: r.param_key } : {}), ...(r.check_on && r.measured_by === "pilot" ? { check: { criterion: r.check_criterion, scope: r.check_scope } } : {}) }));
   const goalText = (id: string) => goals.find((g) => g.id === id)?.text ?? id;
+  // the approver's edits of the waiting proposal: when the form differs from it, approving locks the edited list, not the draft
+  const dirty = !!state.pending && JSON.stringify(rows) !== JSON.stringify(state.pending.targets.map(toDraft));
+  const byAgent = !!state.pending && state.pending.by.startsWith("agent:");
+  // the agent's warning about the use case's own approval rule, kept after "Warning: " in the proposal's note
+  const warning = byAgent ? state.pending?.note?.split("Warning: ")[1] ?? null : null;
   const nextKind = (i: number, kind: string) => set(i, { kind, goal_id: kind === "outcome" ? (rows[i].goal_id || goals[0]?.id || "") : "" });
 
   return (
@@ -45,7 +50,7 @@ export function TargetsEditor({ useCaseId, entity, goals, goalsSource, state, ch
         <h2 id="tg2-goals" className="font-display text-xl font-medium">{tr(lang, "tg2.goals", "Goals of")} {entity}</h2>
         <p className="mt-1 text-sm text-ink-soft">{tr(lang, "tg2.goals.lede", "What the entity wants to achieve. Read only here: each target below contributes to one of them.")} <span className="font-mono text-xs">({goalsSource})</span></p>
         {goals.length === 0 ? <p className="mt-2 text-sm font-medium">{tr(lang, "tg2.nogoals", "This entity has no goals on record, so no target can be linked.")}</p> : (
-          <ul className="mt-3 space-y-1 text-sm">{goals.map((g) => <li key={g.id}><span className="font-mono text-xs">{g.id}</span> · {g.text} <span className="text-xs text-ink-soft">({g.criterion})</span></li>)}</ul>
+          <ul className="mt-3 space-y-1 text-sm">{goals.map((g) => <li key={g.id}><span className="font-mono text-xs">{g.id}</span> · {g.text} <span className="text-xs text-ink-soft">{g.criterion ? `(${g.criterion})` : g.measurement ? `· ${g.measurement.comparison === "at_least" ? "≥" : "≤"} ${g.measurement.value} ${g.measurement.unit}` : ""}</span></li>)}</ul>
         )}
       </section>
 
@@ -65,9 +70,11 @@ export function TargetsEditor({ useCaseId, entity, goals, goalsSource, state, ch
           </ul>
         )}
 
-        {mayEdit && !storeError && (
+        {byAgent && <p className="mt-3 text-sm" role="note">{tr(lang, "tg2.agent", "The targets agent drafted these from the entity goals and the use case. Change anything that is wrong, then approve: nothing is approved until a person does it.")}</p>}
+        {warning && <p role="note" className="mt-2 text-sm font-medium">{warning}</p>}
+        {(mayEdit || mayApprove) && !storeError && (
           <div className="mt-5">
-            <h3 className="text-base font-medium">{tr(lang, "tg2.edit", "Propose targets")}</h3>
+            <h3 className="text-base font-medium">{state.pending ? tr(lang, "tg2.edit.draft", "Review and edit the draft") : tr(lang, "tg2.edit", "Propose targets")}</h3>
             <div className="mt-2 space-y-3">
               {rows.map((r, i) => (
                 <div key={i} className="rounded-xl border border-line p-3">
@@ -112,16 +119,18 @@ export function TargetsEditor({ useCaseId, entity, goals, goalsSource, state, ch
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
               <button type="button" className={btnGhost} disabled={rows.length >= 30} onClick={() => setRows([...rows, blank(rows.length + 1, goals[0]?.id ?? "")])}>{tr(lang, "tg2.add", "Add a target")}</button>
-              <button type="button" className={btnPrimary} disabled={busy || !chain.ok} onClick={() => send({ action: "propose", targets: targets() })}>{tr(lang, "tg2.propose", "Propose these targets")}</button>
+              {mayEdit && <button type="button" className={btnPrimary} disabled={busy || !chain.ok} onClick={() => send({ action: "propose", targets: targets() })}>{tr(lang, "tg2.propose", "Propose these targets")}</button>}
+              {mayEdit && !state.approved && (!state.pending || byAgent) && <button type="button" className={btnGhost} disabled={busy || !chain.ok || dirty} title={dirty ? tr(lang, "tg2.redraft.dirty", "You have unsaved edits: a new draft would replace the proposal, not them.") : undefined} onClick={() => send({ action: "draft" })}>{tr(lang, "tg2.redraft", "Ask the agent to draft again")}</button>}
             </div>
           </div>
         )}
-        {!mayEdit && <p className="mt-3 text-sm font-medium">{tr(lang, "tg2.readonly", "Read only. Proposing targets needs the scenario edit permission.")}</p>}
+        {!mayEdit && !mayApprove && <p className="mt-3 text-sm font-medium">{tr(lang, "tg2.readonly", "Read only. Proposing targets needs the scenario edit permission.")}</p>}
 
         {mayApprove && state.pending && (
           <div className="mt-4 rounded-xl border border-line p-4">
             <h3 className="text-base font-medium">{tr(lang, "ts.approve.h", "Approval")}</h3>
-            <ApproveBox idp="tg2" approvers={approvers} selfAuthor={state.pending.by === userId} disabledReason={chain.ok ? null : tr(lang, "ts.chain.bad", "The log chain is broken; changes are refused until it is repaired.")} busy={busy} onApprove={(a) => send({ action: "approve", ...a })} />
+            {dirty && <p className="mt-2 text-sm" role="status">{tr(lang, "tg2.edited", "You changed the draft above. Approving locks your version, and the log keeps the hash of the draft it came from.")}</p>}
+            <ApproveBox idp="tg2" approvers={approvers} selfAuthor={state.pending.by === userId} disabledReason={chain.ok ? null : tr(lang, "ts.chain.bad", "The log chain is broken; changes are refused until it is repaired.")} busy={busy} onApprove={(a) => send({ action: "approve", ...a, ...(dirty ? { targets: targets() } : {}) })} />
           </div>
         )}
         {mayApprove && state.approved && (

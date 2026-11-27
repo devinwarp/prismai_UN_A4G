@@ -65,7 +65,8 @@ function MeasurementFields({ id, row, set, required }: { id: string; row: Row; s
   );
 }
 
-export function AddEntity({ country, ready, initialOpen = false }: { country: string; ready: boolean; initialOpen?: boolean }) {
+/** `onSetupPage`: the country step is on the same page, so the blocked box points up to it and a new entity continues to the next step there. */
+export function AddEntity({ country, ready, initialOpen = false, onSetupPage = false }: { country: string; ready: boolean; initialOpen?: boolean; onSetupPage?: boolean }) {
   const lang = useLang();
   const router = useRouter();
   const [name, setName] = useState("");
@@ -90,7 +91,7 @@ export function AddEntity({ country, ready, initialOpen = false }: { country: st
       <p className="mt-1 text-sm text-ink-soft">{tr(lang, "en.add.blocked", "Set up the country’s rules and build its policy knowledge base before adding an entity.")}</p>
       <div className="mt-3 flex flex-wrap items-center gap-3">
         <button type="button" className={btnPrimary} disabled>{tr(lang, "en.add.btn", "Add the entity")}</button>
-        <Link href={countryHref("/admin/federal/country#manage", country)} className="text-sm underline">{tr(lang, "en.add.setup", "Open country setup")}</Link>
+        <Link href={onSetupPage ? "#step-country" : countryHref("/admin/federal/country#manage", country)} className="text-sm underline">{tr(lang, "en.add.setup", "Open country setup")}</Link>
       </div>
     </section>
   );
@@ -126,7 +127,7 @@ export function AddEntity({ country, ready, initialOpen = false }: { country: st
         {goals.length < MAX_GOALS && <button type="button" className={btnGhost} onClick={() => setGoals((rows) => [...rows, blankGoal])}>{tr(lang, "en.goals.add", "Add a goal")}</button>}
         <button type="button" className={btnPrimary} disabled={busy || name.trim().replace(/\s+/g, " ").length < 3 || goals.some((row) => !validGoal(row, true))} onClick={() => void add()}>{tr(lang, "en.add.btn", "Add the entity")}</button>
         {msg && <p role={msg.ok ? "status" : "alert"} className={`text-sm ${msg.ok ? "text-lit-deep" : "text-ember"}`}>{msg.ok ? "✓" : "✕"} {msg.text}</p>}
-        {msg?.ok && created && <Link className="text-sm font-medium underline underline-offset-4" href={countryHref("/admin/federal#setup-journey", country, created)}>{tr(lang, "setup.continue", "Continue to use cases")}</Link>}
+        {msg?.ok && created && <Link className="text-sm font-medium underline underline-offset-4" href={onSetupPage ? countryHref("/admin/federal/setup#step-cases", country, created) : countryHref("/admin/federal#setup-journey", country, created)}>{tr(lang, "setup.continue", "Continue to use cases")}</Link>}
       </div>
     </details>
   );
