@@ -18,6 +18,7 @@ import { fill, ltr, quadLabel, stageLabel, verdictHint, verdictName, VERDICT_MET
 import HeadlineBand from "./_components/HeadlineBand";
 import SetupJourney, { type SetupEntity } from "./_components/SetupJourney";
 import Pop from "./_components/Pop";
+import type { RunCost } from "@/lib/un/run-cost";
 import { RerunControl, type RerunUi } from "./_components/RerunButton";
 import { RISK_FIELDS, type RiskField } from "@/lib/un/hitl";
 import { STAGES, VERDICTS, type Dashboard, type Policy, type UnUseCaseState, type Verdict } from "@/lib/un/model";
@@ -65,6 +66,34 @@ const RISK_LABELS = {
   irreversible: ["risk.irrev", "Irreversible"],
 } as const;
 
+const usd = (n: number | null) => (n == null ? "n/a" : n < 0.01 ? "<$0.01" : `$${n.toFixed(2)}`);
+const dur = (ms: number) => { const s = Math.round(ms / 1000); return s < 60 ? `${s}s` : s < 3600 ? `${Math.floor(s / 60)}m ${s % 60}s` : `${Math.floor(s / 3600)}h ${Math.floor((s % 3600) / 60)}m`; };
+
+/** The total cost and working time of a use case's runs; the popover lists every run. A use case with no recorded usage shows a dash. */
+function RunCostCell({ cost, ext }: { cost?: RunCost; ext: string }) {
+  const lang = useLang();
+  if (!cost) return <span className="text-xs text-ink-soft" title={tr(lang, "rc.none", "No usage recorded yet")}>–</span>;
+  return (
+    <Pop
+      buttonClass="rounded-md border border-line bg-paper px-2 py-1 font-mono text-[11px] hover:border-ink-soft"
+      panelClass="w-[min(36rem,calc(100vw-2rem))]"
+      label={<><span className="sr-only">{ext} </span>{usd(cost.usd)} · {dur(cost.elapsed_ms)}</>}
+    >
+      <p className="font-medium">{tr(lang, "rc.title", "Every run of this use case")} <bdi dir="ltr" className="font-mono text-xs text-ink-soft">{ext}</bdi></p>
+      <ul className="mt-2 divide-y divide-line text-sm">
+        {cost.runs.map((r, i) => (
+          <li key={i} className="flex items-baseline justify-between gap-3 py-1.5">
+            <span className="min-w-0"><span className="block truncate">{r.label}</span><span className="font-mono text-[11px] text-ink-soft"><bdi dir="ltr">{r.at.slice(0, 16).replace("T", " ")}</bdi> · {tr(lang, "rc.calls", "{n} calls").replace("{n}", String(r.calls))}</span></span>
+            <span className="shrink-0 font-mono text-xs">{usd(r.usd)} · {dur(r.elapsed_ms)}</span>
+          </li>
+        ))}
+      </ul>
+      {cost.unpriced.length > 0 && <p className="mt-2 text-xs text-ink-soft">{tr(lang, "rc.unpriced", "Models with no price set (calls counted, dollars not): {m}").replace("{m}", cost.unpriced.join(", "))}</p>}
+      <p className="mt-2 border-t border-line pt-2 text-xs text-ink-soft">{tr(lang, "rc.foot", "Time is the sum of every model call's time; cost uses the price table in force now.")}</p>
+    </Pop>
+  );
+}
+
 function SopLinkStatus() {
   const { pending } = useLinkStatus();
   return (
@@ -75,7 +104,7 @@ function SopLinkStatus() {
 }
 
 export default function FederalPanel({
-  lead, emptyState, policy, dashboard: d, useCases, canEdit, editableRisks, asOf, gatesAdded = {}, journeys = {}, work = {}, governanceAppointed = true, policyReady = true, sops, rerun = {}, noTarget = false, countryId, hasLicenceDemo, canCompare, showFederalTools, countryReady, setupEntities, initialEntity,
+  lead, emptyState, policy, dashboard: d, useCases, canEdit, editableRisks, asOf, gatesAdded = {}, journeys = {}, runCosts = {}, work = {}, governanceAppointed = true, policyReady = true, sops, rerun = {}, noTarget = false, countryId, hasLicenceDemo, canCompare, showFederalTools, countryReady, setupEntities, initialEntity,
 }: {
   /** The rerun icon of each use case, by id (see page.tsx). */
   rerun?: Record<string, RerunUi>;
@@ -106,6 +135,7 @@ export default function FederalPanel({
   editableRisks: string[];
   asOf: string;
   journeys?: Record<string, Journey>;
+  runCosts?: Record<string, RunCost>;
   /** Who is doing the work on each use case: people, an agent being set up, or an agent in production. */
   work?: Record<string, Automation>;
 }) {
@@ -359,6 +389,7 @@ export default function FederalPanel({
                 <th scope="col" className={`${th} min-w-[7.5rem] text-center`}>{tr(lang, "wk.col", "Work by")}</th>
                 <th scope="col" className={th}>{tr(lang, "ua.col.verdict", "Verdict")}</th>
                 <th scope="col" className={th}><T k="jb.col" en="Journey" /></th>
+                <th scope="col" className={th}><T k="rc.col" en="Run cost · time" /></th>
                 <th scope="col" className="px-2 text-center font-normal">{tr(lang, "hl.compliant", "Aligned")}</th>
                 <th scope="col" className="px-2 pe-4 text-center font-normal desk:pe-3">{tr(lang, "rr.col", "Rerun")}</th>
               </tr>
@@ -413,6 +444,7 @@ export default function FederalPanel({
                     )}
                   </td>
                   <td className="px-2 whitespace-nowrap">{journeys[u.id] ? <JourneyLine journey={journeys[u.id]} compact /> : null}</td>
+                  <td className="px-2 whitespace-nowrap"><RunCostCell cost={runCosts[u.id]} ext={u.ext_id} /></td>
                   <td className="px-2 text-center">
                     <span aria-label={fill(tr(lang, "ua.row.compl", "Aligned {id}: {yn}"), { id: ltr(u.ext_id), yn: u.compliant ? tr(lang, "ua.yes", "yes") : tr(lang, "ua.no", "no") })} title={tr(lang, "ua.row.compl.h", "Assumed until the Sijil attestation is integrated")}>{u.compliant ? "✓" : "–"}</span>
                   </td>
@@ -421,7 +453,7 @@ export default function FederalPanel({
                 );
               })}
               {!filtered.length && !emptyState && (
-                <tr><td colSpan={12} className="px-4 py-10 text-center text-ink-soft">
+                <tr><td colSpan={13} className="px-4 py-10 text-center text-ink-soft">
                   {useCases.length ? <>{noVerdicts && !filtering ? null : <>{tr(lang, "ua.reg.nomatch", "No use case matches.")} <button type="button" onClick={clear} className="font-medium underline">{tr(lang, "ua.f.clear", "Clear filters")}</button></>}</> : <>{tr(lang, "ua.reg.empty", "No use cases yet. Import a CSV below (a sample is in")} <bdi dir="ltr">data/un-use-cases.csv</bdi>{tr(lang, "ua.reg.empty2", ").")}</>}
                 </td></tr>
               )}

@@ -134,7 +134,7 @@ export function AddEntity({ country, ready, initialOpen = false, onSetupPage = f
 }
 
 /** Edit an entity's goals and hide or unhide it. Admin only. */
-export function EntityTools({ name, goals, hidden, requireMeasurement = false, initialOpen = false }: { name: string; goals: EntityGoal[]; hidden: boolean; requireMeasurement?: boolean; initialOpen?: boolean }) {
+export function EntityTools({ name, goals, hidden, requireMeasurement = false, initialOpen = false, idSuffix = "" }: { name: string; goals: EntityGoal[]; hidden: boolean; requireMeasurement?: boolean; initialOpen?: boolean; /** Keeps element ids unique when the editor appears twice on a page. */ idSuffix?: string }) {
   const lang = useLang();
   const router = useRouter();
   const [rows, setRows] = useState<Row[]>(() => goalRows(goals));
@@ -154,7 +154,7 @@ export function EntityTools({ name, goals, hidden, requireMeasurement = false, i
   }
   const needsTargets = goals.length === 0 || goals.some((goal) => !goal.measurement);
   const needsMeasurement = (row: Row) => requireMeasurement || !row.id || goals.some((goal) => goal.id === row.id && !!goal.measurement);
-  const id = name.replace(/\W+/g, "-");
+  const id = name.replace(/\W+/g, "-") + idSuffix;
   return (
     <div className="mt-3">
       <div className="flex flex-wrap items-center gap-2">

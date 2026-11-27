@@ -11,6 +11,7 @@ import { replayTestSet, inForce, type TestEntry } from "./test-sets";
 import { replayParams, type ParamEntry } from "./verdict-params";
 import { replay as replayWatch, type WatchEntry } from "./watchdog";
 import { checkSopKbFor } from "./sop-kb-app";
+import { hasVerdictPath } from "./sop-pilot-order";
 import { profileIndex } from "./sop-version-store";
 import type { JobProfile } from "./sop/profiles";
 
@@ -65,6 +66,7 @@ export async function loadJourneyDetails(orgId: string, ucs: JourneyUseCase[]): 
       sop: { attached: !!sopId, profiles: all?.length ?? 0, ticked: on.length, kbOk: sopId ? !!kb.get(kbKey) : false, skills: on.filter((x) => x.skill_sha256).length },
       gates: await gateAcceptance(orgId, u, tickedFlags(on, all)),
       verdict: u.verdict,
+      noVerdictPath: !hasVerdictPath(u.ext_id),
       tests: {
         ticked: on.length,
         ready: on.filter((r) => inForce(replayTestSet(forProfile(tLog.get(u.id), String(r.profile)) as TestEntry[])) && !!replayParams(forProfile(pLog.get(u.id), String(r.profile)) as ParamEntry[]).approved).length,

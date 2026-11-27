@@ -1,15 +1,18 @@
 import { SijilBlockedError, parseLlmJson } from "../llm.ts";
 import { discloseAgentOutput, discloseAiMessage } from "./ai-disclosure.ts";
 import { checkExpectation, isSopGenInput, type ChatFn, type SopGenInput } from "./testgen.ts";
+import type { UsageSnapshot } from "./cost.ts";
 import type { Blueprint } from "./test-derive.ts";
 
 export const SOP_PILOT_TARGET = 0.95;
 export const MAX_SOP_ROUNDS = 12;
 export const SOP_BATCH_SIZE = 3;
+export const MAX_CERTIFY_REPS = 5;
 
 export interface SopPilotCase {
   id: string;
   title: string;
+  family: Blueprint["family"];
   input: SopGenInput;
   expect: NonNullable<Blueprint["gen"]>["expect"];
 }
@@ -18,6 +21,11 @@ export interface SopPilotResult {
   id: string;
   title: string;
   requestedTask: string;
+  family?: Blueprint["family"];
+  /** Which repetition of the test this is (the certify pass runs each test more than once). */
+  rep?: number;
+  /** Milliseconds the case took. */
+  ms?: number;
   status: "passed" | "failed" | "blocked_by_sijil" | "error";
   passed: boolean;
   hardFailure: boolean;
@@ -28,15 +36,26 @@ export interface SopPilotResult {
   sijil?: { source: "simulated" | "node"; rules: string[]; seq?: number; recordHash?: string };
 }
 
+export interface TuningNote {
+  /** What the tuning agent was shown: the failed check categories, per task. Never the expected answers. */
+  saw: { task: string; checks: string[] }[];
+  /** The agent's own one-line reason for the guidance it wrote. */
+  reason: string | null;
+  at: string;
+}
+
 export interface SopPilotRound {
   instructions: string;
   results: SopPilotResult[];
+  /** Present on a round that tests guidance the tuning agent wrote after the previous round. */
+  tuning?: TuningNote;
 }
 
 export interface SopPilotJob {
   id: string;
-  status: "running" | "stopped" | "target_reached" | "round_limit" | "error";
-  mode: "pilot" | "tune";
+  status: "running" | "stopped" | "target_reached" | "round_limit" | "budget" | "certified" | "error";
+  /** pilot: one baseline round. tune: baseline then tune and rerun rounds. certify: repeat every test with the best guidance and record the pilot report. */
+  mode: "pilot" | "tune" | "certify";
   limit: number;
   rounds: SopPilotRound[];
   caseCount: number;
@@ -51,6 +70,25 @@ export interface SopPilotJob {
   actor: string;
   startedAt: string;
   message: string | null;
+  /** The approved tests in run order, so a screen can show what is pending and what ran. */
+  cases?: { id: string; title: string; task: string; family: string }[];
+  /** Certify: repetitions of each test. */
+  reps?: number;
+  /** Model calls this run has made, and the limits it runs under. */
+  calls?: number;
+  limits?: { run: number; day: number };
+  usage?: { calls: number; prompt_tokens: number; completion_tokens: number };
+  /** The full meter of the run (per model), and the time the run spent working: what the cost ledger prices. */
+  meter?: UsageSnapshot;
+  elapsedMs?: number;
+  costUsd?: number | null;
+  /** Certify: the pilot report recorded for the journey, the release gate and the goal judge. */
+  reportId?: string;
+  report?: { conclusive: boolean; failed: string[]; insufficient: string[]; verdict: string };
+  /** Set when the run was allowed without the usual earlier stages: the reason, shown wherever the run is shown. */
+  exempt?: string;
+  updatedAt?: string;
+  driver?: "server" | "browser";
 }
 
 const object = (v: unknown): v is Record<string, unknown> => !!v && typeof v === "object" && !Array.isArray(v);
@@ -59,7 +97,7 @@ export function approvedSopCases(blueprints: Blueprint[], contextHash: string) {
   return blueprints.flatMap((blueprint): SopPilotCase[] => {
     const gen = blueprint.gen;
     if (blueprint.status !== "active" || !gen || !isSopGenInput(gen.input) || gen.input.context_hash !== contextHash) return [];
-    return [{ id: blueprint.id, title: blueprint.title, input: gen.input, expect: gen.expect }];
+    return [{ id: blueprint.id, title: blueprint.title, family: blueprint.family, input: gen.input, expect: gen.expect }];
   });
 }
 
@@ -69,7 +107,7 @@ export function evaluateSopResult(test: SopPilotCase, result: Parameters<typeof 
   return { differences, failedChecks };
 }
 
-export async function runSopCase(
+async function runSopCaseCore(
   test: SopPilotCase,
   context: { profile: string; task: string; passages: { chunk_id: string; text: string }[]; humanRelease: boolean; skill: string; instructions: string; allowedTasks: ReadonlySet<string> },
   run: ChatFn,
@@ -117,18 +155,18 @@ export async function runSopCase(
   }
 }
 
-export function roundScore(round: SopPilotRound, caseCount: number) {
-  const functional = round.results.filter((r) => r.sijil?.source !== "simulated");
-  return {
-    complete: caseCount > 0 && round.results.length === caseCount,
-    passed: round.results.filter((r) => r.passed).length,
-    score: caseCount ? round.results.filter((r) => r.passed).length / caseCount : 0,
-    functionalScore: functional.length ? functional.filter((r) => r.passed).length / functional.length : 0,
-    hardFailure: round.results.some((r) => r.hardFailure),
-  };
+/** One case. The authority and Sijil handling is runSopCaseCore, unchanged; this only records which repetition it was and how long it took. */
+export async function runSopCase(test: SopPilotCase, context: Parameters<typeof runSopCaseCore>[1], run: ChatFn, rep = 1): Promise<SopPilotResult> {
+  const t0 = Date.now();
+  const result = await runSopCaseCore(test, context, run);
+  return { ...result, family: test.family, rep, ms: Date.now() - t0 };
 }
 
+export { roundScore } from "./sop-pilot-score.ts";
+import { roundScore } from "./sop-pilot-score.ts";
+
 export function bestSopRound(job: SopPilotJob) {
+  if (job.mode === "certify") return undefined;
   let best: SopPilotRound | undefined;
   for (const round of job.rounds) {
     const score = roundScore(round, job.caseCount);
@@ -147,6 +185,7 @@ export function finishBatch(job: SopPilotJob): SopPilotJob {
   if (round.results.some((r) => r.status === "error")) return { ...job, status: "error", message: "Inference could not complete. Check the configured model and Sijil endpoint before running again." };
   const score = roundScore(round, job.caseCount);
   if (!score.complete) return job;
+  if (job.mode === "certify") return { ...job, status: "certified", message: null };
   if (score.score >= job.target && score.functionalScore >= job.target && !score.hardFailure && bestSopRound(job) === round) return { ...job, status: "target_reached", message: null };
   if (job.rounds.length >= job.limit) return { ...job, status: "round_limit", message: job.mode === "pilot" ? "Baseline complete. Start automatic tuning to test revised instructions." : "Round limit reached. Review the failed checks or start another tuning run." };
   return job;
@@ -159,7 +198,20 @@ export function tuningPrompt(round: SopPilotRound, best: SopPilotRound, tasks: M
     checks: result.failedChecks,
   }));
   return {
-    system: 'Use the job-profile skill as the baseline for every proposed change. Use the SOP to verify rules and resolve conflicts. Propose only short supplemental task guidance that improves how the agent follows the skill. Keep the original skill, authority, human review, citations, controls and escalation paths intact. Never mention test cases or propose changes to scoring, model, tools or policy. Return only JSON in the form {"instructions":"..."}, with at most 3000 characters of guidance.',
+    system: 'Use the job-profile skill as the baseline for every proposed change. Use the SOP to verify rules and resolve conflicts. Propose only short supplemental task guidance that improves how the agent follows the skill. Keep the original skill, authority, human review, citations, controls and escalation paths intact. Never mention test cases or propose changes to scoring, model, tools or policy. Return only JSON in the form {"instructions":"...","reason":"..."}: at most 3000 characters of guidance, and a reason of one or two sentences saying which failed checks the guidance addresses and what it changes.',
     user: JSON.stringify({ job_profile_skill: skill, retained_guidance: best.instructions, last_attempt_guidance: round.instructions, failed_check_categories: failures, sop_reference: reference }),
   };
+}
+
+/** What the tuning agent is shown about a round: per task, the failed check categories. The expected answers and the case text stay out. */
+export function failureSummary(round: SopPilotRound, cases: SopPilotCase[], tasks: Map<string, { title: string }>): TuningNote["saw"] {
+  const byId = new Map(cases.map((test) => [test.id, test]));
+  const out = new Map<string, Set<string>>();
+  for (const result of round.results.filter((r) => !r.passed)) {
+    const task = tasks.get(byId.get(result.id)?.input.task ?? "")?.title ?? "Unknown task";
+    const set = out.get(task) ?? new Set<string>();
+    for (const check of result.failedChecks.length ? result.failedChecks : ["outcome"]) set.add(check);
+    out.set(task, set);
+  }
+  return [...out].map(([task, checks]) => ({ task, checks: [...checks] }));
 }

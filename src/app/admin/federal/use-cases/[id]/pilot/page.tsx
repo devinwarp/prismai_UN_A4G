@@ -47,7 +47,7 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
   const profiles = ((sopId && (await profilesForUseCase(profile.org_id, id, sopId))) || []).filter((p) => names.has(p.name));
   const current = profiles.find((p) => p.name === pick) ?? profiles[0] ?? null;
   const reference = usesLicensingReference(uc.ext_id, sopId);
-  const pilots = current && reference ? await loadPilots(profile.org_id, id, current.name) : [];
+  const pilots = current ? await loadPilots(profile.org_id, id, current.name) : [];
   const last = pilots[0] ?? null;
   const original = pilots.find((p) => !p.basis) ?? null;
   const review = original && current ? (replayReviews(await loadReviewLog(profile.org_id, id, current.name)).reviews[original.id] ?? null) : null;
@@ -73,11 +73,12 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
               ))}
             </nav>
 
-            {!reference ? <SopPilotControls key={current.name} useCaseId={id} profile={current.name} mayRun={mayRun} mayTune={mayTune} /> : <>
+            {!reference ? <SopPilotControls key={current.name} useCaseId={id} profile={current.name} mayRun={mayRun} mayTune={mayTune} /> : (
             <section className={`${card} mt-6`} aria-labelledby="pi-run">
               <h2 id="pi-run" className="font-display text-xl font-medium">{current.name}</h2>
               {mayRun ? <div className="mt-3"><RunPilot useCaseId={id} profile={current.name} /></div> : <p className="mt-3 text-sm font-medium"><T k="pi.readonly" en="Read only. Running the pilot needs the pilot run permission." /></p>}
             </section>
+            )}
 
             {!last ? (
               <p className="mt-6 text-sm"><T k="pi.none" en="No pilot has been run for this profile." /></p>
@@ -137,7 +138,7 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
                     </details>
                   </div>
                 )}
-                {original && (
+                {original && Object.keys(original.plan.bound).length > 0 && (
                   <details className="mt-4">
                     <summary className="cursor-pointer text-sm font-medium"><TV k="pi.testlist" en="Every test that ran ({n}): open one to see the whole chain" v={{ n: Object.values(original.plan.bound).reduce((n, c) => n + c.length, 0) }} /></summary>
                     <ul className="mt-2 columns-1 gap-6 font-mono text-xs sm:columns-2">
@@ -154,7 +155,6 @@ export default async function PilotPage({ params, searchParams }: { params: Prom
             )}
             {original?.report.generated && current && <GeneratedCases useCaseId={id} profile={current.name} pilotId={original.id} block={original.report.generated} rulings={rulings} mayRule={mayApproveGoals} />}
             {original && <GoalReview useCaseId={id} profile={current.name} pilotId={original.id} review={review} approvers={approvers} mayRun={mayRun} mayApprove={mayApproveGoals} modelConfigured={!!(process.env.LLM_API_KEY ?? process.env.OPENROUTER_API_KEY)} />}
-            </>}
           </>
         )}
       </main>
