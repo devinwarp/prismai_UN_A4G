@@ -85,6 +85,8 @@ export interface SopPilotJob {
   costUsd?: number | null;
   /** Certify: the pilot report recorded for the journey, the release gate and the goal judge. */
   reportId?: string;
+  /** Certify: the tuned guidance this report was certified with (its hash and size; the text is in the certification entry of the tuning log). */
+  guidance?: { sha256: string; chars: number };
   report?: { conclusive: boolean; failed: string[]; insufficient: string[]; verdict: string };
   /** Set when the run was allowed without the usual earlier stages: the reason, shown wherever the run is shown. */
   exempt?: string;

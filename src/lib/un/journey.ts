@@ -48,6 +48,9 @@ export const REASON_EN = {
   tests_first: "Comes after the tests and parameters are approved.",
   run_pilot: "Run the pilot on the real agent.",
   pilot_not_met: "The latest pilot is inconclusive or fails a threshold.",
+  pilot_first: "Comes after the pilot is met.",
+  sop_tune_certify: "Run the pilot, tune, and certify each ticked job profile on this SOP version.",
+  redeploy: "A newer SOP version was approved by the business process owner: certify it and redeploy. The deployed agent still runs the version it was certified on.",
   release_blocked: "Certified, but the pilot is not met yet: see what is missing before it can be signed.",
 } as const;
 export type ReasonCode = keyof typeof REASON_EN;
@@ -71,6 +74,12 @@ export interface JourneyInput {
   release?: { ready: boolean; blockers: number };
   /** No staged scenario exists for this use case, so gates can never be accepted and a verdict never signed. Those two stages then say so and do not hold the later work back; approval still needs them. */
   noVerdictPath?: boolean;
+  /** The use case is run by the SOP pilot (it has no hand-written eval set): its evals and tuning stages are read from the pilot and its certifications. */
+  sopPilot?: boolean;
+  /** SOP pilot: how many ticked job profiles have a met certification on the SOP version and skill the use case is on now. */
+  certifiedProfiles?: number;
+  /** A newer SOP version is attached than the one the deployed agent was certified on. */
+  upgrading?: boolean;
 }
 
 export interface JourneyStage { id: StageId; n: number; group: (typeof GROUPS)[number]; state: StageState; reason: ReasonCode | null }
@@ -91,17 +100,19 @@ export function stageRules(i: JourneyInput): Record<StageId, R> {
   const testsDone = i.tests.ticked > 0 && i.tests.ready >= i.tests.ticked;
   const tests: R = !sopDone ? ["not_yet", "after_sop"] : testsDone ? ["done", null] : ["needs_you", "approve_tests"];
   const pilot: R = !testsDone ? ["not_yet", "tests_first"] : i.pilot.run === 0 ? ["needs_you", "run_pilot"] : i.pilot.met >= i.pilot.ticked ? ["done", null] : ["needs_you", "pilot_not_met"];
-  const evals: R = !i.evalSet ? ["not_yet", "no_eval_set"] : i.evalRuns === 0 ? ["needs_you", "run_evals"] : i.evalMet ? ["done", null] : ["needs_you", "evals_not_met"];
-  const certified = i.tuning.some((e) => e.kind === "certification" && e.payload.met === true);
-  const tuning: R = i.evalRuns === 0 ? ["not_yet", "evals_first"] : certified ? ["done", null] : ["needs_you", "tune_certify"];
-  const approvalNow = approvalState(i.tuning);
+  const pilotMet = i.pilot.ticked > 0 && i.pilot.met >= i.pilot.ticked;
+  const evals: R = i.sopPilot ? (pilotMet ? ["done", null] : ["not_yet", "pilot_first"]) : !i.evalSet ? ["not_yet", "no_eval_set"] : i.evalRuns === 0 ? ["needs_you", "run_evals"] : i.evalMet ? ["done", null] : ["needs_you", "evals_not_met"];
+  const certified = i.sopPilot ? i.sop.ticked > 0 && (i.certifiedProfiles ?? 0) >= i.sop.ticked : i.tuning.some((e) => e.kind === "certification" && e.payload.met === true);
+  const tuning: R = i.sopPilot ? (!pilotMet ? ["not_yet", "pilot_first"] : certified ? ["done", null] : ["needs_you", "sop_tune_certify"]) : i.evalRuns === 0 ? ["not_yet", "evals_first"] : certified ? ["done", null] : ["needs_you", "tune_certify"];
+  // an approval of an older SOP version or skill does not stand: the SOP pilot must be certified again on what the use case is on now
+  const approvalNow = i.sopPilot && !certified ? "none" : approvalState(i.tuning);
   const last = i.tuning[i.tuning.length - 1];
   const approval: R = approvalNow === "approved" ? ["done", null]
     : last?.kind === "approval" ? ["stopped", "withheld"]
     : approvalNow === "ready" ? (i.release && !i.release.ready ? ["needs_you", "release_blocked"] : ["needs_you", "sign"])
     : ["not_yet", "needs_certification"];
   const w = replay(i.watch);
-  const production: R = !w.deployed ? (approvalNow === "approved" ? ["needs_you", "deploy"] : ["not_yet", "needs_approval"])
+  const production: R = w.deployed && i.upgrading ? ["needs_you", "redeploy"] : !w.deployed ? (approvalNow === "approved" ? ["needs_you", "deploy"] : ["not_yet", "needs_approval"])
     : w.status === "suspended" ? ["stopped", "suspended"]
     : w.status === "warned" ? ["needs_you", "warned"]
     : w.status === "probation" ? ["needs_you", "probation"]
@@ -118,7 +129,8 @@ export function journeyStatus(i: JourneyInput): Journey {
   STAGE_IDS.forEach((id, k) => {
     // a stage held at "no_verdict_path" does not hold the stages after it back, up to tuning; approval and production still need every earlier stage done
     const open = k > 0 && (k >= APPROVAL ? stages.slice(0, k).some((s) => s.state !== "done") : stages[k - 1].state !== "done" && stages[k - 1].reason !== "no_verdict_path");
-    const [state, reason] = open && rows[id][0] !== "not_yet" ? (["not_yet", "after_previous"] as R) : rows[id];
+    // a deployed agent that is being moved to a newer SOP version keeps showing as deployed work: the older stages restarting must not hide it
+    const [state, reason] = open && rows[id][0] !== "not_yet" && !(id === "production" && rows[id][1] === "redeploy") ? (["not_yet", "after_previous"] as R) : rows[id];
     stages.push({ id, n: k + 1, group: GROUP_OF[id], state, reason });
   });
   const waiting = stages.filter((s) => s.state === "needs_you" || s.state === "stopped");

@@ -12,6 +12,7 @@ import { replayParams, type ParamEntry } from "./verdict-params";
 import { replay as replayWatch, type WatchEntry } from "./watchdog";
 import { checkSopKbFor } from "./sop-kb-app";
 import { hasVerdictPath } from "./sop-pilot-order";
+import { deployedSnapshot, sopCertifications } from "./sop-deployment";
 import { profileIndex } from "./sop-version-store";
 import type { JobProfile } from "./sop/profiles";
 
@@ -76,6 +77,13 @@ export async function loadJourneyDetails(orgId: string, ucs: JourneyUseCase[]): 
         const ps = on.map((r) => latest(String(r.profile)));
         return { ticked: on.length, run: ps.filter(Boolean).length, met: ps.filter((x) => x && x.report.conclusive && x.report.failed.length === 0).length };
       })(),
+      ...(sopId && !evalSetFor(u.ext_id).length ? (() => {
+        // an SOP use case: its pilot is its eval, and its certifications (one per ticked job profile, on this SOP version and skill) are its tuning
+        const certs = sopCertifications(asLog<LogEntry>(tl.get(u.id)));
+        const version = versionOf.get(u.id) ?? 1;
+        const deployed = deployedSnapshot(asLog<WatchEntry>(wl.get(u.id)));
+        return { sopPilot: true, certifiedProfiles: on.filter((r) => { const c = certs.get(String(r.profile)); return !!c && c.sop_version === version && c.skill_sha256 === r.skill_sha256; }).length, upgrading: !!deployed && version > deployed.snapshot.sop_version };
+      })() : {}),
       evalSet: evalSetFor(u.ext_id).length > 0,
       evalRuns: r.length,
       evalMet: r[0] ? alignment(r[0].summary as EvalSummary).met : null,

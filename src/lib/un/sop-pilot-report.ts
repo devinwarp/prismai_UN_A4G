@@ -3,6 +3,7 @@ import type { GovState } from "./gates.ts";
 import type { HitlFacts } from "./hitl.ts";
 import { buildReport, type PilotReport, type PilotRun } from "./pilot.ts";
 import type { AgentInfo, PilotPlan } from "./pilot-run.ts";
+import type { CertifiedData } from "./sop-deployment.ts";
 import type { SopPilotCase, SopPilotJob, SopPilotResult } from "./sop-pilot.ts";
 import { canon } from "./tuning.ts";
 import type { Params } from "./verdict-params.ts";
@@ -71,7 +72,7 @@ export function toPilotRuns(job: SopPilotJob, results: SopPilotResult[], cases: 
   });
 }
 
-export function pilotPlanFor(job: SopPilotJob, cases: SopPilotCase[]): PilotPlan {
+export function pilotPlanFor(job: SopPilotJob, cases: SopPilotCase[], certified?: CertifiedData): PilotPlan & { certified?: CertifiedData } {
   const agent: AgentInfo = {
     reasoner: "llm",
     model: job.model,
@@ -83,6 +84,7 @@ export function pilotPlanFor(job: SopPilotJob, cases: SopPilotCase[]): PilotPlan
     bound: {},
     unexecuted: [],
     aggregate: [`${cases.length} approved tests, each run ${job.reps ?? 1} time(s) with the guidance that scored best`],
+    ...(certified ? { certified } : {}),
   };
 }
 
@@ -96,10 +98,12 @@ export interface SopReportInput {
   gov: GovState;
   risk: { client_facing: boolean };
   clientFacingTask: (task: string) => boolean;
+  /** What was certified (the skill and the tuned guidance): kept in the report's plan so the certification can be written when the final report is met. */
+  certified?: CertifiedData;
 }
 
 export function buildSopPilotReport(i: SopReportInput): { report: PilotReport; runs: PilotRun[]; plan: PilotPlan } {
   const runs = toPilotRuns(i.job, i.results, i.cases, i.risk, i.clientFacingTask);
   const report = buildReport({ runs, params: i.params, test_set_hash: i.job.testHash, ext: i.ext, facts: i.facts, requested: "GO_SUPERVISED", gov: i.gov, reviewerGates: {} });
-  return { report, runs, plan: pilotPlanFor(i.job, i.cases) };
+  return { report, runs, plan: pilotPlanFor(i.job, i.cases, i.certified) };
 }

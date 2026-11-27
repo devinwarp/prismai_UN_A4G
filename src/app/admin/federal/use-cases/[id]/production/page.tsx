@@ -22,6 +22,9 @@ import { loadReleaseCached } from "@/lib/un/release-cached";
 import { CostPanel } from "../CostPanel";
 import { ReleasePanel } from "../ReleasePanel";
 import { ProductionControls, ReinstateForm } from "./ProductionControls";
+import { SopDeployButton } from "./SopDeployButton";
+import { deployedSnapshot, snapshotHash, sopCertifications } from "@/lib/un/sop-deployment";
+import { loadAttachment } from "@/lib/un/sop-version-store";
 
 export const metadata: Metadata = { title: "Production monitoring", robots: { index: false, follow: false } };
 
@@ -108,6 +111,12 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
   const mayReinstate = perms.can("reinstate", id);
   const runtime = SOP_BY_USE_CASE[uc.ext_id] ? await agentRuntimeSummary() : null;
   const st = STATUS[s.status];
+  // an SOP use case goes into production from its pilot: the certified skill and the tuned guidance, frozen together
+  const sopCerts = sopCertifications(tuning);
+  const sopDeployed = deployedSnapshot(watch);
+  const attachedNow = await loadAttachment(profile.org_id, id).catch(() => null);
+  const upgrading = !!sopDeployed && !!attachedNow && attachedNow.version > sopDeployed.snapshot.sop_version;
+  const shown = sopDeployed ? sopDeployed.snapshot.profiles : [...sopCerts.values()];
 
   return (
     <div>
@@ -127,7 +136,32 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
 
           {runtime && <AgentRuntimePanel s={runtime} compact />}
 
-          {!hasSet ? (
+          {!hasSet && (sopCerts.size > 0 || sopDeployed) ? (
+            <section id="sop-deployment" className={`${card} mt-8`} aria-labelledby="sd-h">
+              <h2 id="sd-h" className="font-display text-xl font-medium">What goes into production</h2>
+              <p className="mt-1 max-w-[72ch] text-sm text-ink-soft">The skill and the tuned guidance the pilot found are frozen together into one snapshot when the agent is deployed, and its hash is generated then. The agent runs on that snapshot only. The business process owner has signed the final pilot result before this step.</p>
+              {upgrading && <p role="status" className="mt-3 rounded-lg border border-line bg-paper px-3 py-2 text-sm font-medium">! A newer SOP version ({attachedNow!.version}) was approved by the business process owner. The deployed agent still runs the snapshot certified on version {sopDeployed!.snapshot.sop_version}. Run the pilot on the new version, have it approved, then redeploy.</p>}
+              {sopDeployed && <p className="mt-3 text-sm"><span className="font-medium">Deployed snapshot</span> <span className="font-mono text-xs">{sopDeployed.sha256.slice(0, 16)}</span> · SOP {sopDeployed.snapshot.sop_id} version {sopDeployed.snapshot.sop_version}{snapshotHash(sopDeployed.snapshot) === sopDeployed.sha256 ? " · hash verified" : " · HASH DOES NOT MATCH THE STORED SNAPSHOT"}</p>}
+              <div className="mt-3 overflow-x-auto rounded-lg border border-line">
+                <table className="w-full min-w-[40rem] text-start text-sm">
+                  <caption className="sr-only">Certified job profiles</caption>
+                  <thead className="bg-paper-deep text-xs text-ink-soft"><tr><th scope="col" className="px-3 py-1 text-start font-medium">Job profile</th><th scope="col" className="px-3 py-1 text-start font-medium">SOP version</th><th scope="col" className="px-3 py-1 text-start font-medium">Skill hash</th><th scope="col" className="px-3 py-1 text-start font-medium">Tuned guidance</th></tr></thead>
+                  <tbody>
+                    {shown.map((p) => (
+                      <tr key={p.profile} className="border-t border-line align-top">
+                        <th scope="row" className="px-3 py-2 text-start font-normal">{p.profile}</th>
+                        <td className="px-3 py-2">{p.sop_version}</td>
+                        <td className="px-3 py-2 font-mono text-xs">{p.skill_sha256.slice(0, 12)}</td>
+                        <td className="px-3 py-2 text-xs">{p.guidance.trim() ? <details><summary className="cursor-pointer underline">{p.guidance.trim().length} characters · <span className="font-mono">{p.guidance_sha256.slice(0, 12)}</span></summary><p className="mt-1 max-w-[60ch] whitespace-pre-wrap break-words">{p.guidance}</p></details> : "None: the skill alone met the bar."}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              {!sopDeployed && <ReleasePanel id={id} release={release} />}
+              {mayOperate && (!sopDeployed || upgrading) && <SopDeployButton useCaseId={id} redeploy={upgrading} canDeploy={approved && release.ok} />}
+            </section>
+          ) : !hasSet ? (
             <p className="mt-8 text-sm text-ink-soft"><TV k="ev.nocases" en="No eval set exists for {uc} yet. Eval sets are defined for UC01 and UC02." v={{ uc: uc.ext_id }} /></p>
           ) : (
             <>

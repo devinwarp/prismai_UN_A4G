@@ -11,6 +11,9 @@ import { loadTargetLog } from "@/lib/un/target-store";
 import { checksOf, replayTargets } from "@/lib/un/targets";
 import { isUuid } from "@/lib/un/model";
 import { buildReport } from "@/lib/un/pilot";
+import { certificationFromPlan } from "@/lib/un/sop-deployment";
+import { appendEntry, verifyChain } from "@/lib/un/tuning";
+import { appendLog as appendTuningLog, loadLog as loadTuningLog } from "@/lib/un/tuning-store";
 import { appendReviewLog, loadPilots, loadReviewLog, savePilot } from "@/lib/un/pilot-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { loadTestLog } from "@/lib/un/test-set-store";
@@ -120,5 +123,16 @@ export async function POST(request: Request, { params }: Ctx) {
   const report = buildReport({ runs: applyGoals(pilot.run_records, review), params: pstate.approved.params, test_set_hash: pilot.report.test_set_hash, ext: uc.ext_id, facts: factsOf(uc), requested: "GO_SUPERVISED", gov: await loadGov(who.org_id!), reviewerGates: {} });
   const saved = await savePilot(who.org_id!, id, { at: new Date().toISOString(), actor: who.email ?? who.id, profile, reps: pilot.reps, runs: pilot.runs, plan: pilot.plan, report, run_records: applyGoals(pilot.run_records, review), basis: { pilot_id: pilotId, review_hash: review.approved!.hash } });
   if ("error" in saved) return NextResponse.json({ error: saved.error }, { status: 500 });
-  return NextResponse.json({ ok: true, kind: "approved", hash: entry.hash, recomputed: true, report_id: saved.id, verdict: report.verdict, conclusive: report.conclusive, report_hash: report.report_hash });
+  // The FINAL report (goal judgments approved) is the one that can be met. When it is, what the pilot certified (the skill and the tuned guidance, kept in the plan)
+  // is recorded as a certification in the tuning log: that is what the business process owner signs, and what the deployment step freezes into a hashed snapshot.
+  let certification: "recorded" | "not_met" | "not_sop" | "failed" = "not_sop";
+  if (report.conclusive && report.failed.length === 0) {
+    const payload = certificationFromPlan(pilot.plan, saved.id);
+    if (payload) {
+      const tlog = await loadTuningLog(who.org_id!, id);
+      const err = verifyChain(tlog).ok ? await appendTuningLog(who.org_id!, id, [appendEntry(tlog[tlog.length - 1] ?? null, "certification", who.email ?? who.id, payload, new Date().toISOString())]) : "The tuning log failed verification.";
+      certification = err ? "failed" : "recorded";
+    }
+  } else if ((pilot.plan as { certified?: unknown } | null)?.certified) certification = "not_met";
+  return NextResponse.json({ ok: true, kind: "approved", certification, hash: entry.hash, recomputed: true, report_id: saved.id, verdict: report.verdict, conclusive: report.conclusive, report_hash: report.report_hash });
 }

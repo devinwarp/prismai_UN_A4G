@@ -1,3 +1,4 @@
+import { guidanceHash } from "@/lib/un/sop-deployment";
 import { randomUUID } from "node:crypto";
 import { after, NextResponse } from "next/server";
 import { bad, forbidden, notFound, requirePermission, type Authorised } from "@/lib/api-auth";
@@ -171,11 +172,14 @@ async function recordReport(scope: PilotScope, who: Authorised, job: SopPilotJob
   const built = buildSopPilotReport({
     job, results: job.rounds[0].results, cases: suite.cases as SopPilotCase[], params: suite.params, ext: uc.ext_id, facts: factsOf(uc), gov: await loadGov(scope.orgId),
     risk: { client_facing: suite.context.risk.client_facing }, clientFacingTask: (task) => !!tasks.get(task)?.flags.client_facing,
+    // what this report is about, kept in its plan: the certification (skill + tuned guidance) is written once the final report, with the goal review approved, is met
+    certified: { profile: scope.profile, sop_id: suite.sopId, sop_version: (await loadAttachment(scope.orgId, scope.useCaseId))?.version ?? 1, skill_sha256: suite.skill.sha256, skill_markdown: suite.skill.markdown, guidance: (job.rounds[0].instructions ?? "").trim(), test_hash: suite.testHash, params_hash: suite.paramsHash },
   });
   const saved = await savePilot(scope.orgId, scope.useCaseId, { at: new Date().toISOString(), actor: who.email ?? who.id, profile: scope.profile, reps: job.reps ?? 1, runs: built.runs.length, plan: built.plan, report: built.report, run_records: built.runs, basis: null });
   if ("error" in saved) return { ...job, status: "error", message: `The pilot ran but its report could not be saved: ${saved.error}` };
   await noticeInform(scope.orgId, scope.useCaseId, { step: "pilot", kind: "pilot.filed", subject: `A pilot was filed for ${uc.ext_id}`, body: `${scope.profile}: ${built.runs.length} runs, ${built.report.conclusive ? "conclusive" : "not conclusive"}, verdict ${built.report.verdict}.`, link: `/admin/federal/use-cases/${scope.useCaseId}/pilot?profile=${encodeURIComponent(scope.profile)}`, by: who.id, ref: saved.id.slice(0, 8) });
-  return { ...job, reportId: saved.id, message: job.exempt ?? null, report: { conclusive: built.report.conclusive, failed: built.report.failed, insufficient: built.report.insufficient, verdict: built.report.verdict } };
+  const guidance = (job.rounds[0].instructions ?? "").trim();
+  return { ...job, reportId: saved.id, guidance: { sha256: guidanceHash(guidance), chars: guidance.length }, message: job.exempt ?? null, report: { conclusive: built.report.conclusive, failed: built.report.failed, insufficient: built.report.insufficient, verdict: built.report.verdict } };
 }
 
 /** Drive a run on the server until it ends, the time for this invocation is up (then a fresh invocation takes over, with the same session), or a limit stops it. */
