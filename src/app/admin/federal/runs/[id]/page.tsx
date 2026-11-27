@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "@/lib/roles";
 import type { Metadata } from "next";
 import { notFound, redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
@@ -39,7 +40,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
           state={row.state}
           verification={verifyRun(row)}
           sources={sources}
-          canEdit={profile.role === "admin"}
+          canEdit={isOrgAdmin(profile.role)}
           isGate={sc.kind === "gate"}
           llmAvailable={Boolean(process.env.LLM_API_KEY ?? process.env.OPENROUTER_API_KEY)}
         />

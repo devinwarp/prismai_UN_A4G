@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "@/lib/roles";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
 import { getUserAndProfile } from "@/lib/auth";
@@ -36,7 +37,7 @@ export default async function CountryPage({ searchParams }: { searchParams: Prom
   const { data: org } = await createAdminClient().from("organizations").select("name").eq("id", orgId).maybeSingle();
   const d = appCountryDeps(orgId);
   const { entries, state, verified } = await loadState(d);
-  const canEdit = profile.role === "admin";
+  const canEdit = isOrgAdmin(profile.role);
   const active = countryIn(state, state.active.country)!;
   const country = federalCountryOf(state, sp.country ?? sp.setup, browseCountries);
   const basePolicy = canEdit ? await loadPolicy(orgId) : null;

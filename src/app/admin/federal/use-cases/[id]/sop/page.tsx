@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "@/lib/roles";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -17,6 +18,7 @@ import LangShell, { T, TV } from "../../../_components/Lang";
 import { btnGhost, card, scrollRegion, VerdictBadge } from "../../../_components/ui";
 import { AttachButton, AutomateBox } from "./ProfileControls";
 import { SopEditor } from "./SopEditor";
+import SopStructure from "./SopStructure";
 
 export const metadata: Metadata = { title: "SOP and job profiles", robots: { index: false, follow: false } };
 
@@ -35,7 +37,7 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
   if (!(await mayReadUseCase(profile.org_id, user.id, profile.role, id))) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
-  const canEdit = profile.role === "admin";
+  const canEdit = isOrgAdmin(profile.role);
   const sopId = await loadAttachedSop(profile.org_id, id);
   // the SOP is read by version: this use case is on one, a deployed one is frozen on it, and a newer one may be waiting
   const att = await loadAttachment(profile.org_id, id).catch(() => null);
@@ -103,6 +105,8 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
             />
           )}
         </section>
+
+        {(canEdit || sopId) && <SopStructure ucId={id} canEdit={canEdit} frozen={frozen} attached={sopId} />}
 
         {sopId && (
           <section id="risk" className="mt-8 scroll-mt-4" aria-label="Job profiles">

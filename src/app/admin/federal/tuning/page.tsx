@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "@/lib/roles";
 import type { Metadata } from "next";
 import type { CountryQuery } from "@/lib/un/country-context";
 import { loadCountrySop } from "@/lib/un/federal-country";
@@ -25,7 +26,7 @@ export default async function TuningPage({ searchParams }: { searchParams: Promi
   const { data: org } = await createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle();
   const state = uc02 ? await loadState({ store: appKbStore(profile.org_id) }) : null;
   const profiles = state ? PROFILES.map((name) => ({ name, base: extractSkill("SOP-LIC-014", name).markdown, active: state.skills[name] })) : [];
-  const canEdit = profile.role === "admin";
+  const canEdit = isOrgAdmin(profile.role);
   return (
     <ToolWorkspace country={country} orgName={org?.name} viewer={profile.role === "viewer"}
       title={<T k="workspace.tuning" en="Agent tuning" />}

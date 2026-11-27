@@ -9,6 +9,8 @@ import { attachSop, loadAttachedSop, loadProfileRows, saveTick } from "@/lib/un/
 import { loadUseCase } from "@/lib/un/sijil-store";
 import type { KbCheck } from "@/lib/un/skill-extract";
 import { buildSopKb, checkSopKbFor, ensureSopKb, writeSkillFor } from "@/lib/un/sop-kb-app";
+import { assessSop } from "@/lib/un/sop-assess";
+import { draftStructureFor, structuringAvailable } from "@/lib/un/sop-structure-service";
 import type { LiveBuildResult } from "@/lib/un/sop-kb-live";
 import { rollOut } from "@/lib/un/sop-rollout";
 import { baseOf, discardSopDraft, getVersion, latestOf, loadAttachment, loadCustomRoots, profilesForUseCase, saveVersion } from "@/lib/un/sop-version-store";
@@ -79,6 +81,20 @@ export async function POST(request: Request, { params }: Ctx) {
     }
     const before = await loadAttachedSop(orgId, id);
     if (before && onlyIfVacant) return NextResponse.json({ error: "This use case already has an SOP." }, { status: 409 });
+    // Intake analysis: not every SOP needs structuring. One that would give a skill for each of its job profiles is attached as it is. One that would not is
+    // drafted by the structuring agent for a person to review, and is NOT attached until a person approves the structure (b.structure === "as_is" attaches it anyway).
+    let structureWarning: { reasons: string[]; error: string } | null = null;
+    if (b.structure !== "as_is" && typeof b.text === "string") {
+      const a = assessSop({ title: b.title, text: b.text, entity: uc.entity, baseline: loadBaseline() });
+      if (a.needsStructuring) {
+        const title = (typeof b.title === "string" ? b.title.trim() : "").slice(0, 120) || b.text.match(/^#\s+(.+)$/m)?.[1]?.trim().slice(0, 120) || "";
+        const drafted = structuringAvailable() ? await draftStructureFor(orgId, id, b.text, title) : ({ ok: false, error: "No model is configured for structuring.", status: 503 } as const);
+        if (drafted.ok) return NextResponse.json({ ok: true, needs_structuring: true, drafted: true, reasons: a.reasons, assessment: { profiles: a.profiles, skills: a.skills } });
+        // no draft could be made: an SOP that still gives job profiles is attached as it is, with the warning; one that gives none cannot be attached at all
+        if (!a.profiles) return NextResponse.json({ error: `${a.reasons[0]} It could not be structured either: ${drafted.error}`, needs_structuring: true, drafted: false }, { status: 422 });
+        structureWarning = { reasons: a.reasons, error: drafted.error };
+      }
+    }
     const taken = onlyIfVacant ? [] : [...(await loadCustomRoots(orgId)), ...SAMPLES.map((s) => s.sop_id)];
     const made = customSopFromText({ title: b.title, text: b.text, entity: uc.entity, baseline: loadBaseline(), takenIds: taken,
       idBase: onlyIfVacant ? randomUUID() : uc.ext_id });
@@ -98,7 +114,7 @@ export async function POST(request: Request, { params }: Ctx) {
     for (let attempt = 0; onlyIfVacant && !audited && attempt < 2; attempt++) audited = await audit("sop_changed", change);
     // the knowledge base (chunks and vectors) of the SOP just attached: a failure to embed does not undo the attach, it is reported
     const kb = await buildSopKb(orgId, { sopId: made.sop_id, title: made.title, version: 1, body: made.body, useCaseExt: uc.ext_id, entity: uc.entity });
-    return NextResponse.json({ ok: true, sop_id: made.sop_id, version: 1, profiles: made.profiles.length, audited, kb });
+    return NextResponse.json({ ok: true, sop_id: made.sop_id, version: 1, profiles: made.profiles.length, audited, kb, ...(structureWarning ? { needs_structuring: true, drafted: false, reasons: structureWarning.reasons, draft_error: structureWarning.error } : {}) });
   }
 
   if (b.action === "new_version" || b.action === "profile") {

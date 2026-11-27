@@ -2,6 +2,7 @@ import { SijilBlockedError, parseLlmJson } from "../llm.ts";
 import { discloseAgentOutput, discloseAiMessage } from "./ai-disclosure.ts";
 import { checkExpectation, isSopGenInput, type ChatFn, type SopGenInput } from "./testgen.ts";
 import type { UsageSnapshot } from "./cost.ts";
+import { checkToolRequests, defaultManifest, manifestOfSkill } from "./skill-compile.ts";
 import type { Blueprint } from "./test-derive.ts";
 
 export const SOP_PILOT_TARGET = 0.95;
@@ -159,7 +160,13 @@ async function runSopCaseCore(
 export async function runSopCase(test: SopPilotCase, context: Parameters<typeof runSopCaseCore>[1], run: ChatFn, rep = 1): Promise<SopPilotResult> {
   const t0 = Date.now();
   const result = await runSopCaseCore(test, context, run);
-  return { ...result, family: test.family, rep, ms: Date.now() - t0 };
+  // The tool allow-list: the skill's own (a compiled skill carries one), else the default one. An agent that asks for a tool that is not on it has failed
+  // the test, and the denied request is kept in the output, so the denial is on record.
+  const tools = checkToolRequests(manifestOfSkill(context.skill) ?? defaultManifest(), result.output);
+  const denied = tools.denied.length
+    ? { passed: false, status: "failed" as const, hardFailure: true, failedChecks: [...result.failedChecks, "tool_allowlist"], differences: [...result.differences, ...tools.denied.map((d) => d.reason)], output: { ...result.output, denied_tool_calls: tools.denied } }
+    : {};
+  return { ...result, ...denied, family: test.family, rep, ms: Date.now() - t0 };
 }
 
 export { roundScore } from "./sop-pilot-score.ts";

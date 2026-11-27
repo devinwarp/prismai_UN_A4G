@@ -120,3 +120,16 @@ test("automatic tuning reruns the cases, keeps the best round and stops at 95% w
   assert.equal(bestSopRound({ ...tuned, rounds: [candidate, baseline] }), candidate);
   assert.equal(finishBatch({ ...job, limit: 1 }).status, "round_limit");
 });
+
+test("an agent that asks for a tool outside the allow-list fails the test and the denied request is kept", async () => {
+  const [functional] = await suite();
+  const withTools = (tools: unknown[]) => async () => { const o = JSON.parse(answer("manager_review")); o.output.tool_requests = tools; return JSON.stringify(o); };
+  const ok = await runSopCase(functional, context, withTools([{ tool: "search_sop", input: "leave" }]));
+  assert.equal(ok.passed, true);
+  const denied = await runSopCase(functional, context, withTools([{ tool: "search_sop" }, { tool: "post_to_payroll", input: {} }]));
+  assert.equal(denied.passed, false);
+  assert.equal(denied.hardFailure, true);
+  assert.ok(denied.failedChecks.includes("tool_allowlist"));
+  assert.match(denied.differences.join(" "), /post_to_payroll.*allow-list/);
+  assert.deepEqual((denied.output?.denied_tool_calls as { tool: string }[]).map((d) => d.tool), ["post_to_payroll"]);
+});

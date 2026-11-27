@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "@/lib/roles";
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { CountryQuery } from "@/lib/un/country-context";
@@ -57,7 +58,7 @@ export default async function ScenariosPage({ searchParams }: { searchParams: Pr
                       ))}
                     </ol>
                   </div>
-                  {profile.role === "admin" && <StartRun scenarioId={s.id} primary={index === 0} />}
+                  {isOrgAdmin(profile.role) && <StartRun scenarioId={s.id} primary={index === 0} />}
                 </li>
               ))}
             </ul>

@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "@/lib/roles";
 import { NextResponse } from "next/server";
 import { requirePermission } from "@/lib/api-auth";
 import { indexOfCountry, loadState } from "@/lib/un/country-actions";
@@ -19,7 +20,7 @@ export async function GET() {
     const assigned = access.allCases ? null : new Set((await loadUseCaseChoices(who.org_id!)).filter((uc) => access.caseIds.has(uc.id)).map((uc) => entityCountryOf(state, uc.entity)));
     const countries = await Promise.all(visibleCountries(state).filter((c) => !assigned || assigned.has(c.id)).map(async (c) => ({ id: c.id, name: c.name, ready: !!(await indexOfCountry(d, state, c.id)), onDemand: c.built === "on_demand", custom: !!c.custom })));
     const active = countries.some((c) => c.id === state.active.country) ? state.active.country : countries[0]?.id ?? state.active.country;
-    return NextResponse.json({ active, countries, canSwitch: who.role === "admin", canBrowse: access.browseCountries, canViewPeople: true, canManagePeople: who.decide("users.manage").ok });
+    return NextResponse.json({ active, countries, canSwitch: isOrgAdmin(who.role), canBrowse: access.browseCountries, canViewPeople: true, canManagePeople: who.decide("users.manage").ok });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
   }

@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "@/lib/roles";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -32,7 +33,7 @@ export default async function SopPage({ searchParams }: { searchParams: Promise<
       readerHref: uc02 && matchesReader ? countryHref(`/admin/federal/sop/${uc02.id}`, country.id) : undefined,
     };
   });
-  const canEdit = profile.role === "admin";
+  const canEdit = isOrgAdmin(profile.role);
 
   return (
     <div className="sop-reader-shell conduit-bg flex flex-col">

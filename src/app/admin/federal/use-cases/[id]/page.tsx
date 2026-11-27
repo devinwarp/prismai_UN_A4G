@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "@/lib/roles";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -108,7 +109,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
           liveMode={liveMode}
           liveNode={liveNode(runs)}
           reports={reports}
-          canEdit={profile.role === "admin"}
+          canEdit={isOrgAdmin(profile.role)}
         />
       </main>
       <div>

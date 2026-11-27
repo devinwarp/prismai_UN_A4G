@@ -12,9 +12,11 @@ import { btnGhost, btnPrimary } from "./ui";
 
 export type SopIntakeRow = {
   id: string; code: string; title: string; frozen: boolean;
+  /** A structuring draft is waiting for review: the SOP was analysed, needed structuring, and is not attached until a person approves the structure. */
+  draft?: boolean;
   sop?: { title: string; version: number; bytes: number | null; profiles: number | null; tasks: number | null; attachedAt: string | null };
 };
-type Upload = { file?: File; status: "queued" | "running" | "saved" | "error"; error?: string };
+type Upload = { file?: File; status: "queued" | "running" | "saved" | "review" | "error"; error?: string; warning?: string };
 const workers = 3;
 
 export default function SopIntake({ country, entity, rows, canEdit }: { country: string; entity?: string; rows: SopIntakeRow[]; canEdit: boolean }) {
@@ -24,6 +26,7 @@ export default function SopIntake({ country, entity, rows, canEdit }: { country:
   const running = useRef(false);
   const [busy, setBusy] = useState(false);
   const [uploads, setUploads] = useState<Record<string, Upload>>({});
+  const [batch, setBatch] = useState<string[]>([]);
   const t = (key: string, en: string) => tr(lang, key, en);
   const pending = rows.filter((row) => !row.sop && !row.frozen);
   const work = pending.flatMap((row) => {
@@ -46,6 +49,7 @@ export default function SopIntake({ country, entity, rows, canEdit }: { country:
     running.current = true;
     setBusy(true);
     const queue = [...work];
+    setBatch(queue.map((item) => item.row.id));
     try {
       await Promise.all(Array.from({ length: Math.min(workers, queue.length) }, async () => {
         for (let item = queue.shift(); item; item = queue.shift()) {
@@ -58,9 +62,11 @@ export default function SopIntake({ country, entity, rows, canEdit }: { country:
               method: "POST", headers: { "Content-Type": "application/json" },
               body: JSON.stringify({ action: "attach_custom", intake: true, title: file.name.replace(/\.[^.]+$/, ""), text: source }),
             });
-            const result = await response.json().catch(() => ({})) as { error?: string };
+            const result = await response.json().catch(() => ({})) as { error?: string; needs_structuring?: boolean; drafted?: boolean; reasons?: string[]; draft_error?: string };
             if (!response.ok) throw new Error(result.error ?? t("gt.failed", "The request failed."));
-            put(row.id, { status: "saved" });
+            // analysed: this SOP needs structuring. A draft is waiting for a person (it is not attached), or no draft could be made and it was attached as it is.
+            if (result.needs_structuring && result.drafted) put(row.id, { status: "review", warning: result.reasons?.[1] ?? result.reasons?.[0] });
+            else put(row.id, { status: "saved", ...(result.needs_structuring ? { warning: t("intake.struct.attached", "Attached as it is: it needs structuring, and the draft could not be made. Open the SOP step to structure it.") } : {}) });
           } catch (error) {
             put(row.id, { file, status: "error", error: error instanceof Error ? error.message : t("gt.failed", "The request failed.") });
           }
@@ -73,6 +79,7 @@ export default function SopIntake({ country, entity, rows, canEdit }: { country:
     }
   }
 
+  const finished = batch.filter((id) => ["saved", "review", "error"].includes(uploads[id]?.status ?? "")).length;
   const done = rows.filter((row) => row.sop || uploads[row.id]?.status === "saved").length;
   return (
     <>
@@ -89,6 +96,14 @@ export default function SopIntake({ country, entity, rows, canEdit }: { country:
             </div>
             <button type="button" className={btnGhost} disabled={busy} onClick={() => dialog.current?.close()}>{t("hdr.setup.close", "Close")}</button>
           </div>
+          {batch.length > 0 && (busy || finished < batch.length) && (
+            <div className="mt-2" aria-live="polite">
+              <div role="progressbar" aria-label={fill(t("intake.progress", "Analysing SOPs: {a} of {n} done"), { a: finished, n: batch.length })} aria-valuemin={0} aria-valuemax={batch.length} aria-valuenow={finished} className="h-2.5 w-full overflow-hidden rounded-full bg-paper-deep">
+                <div className="h-full rounded-full bg-lit transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${(100 * finished) / batch.length}%` }} />
+              </div>
+              <p className="mt-1 text-xs text-ink-soft">{fill(t("intake.progress", "Analysing SOPs: {a} of {n} done"), { a: finished, n: batch.length })}. {t("intake.progress.note", "An SOP that needs structuring is drafted by a model, which can take a minute.")}</p>
+            </div>
+          )}
           <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
             <p className="text-sm text-ink-soft" role="status">{fill(t("setup.sop_count", "{a} of {n} SOPs attached"), { a: done, n: rows.length })}</p>
             {canEdit && pending.length > 0 && <button type="button" className={btnPrimary} disabled={busy || !work.length} onClick={() => void analyze()}>
@@ -116,13 +131,20 @@ export default function SopIntake({ country, entity, rows, canEdit }: { country:
                         {row.sop.tasks !== null && <> · {fill(t("intake.tasks", "{n} tasks"), { n: row.sop.tasks })}</>}
                         {row.sop.attachedAt && <> · <time dateTime={row.sop.attachedAt}>{new Intl.DateTimeFormat(lang, { dateStyle: "medium", timeZone: "UTC" }).format(new Date(row.sop.attachedAt))}</time></>}
                       </p>
-                    </> : upload?.status === "saved" ? <p className="text-lit-deep">{t("intake.attached", "Attached")}</p>
+                    </> : upload?.status === "review" || row.draft ? (
+                      <div>
+                        <p className="font-medium">{t("intake.struct.h", "Needs structuring: a draft is ready for your review")}</p>
+                        {upload?.warning && <p className="mt-1 text-xs text-ink-soft">{upload.warning}</p>}
+                        <Link className="mt-1 inline-block text-xs underline underline-offset-4" href={`/admin/federal/use-cases/${row.id}/sop#sop-structure`}>{t("intake.struct.go", "Review the structure")}</Link>
+                      </div>
+                    ) : upload?.status === "saved" ? <><p className="text-lit-deep">{t("intake.attached", "Attached")}</p>{upload.warning && <p className="mt-1 text-xs font-medium">! {upload.warning}</p>}</>
                       : row.frozen ? <p className="text-ink-soft">{t("intake.frozen", "Deployed use case. Open it to manage SOP changes.")}</p>
                         : canEdit ? <>
                           <input type="file" accept=".md,.markdown,.txt" aria-label={fill(t("intake.choose", "Choose SOP for {id}"), { id: row.code })}
                             disabled={busy} className="w-full min-w-0 rounded-md border border-line bg-paper p-1.5 text-xs file:me-2 file:rounded file:border-0 file:bg-paper-deep file:px-2 file:py-1"
                             onChange={(event) => { choose(row.id, event.target.files?.[0]); event.target.value = ""; }} />
                           {upload?.file && <p className="mt-1 break-words text-xs text-ink-soft">{upload.file.name}{upload.status === "running" ? ` · ${t("intake.analyzing", "Analyzing files…")}` : ""}</p>}
+                          {upload?.status === "running" && <div role="progressbar" aria-label={fill(t("intake.analyzing.a", "Analysing {id}"), { id: row.code })} className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-paper-deep"><div className="h-full w-1/3 animate-pulse rounded-full bg-lit motion-reduce:animate-none" /></div>}
                           {upload?.error && <p role="alert" className="mt-1 text-xs text-ember">{upload.error}</p>}
                         </> : <p className="text-ink-soft">{t("intake.pending", "Awaiting an SOP")}</p>}
                   </div>
