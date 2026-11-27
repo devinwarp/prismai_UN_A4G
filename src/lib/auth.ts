@@ -1,4 +1,5 @@
 import type { User } from "@supabase/supabase-js";
+import { cache } from "react";
 import { createAdminClient } from "./supabase/admin";
 import { createClient } from "./supabase/server";
 import type { Profile } from "./types";
@@ -24,10 +25,10 @@ function platformEmails(): string[] {
     .filter(Boolean);
 }
 
-export async function getUserAndProfile(): Promise<{
+export const getUserAndProfile = cache(async (): Promise<{
   user: User | null;
   profile: Profile | null;
-}> {
+}> => {
   const supabase = await createClient();
   const {
     data: { user },
@@ -41,7 +42,7 @@ export async function getUserAndProfile(): Promise<{
     .maybeSingle();
 
   return { user, profile: profile as Profile | null };
-}
+});
 
 /** Ensure a profile row exists; promotes PLATFORM_EMAILS/ADMIN_EMAILS users. */
 export async function ensureProfile(user: User): Promise<Profile | null> {

@@ -2,11 +2,12 @@ import Link from "next/link";
 import DevDbBanner from "@/components/DevDbBanner";
 import PrismMark from "@/components/PrismMark";
 import ThemeSwitcher from "@/components/ThemeSwitcher";
+import { getUserAndProfile } from "@/lib/auth";
 import HeaderTools from "./HeaderTools";
 import SignOut from "./SignOut";
 import { FederalLabel, HeaderRow } from "./HeaderLang";
 
-export default function AdminHeader({
+export default async function AdminHeader({
   active,
   orgName,
   viewer,
@@ -24,6 +25,9 @@ export default function AdminHeader({
   /** One-screen desktop dashboard: full width and a shorter bar (only at the `desk` size; phones keep the usual header). */
   dense?: boolean;
 }) {
+  const { user, profile } = await getUserAndProfile();
+  const accountName = profile?.full_name?.trim() || user?.email;
+
   // The switcher sits outside <header>: backdrop-blur makes the header the
   // containing block for fixed children, which pinned it over "Sign out".
   return (
@@ -68,9 +72,16 @@ export default function AdminHeader({
             <HeaderTools country={country} previewCountry={previewCountry} />
             {/* One-screen desktop: the palette picker sits in the bar instead of floating over the corner of the register. */}
             {dense && <span className="hidden desk:inline-flex"><ThemeSwitcher variant="inline" /></span>}
-            <form action="/auth/signout" method="post">
-              <SignOut />
-            </form>
+            <div className="flex min-w-0 max-w-full items-center gap-2.5 sm:gap-3">
+              {accountName && (
+                <bdi className="max-w-[min(55vw,16rem)] truncate font-medium text-ink" title={accountName}>
+                  {accountName}
+                </bdi>
+              )}
+              <form action="/auth/signout" method="post" className="shrink-0">
+                <SignOut />
+              </form>
+            </div>
           </nav>
         </HeaderRow>
       </header>
