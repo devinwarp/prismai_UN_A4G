@@ -7,7 +7,7 @@ import { appendTest, plan, replayTestSet, verifyTest } from "@/lib/un/test-sets"
 import { metered } from "@/lib/un/cost";
 import { loadPilots } from "@/lib/un/pilot-store";
 import { appendGen, blueprintOf, cooldownLeft, describeStoreError, generate, planRuling, replayGen, verifyGen } from "@/lib/un/testgen";
-import { appendGenLog, buildScenario, defaultChat, loadGenLog } from "@/lib/un/testgen-store";
+import { appendGenLog, buildScenario, buildSopScenario, defaultChat, loadGenLog } from "@/lib/un/testgen-store";
 
 type Ctx = { params: Promise<{ id: string }> };
 /** A generation can make two model calls (generate + one repair), each up to its own timeout. */
@@ -22,7 +22,7 @@ const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slic
 export async function GET(request: Request, { params }: Ctx) {
   const { id } = await params;
   if (!isUuid(id)) return notFound();
-  const who = await requirePermission("view");
+  const who = await requirePermission("view", { useCaseId: id });
   if (who instanceof NextResponse) return who;
   const profile = text(new URL(request.url).searchParams.get("profile"), 120);
   if (!profile) return bad("profile is required");
@@ -82,8 +82,9 @@ export async function POST(request: Request, { params }: Ctx) {
   };
 
   if (act === "generate") {
-    const task = text(b.task, 8);
-    const built = buildScenario(need.sopId, profile, task, new Set(gstate.proposals.map((p) => p.case.id)));
+    const task = text(b.task, 32);
+    const existing = new Set(gstate.proposals.map((p) => p.case.id));
+    const built = need.sop ? buildSopScenario(need.sopId, need.sop, task, existing) : buildScenario(need.sopId, profile, task, existing);
     if (!built.ok) return NextResponse.json({ error: built.error }, { status: built.status });
     // generation is a slow, paid call: one at a time per profile, and not again straight after a logged run
     const key = `${id}:${profile}`;
@@ -141,6 +142,9 @@ export async function POST(request: Request, { params }: Ctx) {
     return fail ?? NextResponse.json({ ok: true });
   }
 
+  if (need.sop ? prop.case.input.kind !== "sop" || prop.case.input.context_hash !== need.sop.hash : prop.case.input.kind === "sop") {
+    return NextResponse.json({ error: "This proposal uses an older SOP or job profile. Generate a new case before approving it." }, { status: 409 });
+  }
   const p = plan(tstate, need.required, { type: "add", blueprint: { ...blueprintOf(prop.case), task: null } }, who.id);
   if (!p.ok) return bad(p.error);
   const entry = appendTest(tlog[tlog.length - 1] ?? null, p.kind, actor, p.payload, new Date().toISOString());

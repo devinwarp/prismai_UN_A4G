@@ -1,7 +1,9 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadAttachedSop, loadProfileRows } from "./profiles-store";
 import { loadSop } from "./sop-kb";
-import { profilesForUseCase } from "./sop-version-store";
+import { loadUseCaseSopDocument, profilesForUseCase } from "./sop-version-store";
+import { loadUseCase } from "./sijil-store";
+import { requiredSopTests, sopTestContext, usesLicensingReference, type SopTestContext } from "./sop-test-context";
 import { deriveTests, type Blueprint } from "./test-derive";
 import type { TestEntry } from "./test-sets";
 
@@ -22,7 +24,7 @@ export async function appendTestLog(orgId: string, useCaseId: string, profile: s
   return error?.message ?? null;
 }
 
-export type Required = { ok: true; sopId: string; required: Blueprint[] } | { ok: false; error: string; status: number };
+export type Required = { ok: true; sopId: string; required: Blueprint[]; sop?: SopTestContext } | { ok: false; error: string; status: number };
 
 /** The tests this profile requires now, derived from the SOP attached to the use case. The profile must be one the
  * SOP has and must be ticked Automate: tests are for an agent that will do the work. */
@@ -32,7 +34,22 @@ export async function requiredFor(orgId: string, useCaseId: string, profile: str
   const profiles = await profilesForUseCase(orgId, useCaseId, sopId);
   if (!profiles?.some((p) => p.name === profile)) return { ok: false, error: `${sopId} has no job profile "${profile}"`, status: 400 };
   const rows = await loadProfileRows(orgId, useCaseId, sopId);
-  if (!rows.some((r) => r.profile === profile && r.automate)) return { ok: false, error: "Tick Automate on this job profile first: tests are written for the agent that will do its work", status: 409 };
+  const automated = rows.find((r) => r.profile === profile && r.automate);
+  if (!automated) return { ok: false, error: "Tick Automate on this job profile first: tests are written for the agent that will do its work", status: 409 };
+  const uc = await loadUseCase(orgId, useCaseId);
+  if (!uc) return { ok: false, error: "Use case not found", status: 404 };
+  if (!usesLicensingReference(uc.ext_id, sopId)) {
+    const document = await loadUseCaseSopDocument(orgId, uc);
+    const attached = document?.attached;
+    const job = attached?.profiles.find((p) => p.name === profile);
+    if (!attached || attached.sop_id !== sopId || !job?.tasks.length) return { ok: false, error: "The attached SOP and its job tasks must be available before writing tests", status: 409 };
+    const sop = sopTestContext(attached, uc, job);
+    if (!sop.chunks.length) return { ok: false, error: "The attached SOP has no readable passages", status: 409 };
+    if (!sop.skill || sop.skill.sha256 !== automated.skill_sha256) {
+      return { ok: false, error: "This profile needs a skill for the attached SOP version. Build the knowledge base and refresh the profile skill on the SOP page.", status: 409 };
+    }
+    return { ok: true, sopId, sop, required: requiredSopTests(sop) };
+  }
   const flags = Object.fromEntries(profiles.flatMap((p) => p.tasks.map((t) => [t.id, { client_facing: t.flags.client_facing }])));
   return { ok: true, sopId, required: deriveTests({ sopId, profile, chunks: loadSop(sopId).chunks, flags }) };
 }

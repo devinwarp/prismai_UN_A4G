@@ -384,7 +384,7 @@ export function noticeScenarioCase(id: string, kind: string): TaskCase | null {
  * asked for a task that is not its own) is a probe, like the hand-written ones. */
 export function generatedTaskCase(b: Blueprint): TaskCase | null {
   const g = b.gen;
-  if (!g) return null;
+  if (!g || g.input.kind === "sop") return null;
   const i = g.input;
   return {
     id: b.id, task: i.task, title: b.title, split: "holdout", generated: true, agent: i.agent, licence: i.licence as TaskCase["licence"],

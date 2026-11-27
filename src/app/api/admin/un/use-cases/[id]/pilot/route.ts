@@ -54,7 +54,7 @@ export async function POST(request: Request, { params }: Ctx) {
   if (!uc) return notFound();
   const need = await requiredFor(who.org_id!, id, profile);
   if (!need.ok) return NextResponse.json({ error: need.error }, { status: need.status });
-  if (need.sopId !== SOP_ID) return NextResponse.json({ error: `The real agent has executable cases only for ${SOP_ID}` }, { status: 409 });
+  if (need.sop) return NextResponse.json({ error: "Use the SOP pilot endpoint for this job profile." }, { status: 409 });
 
   // the authority probes bind to the profile's own agent role; a profile with no role is refused, never run as dv
   if (!Object.hasOwn(ROLE_OF_PROFILE, profile)) return NextResponse.json({ error: `No agent role is defined for the job profile "${profile}", so its pilot cannot be run` }, { status: 422 });

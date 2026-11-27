@@ -10,6 +10,7 @@ import { isUuid } from "@/lib/un/model";
 import { permissionsFor } from "@/lib/un/permissions-server";
 import { loadAttachedSop } from "@/lib/un/profiles-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
+import { usesLicensingReference } from "@/lib/un/sop-test-context";
 import { loadState } from "@/lib/un/tuning-service";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { card } from "../../../_components/ui";
@@ -29,12 +30,13 @@ export default async function ImprovePage({ params }: { params: Promise<{ id: st
   if (!(await mayReadUseCase(profile.org_id, user.id, profile.role, id))) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
+  const sop = await loadAttachedSop(profile.org_id, id);
+  if (sop && !usesLicensingReference(uc.ext_id, sop)) redirect(`/admin/federal/use-cases/${id}/pilot#sop-pilot`);
   const perms = await permissionsFor(profile, user.id);
 
   let state: AutoState = EMPTY_AUTO;
   let storeError: string | null = null;
   try { state = replayAuto(await loadAutoLog(profile.org_id, id)); } catch (e) { storeError = e instanceof Error ? e.message : "The auto-tuning log could not be read"; }
-  const sop = await loadAttachedSop(profile.org_id, id);
   const waiting: Waiting[] = sop
     ? (await loadState({ store: appKbStore(profile.org_id), sopId: sop })).versions.filter((v) => v.status === "proposed").map((v) => ({ id: v.id, summary: v.summary, by: v.proposed_by, at: v.proposed_at, held_out_before: heldOutAlignment(v.before), held_out_after: heldOutAlignment(v.after) }))
     : [];

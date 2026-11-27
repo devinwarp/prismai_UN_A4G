@@ -103,7 +103,13 @@ export function genSpecProblem(g: unknown): string | null {
   if (typeof o.case_id !== "string" || !o.case_id || o.case_id.length > 120) return "a generated test needs its case id";
   if (typeof o.model !== "string") return "a generated test records the model that wrote it";
   const i = o.input as Record<string, unknown> | null;
-  if (!i || typeof i !== "object" || typeof i.agent !== "string" || typeof i.task !== "string" || typeof i.licence !== "string") return "a generated test needs an input with an agent, a task and a licence";
+  if (!i || typeof i !== "object" || typeof i.task !== "string") return "a generated test needs a task";
+  if (i.kind === "sop") {
+    if (typeof i.requested_task !== "string" || !i.requested_task || typeof i.request !== "string" ||
+      !i.request.trim() || i.request.length > 4000 || typeof i.context_hash !== "string" || !/^[a-f0-9]{64}$/.test(i.context_hash)) return "an SOP test needs a request, requested task and procedure fingerprint";
+  } else if (i.kind !== undefined || typeof i.agent !== "string" || typeof i.licence !== "string") {
+    return "a generated licensing test needs an agent and a licence";
+  }
   const e = o.expect as { outcome?: unknown; assertions?: unknown } | null;
   if (!e || typeof e !== "object" || !GEN_OUTCOMES.includes(String(e.outcome))) return "a generated test needs an expected outcome";
   if (!Array.isArray(e.assertions) || e.assertions.length < 1 || e.assertions.length > 12) return "a generated test needs 1 to 12 assertions";
@@ -149,6 +155,7 @@ export function plan(state: TestSetState, required: Blueprint[], a: Action, by: 
     if (!keys.length) return bad("Nothing to change");
     if (keys.some((k) => !(EDITABLE as readonly string[]).includes(k))) return bad("Only the title, expected output, gates and scenario can be edited; to change what a test covers, retire it and add another");
     if (target!.status === "retired") return bad("Restore the test before editing it");
+    if (target!.gen?.input.kind === "sop" && a.changes.expect !== undefined) return bad("Retire the generated test and accept a new proposal to change its expected result");
     if (a.changes.title !== undefined && (!a.changes.title.trim() || a.changes.title.length > 200)) return bad("A test needs a title of at most 200 characters");
     if (a.changes.expect !== undefined && (!a.changes.expect.length || !a.changes.expect.every(checkOk))) return bad("A test needs at least one expected-output check");
     if (a.changes.scenario !== undefined && !SCENARIOS.includes(a.changes.scenario)) return bad("Unknown scenario kind");
