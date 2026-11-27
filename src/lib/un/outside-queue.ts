@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "../roles.ts";
 import { CaseMemory, type MemoryStore } from "./case-memory.ts";
 import type { OutsideRequest } from "./react-sop.ts";
 
@@ -61,7 +62,7 @@ export async function answerOutside(
   who: { role: string | null; userId?: string | null }, answer: string,
   store: MemoryStore, clock?: () => string,
 ): Promise<AnswerResult> {
-  if (who.role !== "admin") return { ok: false, error: "Read-only access: only an admin may answer" };
+  if (!isOrgAdmin(who.role)) return { ok: false, error: "Read-only access: only an admin may answer" };
   const text = answer.trim();
   if (!text) return { ok: false, error: "The answer is empty" };
   if (text.length > MAX_ANSWER) return { ok: false, error: `The answer is longer than ${MAX_ANSWER} characters` };

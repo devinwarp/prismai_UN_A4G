@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "@/lib/roles";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
@@ -47,7 +48,7 @@ export default async function KbPage({ searchParams }: { searchParams: Promise<C
       {chunks ? <KbSearch key={country.id} country={country.id} sources={sources} sections={section} /> : (
         <WorkspacePane id="kb-unavailable" title={<T k="cn.scope" en="Knowledge base" />}>
           <p className="text-sm text-ink-soft"><T k="kb.country.empty" en="The knowledge base for this country is awaiting policy documents." />{" "}
-            {profile.role === "admin" && <Link className="underline" href={countryHref("/admin/federal/country?setup=" + country.id, country.id)}><T k="ua.pg.nokb.go" en="Set up this country" /></Link>}
+            {isOrgAdmin(profile.role) && <Link className="underline" href={countryHref("/admin/federal/country?setup=" + country.id, country.id)}><T k="ua.pg.nokb.go" en="Set up this country" /></Link>}
           </p>
         </WorkspacePane>
       )}

@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "@/lib/roles";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -134,7 +135,7 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
               <CostPanel ledger={ledger} />
               {mayOperate && (
                 <div className="mt-6">
-                  <ProductionControls canReset={profile.role === "admin"} useCaseId={id} deployed={s.deployed} serving={s.serving} canDeploy={approved && release.ok} rules={certified?.rules ?? []} />
+                  <ProductionControls canReset={isOrgAdmin(profile.role)} useCaseId={id} deployed={s.deployed} serving={s.serving} canDeploy={approved && release.ok} rules={certified?.rules ?? []} />
                 </div>
               )}
 

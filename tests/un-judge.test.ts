@@ -30,7 +30,9 @@ test("every mutating /api/admin/un route is behind a guard: requireAdmin, or req
 
 test("requireAdmin refuses viewers (the judge role) and keeps the read-only wording", () => {
   const src = readFileSync("src/lib/api-auth.ts", "utf8");
-  assert.match(src, /who\.role !== "admin"/);
+  assert.match(src, /!isOrgAdmin\(who\.role\)/);
+  assert.match(readFileSync("src/lib/roles.ts", "utf8"), /role === "admin" \|\| role === "platform"/);
+  assert.doesNotMatch(readFileSync("src/lib/roles.ts", "utf8"), /viewer|employee/);
   assert.match(src, /Read-only access/);
 });
 

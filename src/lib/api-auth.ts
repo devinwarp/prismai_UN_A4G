@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "./roles";
 import { NextResponse } from "next/server";
 import { createClient } from "./supabase/server";
 import { can, type ActionId, type Assignment, type Decision } from "./un/authz";
@@ -38,7 +39,7 @@ export async function caller(): Promise<Caller | null> {
 export async function requireAdmin(): Promise<Caller | NextResponse> {
   const who = await caller();
   if (!who) return NextResponse.json({ error: "Not signed in" }, { status: 401 });
-  if (who.role !== "admin" || !who.org_id) {
+  if (!isOrgAdmin(who.role) || !who.org_id) {
     // Judges and other viewers are read-only: every mutating un route calls this guard.
     return NextResponse.json({ error: who.role === "viewer" ? "Read-only access (judge/viewer)" : "Forbidden" }, { status: 403 });
   }

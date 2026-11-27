@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "@/lib/roles";
 import { loadRunCosts } from "@/lib/un/cost-register-store";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -165,7 +166,7 @@ export default async function FederalPage({ searchParams }: { searchParams: Prom
             policy={shown}
             dashboard={dashboard}
             useCases={scoped}
-            canEdit={profile.role === "admin"}
+            canEdit={isOrgAdmin(profile.role)}
             editableRisks={scoped.filter((uc) => perms.can("risk.edit", uc.id)).map((uc) => uc.id)}
             gatesAdded={gatesAdded}
             journeys={Object.fromEntries(journeys)}

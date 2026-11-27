@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "@/lib/roles";
 import { replayStructure } from "@/lib/un/sop-structure";
 import { loadStructureLog } from "@/lib/un/sop-structure-store";
 import type { Metadata } from "next";
@@ -62,7 +63,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
   const mayRead = (id: string) => access.allCases || access.caseIds.has(id);
   const q = await searchParams;
   const { country, state, deps } = await loadFederalCountry(orgId, q.country, browseCountries);
-  const canEdit = profile.role === "admin";
+  const canEdit = isOrgAdmin(profile.role);
 
   const [overview, entityRows, assignmentRows, people, { data: org }, registrationReady, useCases] = await Promise.all([
     loadEntityOverview(orgId), loadEntityRows(orgId).catch(() => []), loadAssignmentRows(orgId).catch(() => []), loadPeople(orgId).catch(() => []),

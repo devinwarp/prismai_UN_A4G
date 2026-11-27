@@ -1,3 +1,4 @@
+import { isOrgAdmin } from "@/lib/roles";
 import type { Metadata } from "next";
 import type { CountryQuery } from "@/lib/un/country-context";
 import { loadCountrySop } from "@/lib/un/federal-country";
@@ -23,7 +24,7 @@ export default async function OutsidePage({ searchParams }: { searchParams: Prom
   const { country, uc02 } = await loadCountrySop(profile.org_id, (await searchParams).country, browseCountries);
   const db = createAdminClient();
   const [{ data: org }, rows] = await Promise.all([db.from("organizations").select("name").eq("id", profile.org_id).maybeSingle(), uc02 ? listOutside(db, profile.org_id) : Promise.resolve([])]);
-  const canEdit = profile.role === "admin";
+  const canEdit = isOrgAdmin(profile.role);
   const requests = rows.filter((r) => r.sop_id === "SOP-LIC-014");
   const open = requests.filter((r) => r.status === "open");
   const done = requests.filter((r) => r.status === "answered");
