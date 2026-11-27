@@ -15,6 +15,7 @@ import WorkspaceSections from "../_components/WorkspaceSections";
 import { T, TV } from "../_components/Lang";
 import { card, scrollRegion, Section } from "../_components/ui";
 import { CountryPanel } from "./CountryPanel";
+import { knownCountries } from "@/lib/un/country-context";
 import CountryPolicy from "./CountryPolicy";
 import { loadPolicy } from "@/lib/un/store";
 import { countriesNeedingGovernanceAdmin } from "@/lib/un/people-agent";
@@ -164,7 +165,10 @@ export default async function CountryPage({ searchParams }: { searchParams: Prom
         ) },
         ...(canEdit ? [{ id: "manage", label: <T k="workspace.country.manage" en="Manage countries" />, anchors: ["step-a", "docs-" + country.id], content: (
           <Section id="manage" title={<T k="workspace.country.manage" en="Manage countries" />}>
-                  <CountryPanel key={country.id} canEdit={canEdit} active={active.id} selected={country.id} countries={infos.map(({ c, info }) => ({ id: c.id, name: c.name, ruleset: c.ruleset, currency: c.currency, ready: !!info, onDemand: c.built === "on_demand", custom: !!c.custom, hidden: !!c.hidden }))} rulesets={RULESETS.map((r) => ({ id: r.id, name: r.name }))} staged={euStaged} euBuilt={!!state.policies.EU} />
+                  <CountryPanel key={country.id} canEdit={canEdit} active={active.id} selected={country.id}
+                    countryOptions={{ en: knownCountries("en"), ar: knownCountries("ar") }}
+                    countries={infos.map(({ c, info }) => ({ id: c.id, name: c.name, ruleset: c.ruleset, currency: c.currency, ready: !!info, onDemand: c.built === "on_demand", custom: !!c.custom, hidden: !!c.hidden }))}
+                    rulesets={RULESETS.map((r) => ({ id: r.id, name: r.name }))} staged={euStaged} euBuilt={!!state.policies.EU} />
           </Section>
         ) }] : []),
         ...(countryPolicy ? [{ id: "policy", label: <T k="cn.setup.policy" en="Policy configuration" />, content: (

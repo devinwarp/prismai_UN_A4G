@@ -21,6 +21,8 @@ import { planManualVersion, planNewVersion } from "@/lib/un/sop/versions";
 
 type Ctx = { params: Promise<{ id: string }> };
 
+export const maxDuration = 300;
+
 /** POST { action: "attach", sop_id }  attach an SOP (a shipped sample or one pasted earlier) at its latest version.
  *      { action: "attach_custom", title, text }  paste an SOP of your own: a new SOP, version 1; job profiles are derived from it and it is attached.
  *      { action: "new_version", text, title? }  publish a NEW VERSION of the attached SOP from new text. It is compared with the last version, only the job

@@ -3,11 +3,11 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
-import { tr } from "@/lib/un/i18n/dict";
+import { tr, type Lang } from "@/lib/un/i18n/dict";
 import { useLang } from "../_components/Lang";
 import { btnGhost, btnPrimary, field } from "../_components/ui";
 import { Ct, En, Ltr } from "../_components/b-bits";
-import { countryHref, knownCountries, regionalCurrency } from "@/lib/un/country-context";
+import { countryHref, regionalCurrency } from "@/lib/un/country-context";
 import { CountryManage, type ManagedCountry } from "./CountryManage";
 
 interface Stage { stage: string; ms: number; detail: string }
@@ -16,13 +16,14 @@ interface Props {
   active: string;
   selected: string;
   countries: (ManagedCountry & { onDemand: boolean })[];
+  countryOptions: Record<Lang, { id: string; name: string }[]>;
   rulesets: { id: string; name: string }[];
   staged: { id: string; title: string; words: number }[];
   euBuilt: boolean;
 }
 
 /** The actions of the country screen. Admin only: without canEdit nothing here is rendered as a control, and the API refuses anyone else. */
-export function CountryPanel({ canEdit, active, selected, countries, rulesets, staged, euBuilt }: Props) {
+export function CountryPanel({ canEdit, active, selected, countries, countryOptions, rulesets, staged, euBuilt }: Props) {
   const lang = useLang();
   const router = useRouter();
   const [busy, setBusy] = useState<string | null>(null);
@@ -100,7 +101,7 @@ export function CountryPanel({ canEdit, active, selected, countries, rulesets, s
             <label className="block text-sm font-medium" htmlFor="nc-id">{tr(lang, "cn.new.name", "Country name")}</label>
             <select id="nc-id" className={field} value={nc.id} onChange={(e) => setNc({ ...nc, id: e.target.value, currency: "" })}>
               <option value="">{tr(lang, "cn.setup.choose", "Choose a country")}</option>
-              {knownCountries(lang).filter((entry) => !countries.some((current) => current.id === entry.id)).map((entry) => (
+              {countryOptions[lang].filter((entry) => !countries.some((current) => current.id === entry.id)).map((entry) => (
                 <option value={entry.id} key={entry.id}>{entry.name} ({entry.id})</option>
               ))}
             </select>
