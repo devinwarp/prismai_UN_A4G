@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import { journeyStatus, type JourneyInput } from "../src/lib/un/journey.ts";
-import { assembleAgent, certificationPayload, deployedSnapshot, guidanceHash, snapshotHash, snapshotOf, snapshotProblems, sopCertifications, type CertifiedProfile } from "../src/lib/un/sop-deployment.ts";
+import { assembleAgent, certificationFromPlan, certificationPayload, deployedSnapshot, guidanceHash, snapshotHash, snapshotOf, snapshotProblems, sopCertifications, type CertifiedProfile } from "../src/lib/un/sop-deployment.ts";
 import { appendEntry, type LogEntry } from "../src/lib/un/tuning.ts";
 import type { WatchEntry } from "../src/lib/un/watchdog.ts";
 
@@ -100,4 +100,16 @@ test("a deployed agent whose SOP moved to a newer version shows redeploy, even w
   const moved = input({ watch, upgrading: true, certifiedProfiles: 0, tests: { ticked: 1, ready: 0 }, pilot: { ticked: 1, run: 0, met: 0 } });
   assert.deepEqual(st(moved, "production"), ["needs_you", "redeploy"]);
   assert.notDeepEqual(st(input({ watch, upgrading: false, certifiedProfiles: 0, tests: { ticked: 1, ready: 0 } }), "production"), ["needs_you", "redeploy"]);
+});
+
+test("the certification is written from what the certify pass kept in the report's plan, once the final report is met", () => {
+  const c = cert("A");
+  const plan = { agent: {}, bound: {}, unexecuted: [], aggregate: [], certified: { profile: c.profile, sop_id: c.sop_id, sop_version: c.sop_version, skill_sha256: c.skill_sha256, skill_markdown: c.skill_markdown, guidance: c.guidance, test_hash: c.test_hash, params_hash: c.params_hash } };
+  const payload = certificationFromPlan(plan, "final-report-1")!;
+  assert.equal(payload.met, true);
+  assert.equal(payload.report_id, "final-report-1");
+  assert.equal(payload.guidance_sha256, guidanceHash(c.guidance));
+  assert.equal(sopCertifications(chain([["certification", payload]])).get("A")!.report_id, "final-report-1");
+  assert.equal(certificationFromPlan({ agent: {}, bound: {} }, "r"), null, "a pilot that did not come from the SOP pilot has nothing to certify");
+  assert.equal(certificationFromPlan(null, "r"), null);
 });

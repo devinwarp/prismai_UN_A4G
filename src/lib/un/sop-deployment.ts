@@ -28,6 +28,15 @@ export interface CertifiedProfile {
   params_hash: string;
 }
 
+/** What the certify pass records in the pilot report's plan: what the report is about. The certification entry is written from it once the FINAL report (goal review approved) is met. */
+export type CertifiedData = Omit<CertifiedProfile, "report_id" | "guidance_sha256">;
+
+/** The certification payload for a met final report, from the plan the certify pass stored; null for a pilot that did not come from the SOP pilot. */
+export function certificationFromPlan(plan: unknown, reportId: string): Record<string, unknown> | null {
+  const c = plan && typeof plan === "object" ? (plan as { certified?: CertifiedData }).certified : undefined;
+  return c && typeof c.profile === "string" && typeof c.skill_sha256 === "string" ? certificationPayload({ ...c, report_id: reportId, met: true }) : null;
+}
+
 export const guidanceHash = (guidance: string) => sha(guidance.trim());
 
 /** The payload of the `certification` entry the certify pass appends to the tuning log. `met` is what approvalState reads. */
