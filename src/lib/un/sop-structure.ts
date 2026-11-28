@@ -43,6 +43,7 @@ export const STRUCTURE_SYSTEM = [
   "Use ONLY what the source says. Do not add steps, people, figures, dates, systems, limits or rules. Where the source does not say something, write exactly \"Not stated in the source.\" for a text field, or an empty list for a list. Never fill a gap with what is usual or sensible.",
   "Job profiles are the staff roles that do the work. Use the source's own names, one canonical name per role (do not make \"Panel\" and \"Panel chair\" two roles; do not include the people the service is for, such as applicants, citizens or customers, and do not make the requester of the work a role). Role names have no full stops.",
   "Each task is done by exactly ONE role (responsible). If a step is done by two roles, make two tasks. Number tasks T01, T02, ... in the order of the source. Keep every step of the source: do not drop or merge away a step.",
+  "Keep every rule the source states, including rules about record keeping, retention, logging and identifiers: one that belongs to no task goes in `controls`.",
   "Each task carries `quote`: one verbatim excerpt (at most 250 characters) copied exactly from the source that supports it. For authority, a role's `may`, `may_not` and `human_only` lists hold only what the source says the role may do, may not do, or that only a named person may decide.",
   "For each task, `systems` lists the systems, tools or records the source says the role uses to do it (for example a payroll system); leave it empty if none is named. A role is responsible for its tasks: that is what it is there to do.","Put every rule that applies to all work in `controls`. Put \"if X happens, who handles it and who it goes to\" in `exceptions`. Put measures and targets the source states in `metrics`. List systems, tools or records the source names in `systems`.",
   "Answer with one JSON object and nothing else, with exactly this shape:",
@@ -181,17 +182,34 @@ export function checkStructured(m: StructuredSop, source: string): Checks {
   const new_figures = [...figures(draftText)].filter((n) => !known.has(n));
   if (new_figures.length) w("new_figures", "figures", `These figures are in the draft but not in the source: ${new_figures.slice(0, 12).join(", ")}.`);
 
-  // coverage: every statement of the source should be carried by some task, control or exception, or it was dropped
-  const carried = [...m.tasks.flatMap((t) => [t.title, t.starts_when, t.inputs, ...t.steps, t.output, t.problems, t.quote]), ...m.controls, ...m.exceptions.flatMap((x) => [x.scenario, x.what_to_do, x.handled_by, x.escalate_to]), m.purpose, m.scope, ...m.metrics.map((x) => `${x.metric} ${x.target}`), ...m.roles.flatMap((r) => [r.purpose, ...r.may, ...r.may_not, ...r.human_only])].filter((x) => x && x !== NOT_STATED);
+  // coverage: every statement of the source should be somewhere in what renderCanonical prints, or it was dropped. A table row of the source (an exception, a
+  // list of who a role works with) is one item here too: compared column by column or name by name, a row that was carried whole would look dropped.
+  const said = (...xs: string[]) => xs.filter((x) => x && x !== NOT_STATED).join(" ");
+  const labelled = (label: string, ...xs: string[]) => { const v = said(...xs); return v ? `${label}: ${v}` : ""; };
+  const carried = [
+    ...m.tasks.flatMap((t) => [t.title, t.starts_when, t.inputs, ...t.steps, t.output, t.problems, t.quote, labelled("Accountable", t.accountable), labelled("Consulted", ...t.consulted), labelled("Informed", ...t.informed), labelled("Systems used", ...t.systems)]),
+    ...m.controls, ...m.exceptions.flatMap((x) => [x.scenario, x.what_to_do, said(x.scenario, x.handled_by, x.escalate_to, x.what_to_do)]),
+    m.purpose, m.scope, labelled("Owner", m.owner), labelled("Review cycle", m.review_cadence), ...m.metrics.map((x) => said(x.metric, x.target, x.how)), labelled("Systems named", ...m.systems),
+    ...m.roles.flatMap((r) => [r.purpose, ...r.may, ...r.may_not, ...r.human_only, labelled("Works with", ...r.works_with), labelled("Skills", r.skills)]),
+  ].filter((x) => x && x !== NOT_STATED);
   // a statement is carried when ONE item of the draft shares at least half of its words (pooling every word of the draft would let unrelated items cover it)
   const items = carried.map((c) => words(c));
   const sts = statementsOf(source);
   const uncovered = sts.filter((s) => { const ws = [...words(s)]; return ws.length >= 3 && !items.some((it) => ws.filter((x) => it.has(x)).length / ws.length >= 0.5); });
   if (uncovered.length) w("uncovered", "coverage", `${uncovered.length} statement(s) of the source are not carried by any task, rule or exception: nothing may be dropped silently.`);
-  return { errors, warnings, gaps, coverage: { covered: sts.length - uncovered.length, total: sts.length, uncovered: uncovered.slice(0, 15) }, new_figures };
+  return { errors, warnings, gaps, coverage: { covered: sts.length - uncovered.length, total: sts.length, uncovered }, new_figures };
 }
 
 export const canApprove = (c: Checks) => c.errors.length === 0;
+
+/** A draft that leaves statements of the source out may be approved (a title line or a disclaimer is no step), but only with the approver's reason, which is kept in the log. */
+export const MIN_UNCOVERED_REASON = 10;
+export function uncoveredRefusal(c: Checks, reason: unknown): string | null {
+  const n = c.coverage.uncovered.length;
+  return n && !(typeof reason === "string" && reason.trim().length >= MIN_UNCOVERED_REASON)
+    ? `${n} statement(s) of the source are not carried by this structure. Add them to a task, rule or exception, or say why they can be left out (at least ${MIN_UNCOVERED_REASON} characters).`
+    : null;
+}
 
 // ---- rendering: the canonical Prism SOP ----------------------------------------------------------------------
 
@@ -305,7 +323,7 @@ export function renderCanonical(m: StructuredSop, meta: RenderMeta, tools: unkno
 export type StructEntry =
   | { seq: number; at: string; actor: string; kind: "drafted"; payload: { source: string; title: string; model: StructuredSop; checks: Checks; llm: string; usage?: unknown; attempt: number } }
   | { seq: number; at: string; actor: string; kind: "edited"; payload: { model: StructuredSop; checks: Checks } }
-  | { seq: number; at: string; actor: string; kind: "approved"; payload: { model: StructuredSop; source_sha256: string; canonical_sha256: string; sop_id: string; version: number; review: unknown } }
+  | { seq: number; at: string; actor: string; kind: "approved"; payload: { left_out?: { statements: string[]; reason: string }; model: StructuredSop; source_sha256: string; canonical_sha256: string; sop_id: string; version: number; review: unknown } }
   | { seq: number; at: string; actor: string; kind: "withdrawn"; payload: { reason: string } };
 
 export interface StructState {

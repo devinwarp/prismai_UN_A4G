@@ -15,7 +15,7 @@ import { rollOut } from "@/lib/un/sop-rollout";
 import { reviewSkill, type SkillReview } from "@/lib/un/sop-structure-agent";
 import { draftStructureFor } from "@/lib/un/sop-structure-service";
 import { appendStructureLog, loadStructureLog } from "@/lib/un/sop-structure-store";
-import { canApprove, checkStructured, parseStructured, renderCanonical, replayStructure, tidy, type StructEntry, type StructuredSop } from "@/lib/un/sop-structure";
+import { canApprove, checkStructured, parseStructured, renderCanonical, replayStructure, tidy, uncoveredRefusal, type StructEntry, type StructuredSop } from "@/lib/un/sop-structure";
 import { latestOf, loadCustomRoots, saveVersion } from "@/lib/un/sop-version-store";
 import { customSopFromText } from "@/lib/un/sop/custom";
 import { MAX_SOP_CHARS } from "@/lib/un/sop/custom-limits";
@@ -60,7 +60,7 @@ export async function GET(_request: Request, { params }: Ctx) {
 /** POST { action, ... }
  *   draft     { text?, title? }   the model drafts the structure of `text`, or of the attached SOP when no text is given. Nothing is attached or changed.
  *   edit      { model }           a person's edit of the draft waiting for review
- *   approve   { model?, reviewed: true }   a person approves the structure (their own edited one, or the draft): it is written as Prism Markdown and published as
+ *   approve   { model?, reviewed: true, uncovered_reason? }   (the reason is required when statements of the source are left out) a person approves the structure (their own edited one, or the draft): it is written as Prism Markdown and published as
  *             the SOP of this use case (a new version when one is attached, else a new SOP), and its job profiles and skills come from it
  *   withdraw  { reason }          drop the draft
  * Needs entity.setup, like attaching an SOP. A deployed use case's SOP is frozen. Both model calls use the test generator's model (TESTGEN_MODEL). */
@@ -120,6 +120,9 @@ export async function POST(request: Request, { params }: Ctx) {
   // approve
   if (b.reviewed !== true) return bad("Confirm that you have read the source and this structure side by side.");
   if (!canApprove(checks)) return NextResponse.json({ error: "The structure has errors a person must fix first.", checks }, { status: 400 });
+  const refusal = uncoveredRefusal(checks, b.uncovered_reason);
+  if (refusal) return NextResponse.json({ error: refusal, checks }, { status: 400 });
+  const leftOut = checks.coverage.uncovered.length ? { left_out: { statements: checks.coverage.uncovered, reason: String(b.uncovered_reason).trim().slice(0, 500) } } : {};
   const title = (model.title || state.pending!.title || "SOP").slice(0, 120);
   const baseline = loadBaseline();
   const tools = defaultManifest();
@@ -163,7 +166,7 @@ export async function POST(request: Request, { params }: Ctx) {
       return { profile, report: { ok: false, errors: [e instanceof Error ? e.message : "no skill"], warnings: [], gaps: [], tasks: 0, tools: [], needs_integration: [] }, review: null };
     }
   }));
-  const approved = next("approved", actor, { model, source_sha256: sha(state.pending!.source), canonical_sha256: sha(published.body), sop_id: published.sop_id, version: published.version, review: { skills, kb } });
+  const approved = next("approved", actor, { ...leftOut, model, source_sha256: sha(state.pending!.source), canonical_sha256: sha(published.body), sop_id: published.sop_id, version: published.version, review: { skills, kb } });
   const failed = await append(approved);
   if (failed) return failed;
   return out({ state: replayStructure([...log, approved]), published: { sop_id: published.sop_id, version: published.version, profiles: published.profiles }, kb, skills });
