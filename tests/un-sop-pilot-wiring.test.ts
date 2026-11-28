@@ -234,8 +234,8 @@ test("the tuner's guidance is usable only when it is text, not empty and within 
 
 test("oversize guidance does not fail the run: it is condensed once, and if that still fails tuning ends with the best round kept", () => {
   const route = readFileSync(new URL("../src/app/api/admin/un/use-cases/[id]/pilot/sop/route.ts", import.meta.url), "utf8");
-  assert.match(route, /ask\(condensePrompt\(proposed\.instructions\)\)/);
-  assert.match(route, /usage = addSnapshots\(usage, again\.usage\)/, "the second call is metered too");
+  assert.match(route, /ask\(condensePrompt\(proposed\.instructions\), /);
+  assert.match(route, /usage = spend = addSnapshots\(usage, again\.usage\)/, "the second call is metered too, and kept in what the step spent even if the step fails");
   assert.match(route, /status: "round_limit", message: `The tuning agent could not write guidance within/);
   assert.doesNotMatch(route, /throw new Error\("Invalid tuning guidance"\)/, "no terminal error for guidance that is too long");
 });

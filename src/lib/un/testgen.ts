@@ -468,7 +468,7 @@ export async function appendGenLogTo(db: Db, orgId: string, useCaseId: string, p
 export const slotOf = (caseId: string) => `gen:${caseId}`;
 export const sopCaseSlot = (task: string, family: "happy_path" | "authority") => `sop:${task}:${family}`;
 
-export interface Proposal { case: GenCase; status: "proposed" | "accepted" | "rejected"; reject_reason?: string; by?: string; at: string }
+export interface Proposal { case: GenCase; status: "proposed" | "accepted" | "rejected"; reject_reason?: string; by?: string; /** the last change */ at: string; /** when the generator proposed it */ generated_at: string }
 /** A person's ruling on a generated case that a pilot disputed: the expectation was wrong (the test is retired and does not count
  * against the agent) or the agent was wrong (a confirmed failure). */
 export const RULINGS = ["expectation_wrong", "agent_wrong"] as const;
@@ -499,7 +499,7 @@ export function replayGen(entries: GenEntry[], blueprints: Blueprint[]): GenStat
       }
     } else if (e.kind === "generated") {
       const cases = Array.isArray(p.cases) ? (p.cases as GenCase[]) : [];
-      for (const c of cases) if (!s.proposals.some((x) => x.case.id === c.id)) s.proposals.push({ case: c, status: "proposed", by: e.actor, at: e.at });
+      for (const c of cases) if (!s.proposals.some((x) => x.case.id === c.id)) s.proposals.push({ case: c, status: "proposed", by: e.actor, at: e.at, generated_at: e.at });
       s.runs.push({ at: e.at, by: e.actor, model: String(p.model ?? ""), cases: cases.length, rejected: (p.rejected as Rejection[]) ?? [], gaps: (p.gaps as CoverageGap[]) ?? [], refused: typeof p.refused === "string" ? p.refused : null, prompt_hash: String(p.prompt_hash ?? ""), scenario_id: String(p.scenario_id ?? ""), ...(typeof p.calls === "number" ? { calls: p.calls } : {}), repair: isObj(p.repair) ? (p.repair as unknown as RepairInfo) : null });
     } else if (e.kind === "rejected") {
       const x = s.proposals.find((q) => q.case.id === p.case_id);

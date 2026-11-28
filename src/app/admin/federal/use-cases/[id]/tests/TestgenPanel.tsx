@@ -33,6 +33,9 @@ export function TestgenPanel({ useCaseId, profile, state, chain, tasks, model, m
     router.refresh();
   };
   const last = state.runs[state.runs.length - 1];
+  // a fixed locale and zone, so the server and the browser render the same text
+  const when = (iso: string) => new Intl.DateTimeFormat("en-GB", { timeZone: "Asia/Dubai", day: "2-digit", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit", second: "2-digit" }).format(new Date(iso));
+  const newestFirst = [...state.proposals].sort((a, b) => b.generated_at.localeCompare(a.generated_at));
   const status = (s: string) => (s === "accepted" ? tr(lang, "tg.s.accepted", "In the test set") : s === "rejected" ? tr(lang, "tg.s.rejected", "Rejected") : tr(lang, "tg.s.proposed", "Proposed: not yet in the test set"));
 
   return (
@@ -83,12 +86,17 @@ export function TestgenPanel({ useCaseId, profile, state, chain, tasks, model, m
       <h3 className="mt-5 text-base font-medium">{tr(lang, "tg.list", "Proposals")} ({state.proposals.length})</h3>
       {state.proposals.length === 0 && <p className="mt-2 text-sm text-ink-soft">{tr(lang, "tg.none", "No generated cases yet.")}</p>}
       <ul className="mt-2 space-y-3">
-        {state.proposals.map(({ case: c, status: st, reject_reason }) => (
+        {newestFirst.map(({ case: c, status: st, reject_reason, generated_at }) => (
           <li key={c.id} className="rounded-xl border border-line p-3">
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <p className="text-sm font-medium">{c.title}{c.repaired && <span className="ms-2 rounded border border-line px-1.5 py-0.5 text-[11px] font-normal">{tr(lang, "tg.repaired", "repaired")}</span>}</p>
               <p className="font-mono text-[11px] text-ink-soft">{c.id} · {c.family} · {tr(lang, "tg.conf", "confidence")} {c.confidence}</p>
             </div>
+            <p className="mt-1 text-xs text-ink-soft" data-testid="tg-created">
+              {tr(lang, "tg.created", "Created")} <time dateTime={generated_at} dir="ltr">{when(generated_at)}</time> {tr(lang, "tg.gst", "Gulf time")}
+              {" · "}{tr(lang, "tg.fortask", "Task")} <span dir="ltr">{c.input.task}</span>
+              {generated_at === last?.at && <span className="ms-2 rounded border border-line px-1.5 py-0.5 text-[11px] font-medium">{tr(lang, "tg.latest", "From the latest run")}</span>}
+            </p>
             <p className="mt-1 text-sm">{tr(lang, "tg.expect", "Expected")}: {c.expect.summary}</p>
             {c.input.kind === "sop" && <p className="mt-1 whitespace-pre-wrap break-words text-sm"><span className="font-medium">Test input </span>{c.input.request}</p>}
             <ul className="mt-1 list-disc ps-5 font-mono text-xs text-ink-soft" dir="ltr">

@@ -1,5 +1,5 @@
 // The shape of a use case's run cost on the dashboard register. Types only, so client components can import it.
-export type RunStage = "generation" | "pilot" | "judging" | "tuning" | "production";
+export type RunStage = "setup" | "generation" | "pilot" | "judging" | "tuning" | "production";
 export interface RunCostLine { stage: RunStage; label: string; at: string; elapsed_ms: number; calls: number; usd: number | null }
 export interface RunCost {
   /** Dollars, from the price table in force now. null when nothing recorded could be priced. */
