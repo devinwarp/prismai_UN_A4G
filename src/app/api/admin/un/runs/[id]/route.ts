@@ -8,7 +8,7 @@ import { headOf, loadRun, storeTraceRows, verifyRun, verifyStoredRows } from "@/
 import { addStepMetering, type Usage } from "@/lib/un/metering";
 import { nextStep } from "@/lib/un/scenario";
 import { loadHitlConfig, loadUnUseCases } from "@/lib/un/store";
-import { SCENARIOS } from "@/lib/un/scenarios";
+import { scenarioFor } from "@/lib/un/evidence-scenario";
 
 /** POST { llm?: boolean } → releases the next staged step. With llm the role
  * agents call the model (rules still decide the verdict); without, they run
@@ -19,7 +19,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   const { id } = await params;
   const row = await loadRun(who.org_id!, id);
   if (!row) return NextResponse.json({ error: "Run not found" }, { status: 404 });
-  const sc = SCENARIOS[row.scenario_id];
+  const sc = scenarioFor(row.scenario_id);
   if (!sc) return bad("Unknown scenario");
   if (row.state.done) return bad("All steps have been released");
   const v = verifyRun(row);

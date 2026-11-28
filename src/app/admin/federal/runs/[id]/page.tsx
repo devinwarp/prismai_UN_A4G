@@ -6,7 +6,7 @@ import { requireFederalToolAccess } from "@/lib/un/federal-read-access";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadChunks } from "@/lib/un/kb";
 import { loadRun, verifyRun } from "@/lib/un/runs";
-import { SCENARIOS } from "@/lib/un/scenarios";
+import { scenarioFor } from "@/lib/un/evidence-scenario";
 import AdminHeader from "../../../AdminHeader";
 import LangShell from "../../_components/Lang";
 import RunView from "./RunView";
@@ -20,7 +20,7 @@ export default async function RunPage({ params }: { params: Promise<{ id: string
   if (!profile?.org_id) redirect("/login");
   await requireFederalToolAccess(profile.org_id, user.id, profile.role);
   const row = await loadRun(profile.org_id, id);
-  const sc = row && SCENARIOS[row.scenario_id];
+  const sc = row && scenarioFor(row.scenario_id);
   if (!row || !sc) notFound();
   const { data: org } = await createAdminClient().from("organizations").select("name").eq("id", profile.org_id).maybeSingle();
   // Only the chunks this run cites: source, link and the hash of the source file.

@@ -19,7 +19,7 @@ import {
   type SopPilotCase, type SopPilotJob,
 } from "@/lib/un/sop-pilot";
 import { checkBudget, limitsFromEnv, plannedRunCalls } from "@/lib/un/sop-pilot-budget";
-import { hasVerdictPath, pilotOrder } from "@/lib/un/sop-pilot-order";
+import { pilotOrder } from "@/lib/un/sop-pilot-order";
 import { buildSopPilotReport } from "@/lib/un/sop-pilot-report";
 import { changeSopPilot, daySpentCalls, listSopPilots, readSopPilot, startSopPilot, type PilotScope } from "@/lib/un/sop-pilot-store";
 import { taskPassagesRequired } from "@/lib/un/sop-test-context";
@@ -254,9 +254,9 @@ export async function POST(request: Request, { params }: Ctx) {
     if (suite.error !== undefined) return conflict(suite.error);
     const uc = await loadUseCase(scope.orgId, id);
     if (!uc) return notFound();
-    // the stage order: SOP done and, for a use case with a verdict path, gates accepted and verdict signed; one labelled exemption otherwise (sop-pilot-order.ts)
+    // the stage order: SOP done, gates accepted and verdict signed (sop-pilot-order.ts)
     const journey = (await loadJourneyDetails(scope.orgId, [uc]).catch(() => null))?.journeys.get(uc.id) ?? null;
-    const order = pilotOrder(journey, hasVerdictPath(uc.ext_id));
+    const order = pilotOrder(journey);
     if (!order.ok) return conflict(order.reason);
     const endpoint = agentLlmEndpoint();
     const screening = endpoint ? "node" : "simulated";
@@ -275,9 +275,9 @@ export async function POST(request: Request, { params }: Ctx) {
     const job: SopPilotJob = {
       id: randomUUID(), status: "running", mode, limit, rounds: [{ instructions: best?.instructions ?? "", results: [] }],
       caseCount: suite.cases.length * (reps ?? 1), contextHash: suite.context.hash, skillHash: suite.skill.sha256, testHash: suite.testHash, paramsHash: suite.paramsHash,
-      model, tunerModel, screening, target: SOP_PILOT_TARGET, startedAt: new Date().toISOString(), actor: who.email ?? who.id, message: order.exempt ?? null,
+      model, tunerModel, screening, target: SOP_PILOT_TARGET, startedAt: new Date().toISOString(), actor: who.email ?? who.id, message: null,
       cases: suite.cases.map((test) => ({ id: test.id, title: test.title, task: test.input.task, family: test.family })), ...(reps ? { reps } : {}),
-      calls: 0, limits, ...(order.exempt ? { exempt: order.exempt } : {}), updatedAt: new Date().toISOString(), driver: "server",
+      calls: 0, limits, updatedAt: new Date().toISOString(), driver: "server",
     };
     if (!(await startSopPilot(scope, job))) return conflict("A Pilot is already running for this profile.");
     schedule(job.id);
