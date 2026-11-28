@@ -111,14 +111,15 @@ async function loadEmbedder(): Promise<EmbeddingResult<Embedder>> {
     console.warn("Could not load the embedding runtime.", error);
     return null;
   }) as {
-    pipeline: (t: string, m: string) => Promise<Embedder>;
+    pipeline: (t: string, m: string, o: { dtype: string }) => Promise<Embedder>;
     env: { cacheDir: string; allowLocalModels: boolean };
   } | null;
   if (!tf) return { failure: "runtime" };
   try {
     tf.env.cacheDir = path.join(os.tmpdir(), "hf-cache"); // the function filesystem is read-only except tmp
     tf.env.allowLocalModels = false;
-    return { value: await tf.pipeline("feature-extraction", "nomic-ai/nomic-embed-text-v1.5") };
+    // fp16 (274 MB) because the default fp32 file (547 MB) overflows Vercel's 500 MB /tmp. Its vectors match the stored fp32 ones; q8 does not.
+    return { value: await tf.pipeline("feature-extraction", "nomic-ai/nomic-embed-text-v1.5", { dtype: "fp16" }) };
   } catch (error) {
     console.warn("Could not initialize the Nomic embedding model.", error);
     return { failure: "model" };
