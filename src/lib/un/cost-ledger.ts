@@ -13,6 +13,9 @@ export interface LedgerInput {
   reviews: { profile: string; entries: Logged[] }[];
   tuning: Logged[];
   watch: Logged[];
+  /** The setup steps' own logs: SOP structuring drafts and the targets agent's proposals. */
+  structuring?: Logged[];
+  targets?: Logged[];
   /** The SOP pilot's runs (baseline, tuning, certify): each run's own meter, which the run kept as it worked. */
   sopJobs?: { profile: string; id: string; at: string; mode: string; meter: unknown }[];
 }
@@ -24,6 +27,8 @@ export interface Ledger { entries: CostEntry[]; summary: CostSummary }
 export function buildLedger(i: LedgerInput, prices: PriceTable): Ledger {
   const out: CostEntry[] = [];
   const add = (stage: CostEntry["stage"], ref: string, label: string, at: string, u: unknown) => { if (isUsage(u) && (u.total.calls || u.total.tool_calls)) out.push(entryOf(stage, ref, label, at, u, prices)); };
+  for (const [logged, kind, label] of [[i.structuring, "drafted", "SOP structuring"], [i.targets, "proposed", "Process targets draft"]] as const)
+    for (const e of logged ?? []) if (e.kind === kind) add("setup", `${label} @ ${e.at}`, label, e.at, e.payload.usage);
   for (const g of i.generation) for (const e of g.entries) if (e.kind === "generated") add("generation", `${g.profile} @ ${e.at}`, `Test generation, ${g.profile}`, e.at, e.payload.usage);
   for (const p of i.pilots) {
     if (p.basis) continue; // a report recomputed after a goal review reuses the runs of the pilot it rests on: it makes no calls of its own

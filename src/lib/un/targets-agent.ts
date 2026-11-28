@@ -1,3 +1,4 @@
+import { metered } from "./cost.ts";
 import { hasMeasuredGoals } from "./goals.ts";
 import { approvalRuleWarning, draftWithWording } from "./targets-draft.ts";
 import { proposeTargetsFor } from "./targets-propose.ts";
@@ -27,13 +28,13 @@ export async function draftTargetsFor(orgId: string, uc: UseCase, opts: { model?
     if (state.pending && state.pending.by !== TARGETS_AGENT.id) return { ext_id: uc.ext_id, outcome: "skipped", reason: "person_proposal" };
     const { goals } = await loadGoalsResolved(orgId, uc.entity);
     if (!hasMeasuredGoals(goals)) return { ext_id: uc.ext_id, outcome: "skipped", reason: "goals_not_measured" };
-    const draft = await draftWithWording(goals, { ext_id: uc.ext_id, title: uc.title, entity: uc.entity, description: uc.description, client_facing: uc.client_facing, affects_rights: uc.affects_rights, irreversible: uc.irreversible, hitl_rule: uc.hitl_rule }, undefined, opts.model === false ? false : undefined);
+    const { result: draft, usage } = await metered(() => draftWithWording(goals, { ext_id: uc.ext_id, title: uc.title, entity: uc.entity, description: uc.description, client_facing: uc.client_facing, affects_rights: uc.affects_rights, irreversible: uc.irreversible, hitl_rule: uc.hitl_rule }, undefined, opts.model === false ? false : undefined));
     if (!draft.targets.length) return { ext_id: uc.ext_id, outcome: "skipped", reason: "nothing_to_draft" };
     // the same draft as the one already waiting: do not raise a second notification for it
     if (state.pending && targetsHash(state.pending.targets) === targetsHash(draft.targets)) return { ext_id: uc.ext_id, outcome: "skipped", reason: "up_to_date" };
     const note = `Drafted by the targets agent from the entity goals and the use case's flags (${draft.worded_by === "model" ? "wording by a language model, figures from the goals" : "rules only"}). A person edits and approves.`;
     const warning = approvalRuleWarning(uc);
-    const r = await proposeTargetsFor(orgId, uc, draft.targets, TARGETS_AGENT, warning ? `${note} Warning: ${warning}` : note);
+    const r = await proposeTargetsFor(orgId, uc, draft.targets, TARGETS_AGENT, warning ? `${note} Warning: ${warning}` : note, usage.total.calls ? usage : undefined);
     return r.outcome === "failed" ? { ext_id: uc.ext_id, outcome: "failed", error: r.error } : r.outcome === "unchanged" ? { ext_id: uc.ext_id, outcome: "skipped", reason: "approved" } : { ext_id: uc.ext_id, outcome: "drafted", worded_by: draft.worded_by };
   } catch (e) {
     return { ext_id: uc.ext_id, outcome: "failed", error: e instanceof Error ? e.message : "The targets could not be drafted" };

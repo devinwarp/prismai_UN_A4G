@@ -38,10 +38,13 @@ export class Meter {
 
 const scope = new AsyncLocalStorage<Meter[]>();
 
-/** Run `fn` with a fresh meter open (inside any meters already open) and return its result with what it used. */
-export async function metered<T>(fn: () => Promise<T>): Promise<{ result: T; usage: UsageSnapshot }> {
+/** Run `fn` with a fresh meter open (inside any meters already open) and return its result with what it used. When `fn` throws, `onFail`
+ * gets what was used up to then (calls made before a failure are still billed) and the same error is rethrown. */
+export async function metered<T>(fn: () => Promise<T>, onFail?: (usage: UsageSnapshot) => void): Promise<{ result: T; usage: UsageSnapshot }> {
   const meter = new Meter();
-  const result = await scope.run([...(scope.getStore() ?? []), meter], fn);
+  let result: T;
+  try { result = await scope.run([...(scope.getStore() ?? []), meter], fn); }
+  catch (error) { onFail?.(meter.snapshot()); throw error; }
   return { result, usage: meter.snapshot() };
 }
 
@@ -116,7 +119,7 @@ export function costOf(u: UsageSnapshot, prices: PriceTable): Cost {
 
 // ---- the ledger: what the approver sees ----------------------------------------------------------------------------
 
-export const STAGES = ["generation", "pilot", "judging", "tuning", "production"] as const;
+export const STAGES = ["setup", "generation", "pilot", "judging", "tuning", "production"] as const;
 export type CostStage = (typeof STAGES)[number];
 
 /** One line of the ledger: a piece of work, when, what it used, and what that cost. */

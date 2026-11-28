@@ -19,27 +19,31 @@ export async function loadRunCosts(orgId: string): Promise<Record<string, RunCos
     const { data, error } = await db.from(table).select(cols).eq("org_id", orgId);
     return error ? [] : ((data ?? []) as unknown as Row[]);
   };
-  const [gen, pilots, reviews, tuning, watch, sop] = await Promise.all([
+  const [gen, pilots, reviews, tuning, watch, sop, structure, target] = await Promise.all([
     all("un_testgen_log", "use_case_id,profile,kind,at,payload"),
     all("un_lifecycle_pilot_reports", "id,use_case_id,profile,at,basis,plan"),
     all("un_goal_review_log", "use_case_id,profile,kind,at,payload"),
     all("un_autotune_log", "use_case_id,kind,at,payload"),
     all("un_watchdog_log", "use_case_id,kind,at,payload"),
     all("un_sop_pilot_jobs", "use_case_id,profile,started_at,job"),
+    all("un_sop_structure_log", "use_case_id,kind,at,payload"),
+    all("un_target_log", "use_case_id,kind,at,payload"),
   ]);
   const by = (rows: Row[]) => group(rows, (r) => String(r.use_case_id));
-  const [g, p, rv, t, w, s] = [by(gen), by(pilots), by(reviews), by(tuning), by(watch), by(sop)];
+  const [g, p, rv, t, w, s, st, tg] = [by(gen), by(pilots), by(reviews), by(tuning), by(watch), by(sop), by(structure), by(target)];
   const logged = (rows: Row[] = []) => rows.map((r) => ({ at: iso(r.at), kind: String(r.kind), payload: (r.payload ?? {}) as Record<string, unknown> }));
   const perProfile = (rows: Row[] = []) => [...group(rows, (r) => String(r.profile))].map(([profile, rs]) => ({ profile, entries: logged(rs) }));
   const prs = prices();
   const out: Record<string, RunCost> = {};
-  for (const id of new Set([...g.keys(), ...p.keys(), ...rv.keys(), ...t.keys(), ...w.keys(), ...s.keys()])) {
+  for (const id of new Set([...g.keys(), ...p.keys(), ...rv.keys(), ...t.keys(), ...w.keys(), ...s.keys(), ...st.keys(), ...tg.keys()])) {
     const ledger = buildLedger({
       generation: perProfile(g.get(id)),
       pilots: (p.get(id) ?? []).map((r) => ({ profile: String(r.profile), id: String(r.id), at: iso(r.at), basis: r.basis, plan: r.plan })),
       reviews: perProfile(rv.get(id)),
       tuning: logged(t.get(id)),
       watch: logged(w.get(id)),
+      structuring: logged(st.get(id)),
+      targets: logged(tg.get(id)),
       sopJobs: (s.get(id) ?? []).map((r) => {
         const job = (r.job ?? {}) as { id?: string; mode?: string; meter?: unknown };
         return { profile: String(r.profile), id: String(job.id ?? r.started_at), at: iso(r.started_at), mode: String(job.mode ?? "pilot"), meter: job.meter };

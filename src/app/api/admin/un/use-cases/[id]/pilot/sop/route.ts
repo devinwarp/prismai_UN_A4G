@@ -39,6 +39,11 @@ const tuneModel = () => process.env.TUNER_MODEL || CHAT_MODEL;
 const LEASE_MS = 100_000;
 /** How long one invocation keeps driving a run on the server before it hands over to a fresh one (a hosted function has a time limit; a long-lived server just chains). */
 const driveMs = () => Number(process.env.SOP_PILOT_DRIVE_MS) || 60_000;
+/** Promise.all, but only after every promise has settled. */
+async function settleAll<T>(work: Promise<T>[]): Promise<T[]> {
+  await Promise.allSettled(work);
+  return Promise.all(work);
+}
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /** The delivery every action answers with: the run, the limits it runs under, and how many calls the use case has made today. */
@@ -121,6 +126,18 @@ async function advance(scope: PilotScope, who: Authorised, jobId: string): Promi
   if (!(await save(row, job, new Date(Date.now() + LEASE_MS).toISOString()))) return { job, busy: true };
   const locked = { ...row, revision: row.revision + 1 };
   let next: SopPilotJob;
+  // what this step spent, kept even when the step fails: those calls were made (and may be billed), so they count towards the cost and the daily limit
+  let spend: Awaited<ReturnType<typeof metered>>["usage"] | undefined;
+  const keep = (u: NonNullable<typeof spend>) => { spend = u; };
+  const charged = (to: SopPilotJob, used: NonNullable<typeof spend>, callsMade: number): SopPilotJob => {
+    const cost = costOf(used, prices());
+    return {
+      ...to, calls: (job.calls ?? 0) + callsMade,
+      usage: { calls: (job.usage?.calls ?? 0) + callsMade, prompt_tokens: (job.usage?.prompt_tokens ?? 0) + used.total.prompt_tokens, completion_tokens: (job.usage?.completion_tokens ?? 0) + used.total.completion_tokens },
+      meter: addSnapshots(job.meter ?? emptySnapshot(), used), elapsedMs: (job.elapsedMs ?? 0) + (used.elapsed_ms ?? 0),
+      costUsd: job.costUsd === null || cost.usd === null ? null : (job.costUsd ?? 0) + cost.usd,
+    };
+  };
   try {
     const allowedTasks = new Set(tasks.keys());
     const humanRelease = (task: { flags: { client_facing: boolean; affects_rights: boolean; irreversible: boolean } }) => !!(suite.context.risk.client_facing || suite.context.risk.affects_rights || suite.context.risk.irreversible ||
@@ -129,15 +146,16 @@ async function advance(scope: PilotScope, who: Authorised, jobId: string): Promi
     if (tunerStep) {
       const reference = [...new Map([...tasks.values()].flatMap((task) => suite.context.chunks.filter((c) => c.chunk_id.endsWith(`#${task.id}`)).map((c) => ({ chunk_id: c.chunk_id, text: c.text.slice(0, 2400) }))).map((passage) => [passage.chunk_id, passage])).values()].slice(0, 24);
       const prompt = tuningPrompt(round, bestSopRound(job) ?? round, tasks, suite.cases, suite.skill.markdown, reference);
-      const m = await metered(async () => parseLlmJson(await chatCompletion({ system: prompt.system, messages: [{ role: "user", content: prompt.user }], timeoutMs: 55_000, json: true, model: tunerModel, maxTokens: 2400 })));
-      usage = m.usage;
+      const m = await metered(async () => parseLlmJson(await chatCompletion({ system: prompt.system, messages: [{ role: "user", content: prompt.user }], timeoutMs: 55_000, json: true, model: tunerModel, maxTokens: 2400 })), keep);
+      usage = spend = m.usage;
       const proposed = m.result as { instructions?: unknown; reason?: unknown } | null;
       const instructions = proposed?.instructions;
       if (typeof instructions !== "string" || !instructions.trim() || instructions.length > 3000) throw new Error("Invalid tuning guidance");
       const reason = typeof proposed?.reason === "string" && proposed.reason.trim() ? proposed.reason.trim().slice(0, 600) : null;
       next = { ...job, rounds: [...job.rounds, { instructions: instructions.trim(), results: [], tuning: { saw: failureSummary(round, suite.cases, tasks), reason, at: new Date().toISOString() } }] };
     } else {
-      const m = await metered(() => Promise.all(batch.map(async ({ test, rep }) => {
+      // every case settles before a failure is raised, so a call still in flight is metered too
+      const m = await metered(() => settleAll(batch.map(async ({ test, rep }) => {
         const task = tasks.get(test.input.task);
         if (!task) throw new Error("The task is no longer assigned");
         // an authority test is blocked before inference (runSopCase) and needs no passages; every other case retrieves by vectors, which is required
@@ -145,22 +163,16 @@ async function advance(scope: PilotScope, who: Authorised, jobId: string): Promi
         const passages = blocked ? [] : await taskPassagesRequired(suite.sopId, task, test.input.request);
         return runSopCase(test, { profile: scope.profile, task: task.title, passages, skill: suite.skill.markdown, instructions: round.instructions, allowedTasks, humanRelease: humanRelease(task) },
           ({ system, user }) => chatCompletion({ system, messages: [{ role: "user", content: user }], model, json: true, timeoutMs: 55_000, maxTokens: 4096, seed: 11, ...(endpoint ?? {}) }), rep);
-      })));
-      usage = m.usage;
+      })), keep);
+      usage = spend = m.usage;
       next = finishBatch({ ...job, rounds: [...job.rounds.slice(0, -1), { ...round, results: [...round.results, ...m.result] }] });
     }
-    const cost = costOf(usage, prices());
-    const callsMade = usage.total.calls || planned;
-    next = {
-      ...next, calls: (job.calls ?? 0) + callsMade,
-      usage: { calls: (job.usage?.calls ?? 0) + callsMade, prompt_tokens: (job.usage?.prompt_tokens ?? 0) + usage.total.prompt_tokens, completion_tokens: (job.usage?.completion_tokens ?? 0) + usage.total.completion_tokens },
-      meter: addSnapshots(job.meter ?? emptySnapshot(), usage), elapsedMs: (job.elapsedMs ?? 0) + (usage.elapsed_ms ?? 0),
-      costUsd: job.costUsd === null || cost.usd === null ? null : (job.costUsd ?? 0) + cost.usd,
-    };
+    next = charged(next, usage, usage.total.calls || planned);
     // the certify pass ends by recording a pilot report: what the journey's pilot stage, the release gate and the goal judge read
     if (next.mode === "certify" && next.status === "certified") next = await recordReport(scope, who, next, suite, tasks);
   } catch (error) {
     next = { ...job, status: "error", message: error instanceof Error && /vector retrieval/i.test(error.message) ? error.message : "This Pilot step could not complete. Check the configured agent and tuner models before trying again." };
+    if (spend?.total.calls) next = charged(next, spend, spend.total.calls);
   }
   if (await save(locked, next)) return { job: next };
   return { job: asJob((await readSopPilot(scope, jobId)) ?? row) };
