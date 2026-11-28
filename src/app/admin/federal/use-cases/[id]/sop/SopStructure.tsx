@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import type { Checks, StructuredSop, StructState } from "@/lib/un/sop-structure";
+import { uncoveredRefusal, type Checks, type StructuredSop, type StructState } from "@/lib/un/sop-structure";
 import { btnGhost, btnPrimary, card, field } from "../../../_components/ui";
 
 // The SOP structuring review. A model drafts a structured version of a loosely written SOP; a person reads the source and the structure side by side, edits
@@ -54,9 +54,10 @@ export default function SopStructure({ ucId, canEdit, frozen, attached }: { ucId
   const [model, setModel] = useState<StructuredSop | null>(null);
   const [checks, setChecks] = useState<Checks | null>(null);
   const [reviewed, setReviewed] = useState(false);
+  const [why, setWhy] = useState("");
   const [done, setDone] = useState<Published | null>(null);
 
-  const adopt = useCallback((s: StructState) => { setState(s); setModel(s.pending?.model ?? null); setChecks(s.pending?.checks ?? null); setReviewed(false); }, []);
+  const adopt = useCallback((s: StructState) => { setState(s); setModel(s.pending?.model ?? null); setChecks(s.pending?.checks ?? null); setReviewed(false); setWhy(""); }, []);
   const load = useCallback(async () => {
     const r = await fetch(`/api/admin/un/use-cases/${ucId}/sop-structure`, { cache: "no-store" });
     const j = (await r.json().catch(() => ({}))) as { state?: StructState; ready?: Ready; error?: string };
@@ -192,12 +193,19 @@ export default function SopStructure({ ucId, canEdit, frozen, attached }: { ucId
               <button type="button" className={btnGhost} disabled={busy !== null} onClick={() => void run("edit", { action: "edit", model }, "Saved and checked again against the source.")}>{busy === "edit" ? "Checking…" : "Save and check again"}</button>
               <button type="button" className={btnGhost} disabled={busy !== null} onClick={() => void run("withdraw", { action: "withdraw", reason: "Dropped by the reviewer" }, "The draft was dropped.")}>Drop this draft</button>
             </div>
+            {checks.coverage.uncovered.length > 0 && (
+              <div className="max-w-[72ch] rounded-lg border border-line bg-paper px-3 py-2 text-sm">
+                <p className="font-medium">! {checks.coverage.uncovered.length} statement(s) of the SOP are not in this structure</p>
+                <ul className="mt-1 max-h-48 list-disc overflow-auto ps-5 text-ink-soft" tabIndex={0} aria-label="Statements left out">{checks.coverage.uncovered.map((s, i) => <li key={i} dir="auto">{s}</li>)}</ul>
+                <label className="mt-2 block font-medium">Why they can be left out<textarea className={`${field} mt-1 h-16`} value={why} onChange={(e) => setWhy(e.target.value)} placeholder="Or add them to a task, rule or exception above, then save and check again." /></label>
+              </div>
+            )}
             <label className="flex max-w-[72ch] items-start gap-2 text-sm">
               <input type="checkbox" className="mt-1" checked={reviewed} onChange={(e) => setReviewed(e.target.checked)} />
               <span>I have read the SOP and this structure side by side. Approving makes it the SOP of this use case: a new version is published and its job profiles and skills come from it. The original text stays in the log.</span>
             </label>
-            <button type="button" className={btnPrimary} disabled={busy !== null || !reviewed || checks.errors.length > 0}
-              onClick={() => void run("approve", { action: "approve", model, reviewed: true }, "Approved and published.").then((j) => { if (j) { setDone(j as unknown as Published); router.refresh(); void load(); } })}>
+            <button type="button" className={btnPrimary} disabled={busy !== null || !reviewed || checks.errors.length > 0 || !!uncoveredRefusal(checks, why)}
+              onClick={() => void run("approve", { action: "approve", model, reviewed: true, uncovered_reason: why }, "Approved and published.").then((j) => { if (j) { setDone(j as unknown as Published); router.refresh(); void load(); } })}>
               {busy === "approve" ? "Publishing and building skills…" : "Approve and publish"}
             </button>
             {busy === "approve" && <div><div role="progressbar" aria-label="Publishing the SOP and building its skills" className="h-2 w-64 overflow-hidden rounded-full bg-track"><div className="h-full w-1/3 animate-pulse rounded-full bg-lit motion-reduce:animate-none" /></div><p className="mt-1 text-xs text-ink-soft">Publishing the version, building its knowledge base, compiling each skill and having the model review it. This can take a minute.</p></div>}
