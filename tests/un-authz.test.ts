@@ -15,11 +15,11 @@ const allowed = (s: Subject, a: ActionId, uc: string | undefined = UC02) => can(
 // The whole table, written out, so a change to who may do what shows up in review as a change to this test.
 const EXPECTED: Record<RoleId, ActionId[]> = {
   platform_admin: ["view", "users.manage", "risk.edit", "entity.setup", "entity.people", "user.create"],
-  governance_admin: ["view", "gate.catalogue.change", "policy.edit", "rerun.run", "sop.change.apply", "risk.edit", "scenario.approve"],
-  entity_admin: ["view", "risk.edit", "tuning.run", "tuning.propose", "pilot.run", "deploy", "watchdog.window", "rerun.run", "sop.change.apply", "scenario.propose", "scenario.edit", "entity.setup", "entity.people", "user.create"],
-  process_owner: ["view", "gate.add", "gate.waive", "tuning.approve", "tuning.run", "autotune.switch", "tuning.decide", "run.sign", "reinstate", "scenario.propose", "scenario.edit", "goals.approve", "rerun.request", "sop.change.request", "risk.edit"],
+  governance_admin: ["view", "gate.catalogue.change", "policy.edit", "rerun.run", "sop.change.apply", "risk.edit", "scenario.approve", "contract.approve"],
+  entity_admin: ["view", "risk.edit", "tuning.run", "tuning.propose", "pilot.run", "deploy", "watchdog.window", "rerun.run", "sop.change.apply", "scenario.propose", "scenario.edit", "contract.edit", "entity.setup", "entity.people", "user.create"],
+  process_owner: ["view", "gate.add", "gate.waive", "tuning.approve", "tuning.run", "autotune.switch", "tuning.decide", "run.sign", "reinstate", "scenario.propose", "scenario.edit", "goals.approve", "rerun.request", "sop.change.request", "risk.edit", "contract.edit", "contract.approve"],
   test_author: ["view", "tuning.propose", "scenario.propose"],
-  operator: ["view", "tuning.run", "tuning.propose", "pilot.run", "deploy", "watchdog.window", "rerun.run", "sop.change.apply"],
+  operator: ["view", "tuning.run", "tuning.propose", "pilot.run", "deploy", "watchdog.window", "rerun.run", "sop.change.apply", "contract.edit", "contract.approve"],
   viewer: ["view"],
 };
 

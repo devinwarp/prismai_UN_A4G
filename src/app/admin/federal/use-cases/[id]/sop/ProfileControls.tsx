@@ -11,7 +11,7 @@ async function post(id: string, body: object): Promise<string | null> {
 }
 
 /** The Automate checkbox. Admin only: a viewer sees the state as text. */
-export function AutomateBox({ ucId, profile, checked, canEdit }: { ucId: string; profile: string; checked: boolean; canEdit: boolean }) {
+export function AutomateBox({ ucId, profile, checked, canEdit, blocked }: { ucId: string; profile: string; checked: boolean; canEdit: boolean; /** Why no skill can be built for this profile; it cannot be ticked while this is set. */ blocked?: string }) {
   const lang = useLang();
   const router = useRouter();
   const [busy, setBusy] = useState(false);
@@ -21,9 +21,9 @@ export function AutomateBox({ ucId, profile, checked, canEdit }: { ucId: string;
     <div>
       <label className="inline-flex items-center gap-2 text-sm">
         <input
-          type="checkbox" className="size-4 accent-[var(--color-lit)]" checked={checked} disabled={!canEdit || busy}
+          type="checkbox" className="size-4 accent-[var(--color-lit)]" checked={checked} disabled={!canEdit || busy || (!!blocked && !checked)}
           aria-label={`${tr(lang, "pf.automate", "Automate")}: ${profile}`}
-          title={canEdit ? undefined : tr(lang, "pf.automate.admin", "Ticking Automate needs an admin.")}
+          title={blocked && !checked ? blocked : canEdit ? undefined : tr(lang, "pf.automate.admin", "Ticking Automate needs an admin.")}
           onChange={async (e) => {
             setBusy(true); setErr(null);
             const m = await post(ucId, { action: "tick", profile, automate: e.target.checked });
@@ -33,6 +33,7 @@ export function AutomateBox({ ucId, profile, checked, canEdit }: { ucId: string;
         />
         <span>{busy ? tr(lang, "pf.saving", "Saving…") : label}</span>
       </label>
+      {blocked && !checked && <p role="note" className="mt-1 max-w-[34ch] text-xs text-ember">✕ No skill can be built: {blocked}</p>}
       {err && <p role="alert" className="mt-1 text-xs text-ink"><TV k="pf.err" en="Could not save: {e}" v={{ e: err }} /></p>}
     </div>
   );

@@ -1,4 +1,4 @@
-import { skillFromChunks } from "./sop-kb.ts";
+import { skillProblem } from "./sop/profile-health.ts";
 import { liveChunks } from "./sop-kb-live.ts";
 import { customSopFromText } from "./sop/custom.ts";
 import type { SyntheticBaseline } from "./sop/types.ts";
@@ -26,8 +26,8 @@ export function assessSop(i: { title?: unknown; text: unknown; entity: string; b
   const reasons: string[] = [];
   let skills = 0;
   for (const p of made.profiles) {
-    try { skillFromChunks(made.sop_id, p.name, chunks); skills++; }
-    catch (e) { reasons.push(`${p.name}: ${e instanceof Error ? e.message.replace(/ in custom-[\w-]+/, "") : "no skill"}`); }
+    const why = skillProblem(made.sop_id, p.name, chunks);
+    if (why) reasons.push(`${p.name}: ${why}`); else skills++;
   }
   // task sections the strict layout would silently drop (a "### T04." section with no "Job profile" line)
   const sections = (made.body.match(/^### T\d{2}\./gm) ?? []).length;

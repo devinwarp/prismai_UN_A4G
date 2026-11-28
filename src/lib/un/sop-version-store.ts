@@ -1,5 +1,5 @@
 import { createAdminClient } from "@/lib/supabase/admin";
-import type { JobProfile } from "./sop/profiles";
+import { mergeJointProfiles, type JobProfile } from "./sop/profiles";
 import { profilesOf, sampleInput, sampleSopIdForUseCase } from "./sop/data";
 import { loadAttachedSop } from "./profiles-store";
 import type { SopChanges, SopVersion } from "./sop/versions";
@@ -12,7 +12,7 @@ import type { SopChangeRequest } from "./sop/change";
 const iso = (v: unknown) => (v ? new Date(String(v)).toISOString() : null);
 const ver = (r: Record<string, unknown>): SopVersion => ({
   sop_id: String(r.sop_id), version: Number(r.version), title: String(r.title ?? ""), body: String(r.body ?? ""),
-  profiles: Array.isArray(r.profiles) ? (r.profiles as JobProfile[]) : [], changes: (r.changes as SopChanges | null) ?? null,
+  profiles: Array.isArray(r.profiles) ? mergeJointProfiles(r.profiles as JobProfile[]) : [], changes: (r.changes as SopChanges | null) ?? null,
   created_by: (r.created_by as string | null) ?? null, created_at: iso(r.created_at),
 });
 
@@ -100,7 +100,7 @@ export async function profilesForUseCase(orgId: string, ucId: string, sopId: str
 /** The same for many use cases at once, from the rows the caller already has: (sop, version) to profiles. */
 export async function profileIndex(orgId: string): Promise<(sopId: string, version: number) => JobProfile[] | null> {
   const { data } = await createAdminClient().from("un_sop_versions").select("sop_id, version, profiles").eq("org_id", orgId);
-  const stored = new Map(((data ?? []) as Record<string, unknown>[]).map((r) => [`${r.sop_id}@${r.version}`, (Array.isArray(r.profiles) ? r.profiles : []) as JobProfile[]]));
+  const stored = new Map(((data ?? []) as Record<string, unknown>[]).map((r) => [`${r.sop_id}@${r.version}`, mergeJointProfiles((Array.isArray(r.profiles) ? r.profiles : []) as JobProfile[])]));
   return (sopId, version) => stored.get(`${sopId}@${version}`) ?? (version === 1 ? profilesOf(sopId) : null);
 }
 

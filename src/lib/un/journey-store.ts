@@ -12,6 +12,8 @@ import { replayParams, type ParamEntry } from "./verdict-params";
 import { replay as replayWatch, type WatchEntry } from "./watchdog";
 import { checkSopKbFor } from "./sop-kb-app";
 import { deployedSnapshot, sopCertifications } from "./sop-deployment";
+import { replayContracts, type ContractEntry } from "./output-contract-log";
+import { usesLicensingReference } from "./sop-test-context";
 import { profileIndex } from "./sop-version-store";
 import type { JobProfile } from "./sop/profiles";
 
@@ -33,7 +35,7 @@ type JourneyUseCase = Pick<UnUseCaseState, "id" | "ext_id" | "verdict" | "verdic
 /** Journeys and attached SOP IDs for the given use cases, using the same bulk reads. */
 export async function loadJourneyDetails(orgId: string, ucs: JourneyUseCase[]): Promise<{ journeys: Map<string, Journey>; attachedSopIds: Map<string, string>; automation: Map<string, Automation> }> {
   const db = createAdminClient();
-  const [sops, profiles, evals, tuning, watch, testLog, paramLog, pilots] = await Promise.all([
+  const [sops, profiles, evals, tuning, watch, testLog, paramLog, pilots, contractLog] = await Promise.all([
     db.from("un_use_case_sops").select("*").eq("org_id", orgId),
     db.from("un_job_profiles").select("*").eq("org_id", orgId).eq("automate", true),
     db.from("un_eval_runs").select("use_case_id, summary, created_at").eq("org_id", orgId).order("created_at", { ascending: false }),
@@ -42,10 +44,11 @@ export async function loadJourneyDetails(orgId: string, ucs: JourneyUseCase[]): 
     db.from("un_test_set_log").select("*").eq("org_id", orgId),
     db.from("un_verdict_param_log").select("*").eq("org_id", orgId),
     db.from("un_lifecycle_pilot_reports").select("use_case_id, profile, at, report, basis").eq("org_id", orgId),
+    db.from("un_output_contract_log").select("*").eq("org_id", orgId),
   ]);
   const sopOf = new Map((sops.data ?? []).map((r: Row) => [String(r.use_case_id), String(r.sop_id)]));
   const ticks = group(profiles.data as Row[] | null), runs = group(evals.data as Row[] | null), tl = group(tuning.data as Row[] | null), wl = group(watch.data as Row[] | null);
-  const tLog = group(testLog.data as Row[] | null), pLog = group(paramLog.data as Row[] | null), pr = group(pilots.data as Row[] | null);
+  const tLog = group(testLog.data as Row[] | null), pLog = group(paramLog.data as Row[] | null), pr = group(pilots.data as Row[] | null), cLog = group(contractLog.data as Row[] | null);
   const forProfile = (rows: Row[] | undefined, profile: string) => asLog<never>((rows ?? []).filter((r) => r.profile === profile));
   const kb = new Map<string, boolean>();
   const out = new Map<string, Journey>();
@@ -66,6 +69,9 @@ export async function loadJourneyDetails(orgId: string, ucs: JourneyUseCase[]): 
       sop: { attached: !!sopId, profiles: all?.length ?? 0, ticked: on.length, kbOk: sopId ? !!kb.get(kbKey) : false, skills: on.filter((x) => x.skill_sha256).length },
       gates: await gateAcceptance(orgId, u, tickedFlags(on, all)),
       verdict: u.verdict,
+      // the output contract (what each task returns) of each ticked profile; a use case on the licensing reference has its own, so it is not asked
+      // a contract log that cannot be read (its migration is not applied) is not a reason to ask anyone to approve: the tests page says what is missing
+      ...(sopId && !contractLog.error && !usesLicensingReference(u.ext_id, sopId) ? { contracts: { ticked: on.length, approved: on.filter((r) => !!replayContracts(forProfile(cLog.get(u.id), String(r.profile)) as ContractEntry[]).approved).length } } : {}),
       tests: {
         ticked: on.length,
         ready: on.filter((r) => inForce(replayTestSet(forProfile(tLog.get(u.id), String(r.profile)) as TestEntry[])) && !!replayParams(forProfile(pLog.get(u.id), String(r.profile)) as ParamEntry[]).approved).length,

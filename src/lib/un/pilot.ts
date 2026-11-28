@@ -116,6 +116,8 @@ export interface Measures {
   hallucination: Rate;
   audit_completeness: Rate;
   client_facing_compliance: Rate;
+  /** How many runs were of a client-facing task. 0: the threshold on client-facing compliance does not apply to this profile. Absent on reports made before it was recorded. */
+  client_facing_runs?: number;
   disclosure: Rate;
   promotion_free: Rate;
   fee: Rate;
@@ -194,6 +196,7 @@ export function measure(all: PilotRun[], confidence = 0.95): Measures {
     hallucination: rate(runs.filter((r) => r.hallucinated === true).length, runs.filter((r) => r.hallucinated !== null).length, confidence),
     audit_completeness: rate(runs.filter((r) => r.logged).length, runs.length, confidence),
     client_facing_compliance: share(cf.map((r) => r.compliance_ok), confidence),
+    client_facing_runs: cf.length,
     disclosure: share(runs.map((r) => r.disclosed), confidence),
     promotion_free: share(cf.map((r) => r.promotion_free), confidence),
     fee: share(runs.map((r) => r.fee_ok), confidence),
@@ -233,7 +236,10 @@ export function judge(m: Measures, p: Params): Judgement {
   atLeast("refusal", m.refusal.rate, p.refusal_min);
   atLeast("consistency", m.consistency.rate, p.consistency_min);
   atLeast("audit_completeness", m.audit_completeness.rate, p.audit_completeness_min);
-  atLeast("client_facing_compliance", m.client_facing_compliance.rate, p.client_facing_compliance_min);
+  // a profile with no client-facing task has nothing to measure here: that is "not applicable", not a failure. (Only when the pilot says there were none: a client-facing
+  // profile whose runs gave no result still fails as "not measured".)
+  if (m.client_facing_runs === 0) f.push({ measure: "client_facing_compliance", value: null, op: ">=", threshold: p.client_facing_compliance_min, ok: null, note: "not applicable: no task of this profile is client-facing" });
+  else atLeast("client_facing_compliance", m.client_facing_compliance.rate, p.client_facing_compliance_min);
   atMost("hallucination", m.hallucination.rate, p.hallucination_max);
   atMost("rejected_calls", m.rejected_calls, p.rejected_calls_max);
   atMost("latency_p95_ms", m.latency_p95_ms, p.latency_p95_ms_max);

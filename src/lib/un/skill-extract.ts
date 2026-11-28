@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
-import { chunkSop, extractSkill, sopMetaFrom, vectorStatus, type SopChunk, type SopVectorFile } from "./sop-kb.ts";
+import { chunkSop, extractSkill, sopMetaFrom, vectorStatus, type ContractMap, type SopChunk, type SopVectorFile } from "./sop-kb.ts";
 
 // Library form of scripts/extract_skill.ts: what ticking "Automate" on a job profile runs.
 // Server-only (reads kb/sop/<id>/ from disk). Never throws: a refusal is a value with a reason.
@@ -33,22 +33,23 @@ export function checkSopKb(sopId: string, root = process.cwd()): KbCheck {
   }
 }
 
-export type SkillResult = { ok: true; path: string; sha256: string; written: boolean } | { ok: false; reason: string };
+/** `markdown` is the skill as built, so a caller can keep a version of it. */
+export type SkillResult = { ok: true; path: string; sha256: string; written: boolean; markdown: string } | { ok: false; reason: string };
 
 /** Extracts one profile's skill file after checking the knowledge base. A read-only disk is not an error: the skill is still valid and `written` is false. */
-export function writeSkill(sopId: string, profile: string, root = process.cwd()): SkillResult {
+export function writeSkill(sopId: string, profile: string, root = process.cwd(), contracts?: ContractMap): SkillResult {
   const kb = checkSopKb(sopId, root);
   if (!kb.ok) return { ok: false, reason: kb.reason };
   try {
-    const skill = extractSkill(sopId, profile);
+    const skill = extractSkill(sopId, profile, contracts);
     const sha256 = createHash("sha256").update(skill.markdown).digest("hex");
     const file = path.join(root, skill.path);
     try {
       mkdirSync(path.dirname(file), { recursive: true });
       writeFileSync(file, skill.markdown);
-      return { ok: true, path: skill.path, sha256, written: true };
+      return { ok: true, path: skill.path, sha256, written: true, markdown: skill.markdown };
     } catch {
-      return { ok: true, path: skill.path, sha256, written: false };
+      return { ok: true, path: skill.path, sha256, written: false, markdown: skill.markdown };
     }
   } catch (e) {
     return { ok: false, reason: e instanceof Error ? e.message : "skill extraction failed" };

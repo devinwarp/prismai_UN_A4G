@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import path from "node:path";
 import type { ChunkRow, KbStore, SopRow } from "./kb-store.ts";
 import { checkSopKb, writeSkill, type KbCheck, type SkillResult } from "./skill-extract.ts";
-import { chunkSop, extractSkill, loadSop, primeSop, retrievablePart, vectorStatus, type SopChunk, type SopVectorFile } from "./sop-kb.ts";
+import { chunkSop, extractSkill, loadSop, primeSop, retrievablePart, vectorStatus, type ContractMap, type SopChunk, type SopVectorFile } from "./sop-kb.ts";
 import { embedDocumentsWithStatus, type EmbeddingFailure } from "./vector.ts";
 
 // The SOP knowledge base built INSIDE the app, for an SOP a person uploaded. Until now only the command-line script
@@ -128,14 +128,14 @@ export async function checkLiveSopKb(store: KbStore, sopId: string, version?: nu
 
 /** The skill for one job profile, after checking the knowledge base. For a stored knowledge base nothing is written to disk: the skill is
  * assembled from the chunks whenever it is needed, and only its hash is recorded with the tick. */
-export async function writeLiveSkill(store: KbStore, sopId: string, profile: string, version?: number): Promise<SkillResult> {
+export async function writeLiveSkill(store: KbStore, sopId: string, profile: string, version?: number, contracts?: ContractMap): Promise<SkillResult> {
   const how = await ensureLiveSop(store, sopId);
-  if (how === "disk") return writeSkill(sopId, profile);
+  if (how === "disk") return writeSkill(sopId, profile, undefined, contracts);
   const kb = await checkLiveSopKb(store, sopId, version);
   if (!kb.ok) return { ok: false, reason: kb.reason };
   try {
-    const skill = extractSkill(sopId, profile);
-    return { ok: true, path: skill.path, sha256: sha(skill.markdown), written: false };
+    const skill = extractSkill(sopId, profile, contracts);
+    return { ok: true, path: skill.path, sha256: sha(skill.markdown), written: false, markdown: skill.markdown };
   } catch (e) {
     return { ok: false, reason: message(e) };
   }

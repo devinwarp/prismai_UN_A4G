@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { contractLines, contractOf, type OutputContract } from "./output-contract.ts";
+import { ownedBy } from "./sop/owners.ts";
 import type { SkillFile, SopChunk } from "./sop-kb.ts";
 
 // The skill compiler. For an SOP that went through the structuring step (the approved structure rendered as Prism Markdown, marked "Structured by"), a job
@@ -106,11 +108,11 @@ export interface CompileReport { ok: boolean; errors: string[]; warnings: string
 export type CompiledSkill = SkillFile & { sha256: string; manifest: ToolManifest; manifest_sha256: string; report: CompileReport; compiled: true };
 
 /** Compile the skill of one job profile from the chunks of a structured SOP. Throws, like skillFromChunks, when the profile or its tasks are missing. */
-export function compileSkill(sopId: string, profile: string, chunks: SopChunk[], extraTools: ToolSpec[] = []): CompiledSkill {
+export function compileSkill(sopId: string, profile: string, chunks: SopChunk[], extraTools: ToolSpec[] = [], contracts?: ReadonlyMap<string, OutputContract>): CompiledSkill {
   const want = profile.trim().toLowerCase();
   const roleChunk = chunks.find((c) => c.topics.includes("role") && lastCrumb(c).replace(/^\d+\.\d+\s+/, "").toLowerCase() === want);
   if (!roleChunk) throw new Error(`no job profile named "${profile}" in ${sopId}`);
-  const tasks = chunks.filter((c) => c.topics.includes("task") && c.job_profile?.toLowerCase() === want);
+  const tasks = chunks.filter((c) => c.topics.includes("task") && ownedBy(c.job_profile, profile, chunks.map((x) => x.job_profile ?? "").filter(Boolean)));
   if (!tasks.length) throw new Error(`job profile "${profile}" has no tasks in ${sopId}`);
   const pick = (t: string) => chunks.filter((c) => c.topics.includes(t));
   const first = chunks[0];
@@ -222,7 +224,7 @@ export function compileSkill(sopId: string, profile: string, chunks: SopChunk[],
     "-->",
     "",
     "## Your tasks",
-    ...tasks.flatMap((t) => [`### ${t.chunk_id.split("#")[1]}`, body(t).replace(/^- \*\*Job profile:\*\*[^\n]*\n?/, ""), ""]),
+    ...tasks.flatMap((t) => { const id = t.chunk_id.split("#")[1]; const text = body(t).replace(/^- \*\*Job profile:\*\*[^\n]*\n?/, ""); return [`### ${id}`, text, ...(contracts ? contractLines(contracts.get(id) ?? contractOf(id, text)) : []), ""]; }),
     "## Controls that apply to every action",
     ...pick("controls").map(body),
     "",

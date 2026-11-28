@@ -1,3 +1,4 @@
+import { ownersOfTask } from "./owners.ts";
 import { applicableRules, type HitlFacts } from "../hitl.ts";
 import type { Verdict } from "../model.ts";
 import { decideEffective, effectiveGates, type GovState } from "../gates.ts";
@@ -22,18 +23,34 @@ const anyFlag = (tasks: ProfileTask[]): Record<FlagId, boolean> => ({
 });
 const profile = (name: string, tasks: ProfileTask[]): JobProfile => ({ name, tasks, flags: anyFlag(tasks) });
 
+/** Repairs a profile list stored before joint ownership was understood: a "profile" named after two roles that are both profiles ("Violations Officer and Field Inspector") is not a
+ * job of its own and has no skill. Its tasks go to each of the roles and it is dropped. Anything else is returned as it is, so a stored list that was right does not change. */
+export function mergeJointProfiles(profiles: JobProfile[]): JobProfile[] {
+  const names = profiles.map((p) => p.name);
+  const joint = new Map(profiles.map((p) => [p.name, ownersOfTask(p.name, names.filter((n) => n !== p.name))] as const).filter(([, parts]) => parts.length > 1));
+  if (!joint.size) return profiles;
+  const tasks = new Map<string, ProfileTask[]>(profiles.filter((p) => !joint.has(p.name)).map((p) => [p.name, [...p.tasks]]));
+  for (const p of profiles) for (const part of joint.get(p.name) ?? []) {
+    const own = [...tasks.entries()].find(([n]) => n.toLowerCase() === part.toLowerCase());
+    if (own) for (const t of p.tasks) if (!own[1].some((x) => x.id === t.id)) own[1].push(t);
+  }
+  return profiles.filter((p) => !joint.has(p.name)).map((p) => profile(p.name, (tasks.get(p.name) ?? p.tasks).sort((a, b) => a.id.localeCompare(b.id))));
+}
+
 /** SOPs that give each task its own "### T01." section with a "**Job profile:**" line (SOP-LIC-014). */
 function structured(text: string): JobProfile[] {
-  const by = new Map<string, ProfileTask[]>();
+  const found: { who: string; task: ProfileTask }[] = [];
   for (const sec of text.split(/^### /m).slice(1)) {
     const head = /^(T\d{2})\.\s+(.+)$/m.exec(sec.split("\n")[0]);
     const who = /\*\*Job profile:\*\*\s*([^.\n]+)/.exec(sec)?.[1].trim();
     if (!head || !who) continue;
     const body = sec.split("\n").slice(1).filter((l) => !/\*\*Job profile:\*\*/.test(l)).join("\n");
-    const list = by.get(who) ?? [];
-    list.push({ id: head[1], title: head[2].trim(), flags: flagsOfText(`${head[2]}\n${body}`) });
-    by.set(who, list);
+    found.push({ who, task: { id: head[1], title: head[2].trim(), flags: flagsOfText(`${head[2]}\n${body}`) } });
   }
+  // a task two roles share belongs to each of them (owners.ts), not to a third profile named after both
+  const owners = found.map((f) => f.who);
+  const by = new Map<string, ProfileTask[]>();
+  for (const { who, task } of found) for (const name of ownersOfTask(who, owners)) by.set(name, [...(by.get(name) ?? []), task]);
   return [...by].map(([n, t]) => profile(n, t));
 }
 

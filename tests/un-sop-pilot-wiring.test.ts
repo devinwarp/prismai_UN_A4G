@@ -1,11 +1,13 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import test from "node:test";
 import { journeyStatus, type JourneyInput } from "../src/lib/un/journey.ts";
 import { EMPTY_GOV } from "../src/lib/un/gates.ts";
 import { DEFAULT_PARAMS } from "../src/lib/un/verdict-params.ts";
-import { bestSopRound, failureSummary, finishBatch, roundScore, tuningPrompt, type SopPilotCase, type SopPilotJob, type SopPilotResult, type SopPilotRound } from "../src/lib/un/sop-pilot.ts";
+import { bestSopRound, condensePrompt, failureSummary, finishBatch, MAX_GUIDANCE_CHARS, roundScore, tuningPrompt, usableGuidance, type SopPilotCase, type SopPilotJob, type SopPilotResult, type SopPilotRound } from "../src/lib/un/sop-pilot.ts";
 import { checkBudget, DEFAULT_DAY_CALLS, DEFAULT_RUN_CALLS, limitsFromEnv, plannedRunCalls } from "../src/lib/un/sop-pilot-budget.ts";
 import { pilotOrder } from "../src/lib/un/sop-pilot-order.ts";
+import { judge, measure } from "../src/lib/un/pilot.ts";
 import { buildSopPilotReport, toPilotRuns } from "../src/lib/un/sop-pilot-report.ts";
 
 // The SOP pilot wired into the lifecycle: spend limits, the stage-order check, the journey order, and the pilot report the certify pass records for the journey, the release gate and the goal judge.
@@ -172,4 +174,68 @@ test("a profile with one test per task is inconclusive under the default minimum
   const strict = buildSopPilotReport({ job: jobFor(results), results, cases, params: DEFAULT_PARAMS, ext: "UC09", facts: { client_facing: false, affects_rights: false, irreversible: false }, gov: EMPTY_GOV, risk: { client_facing: false }, clientFacingTask: () => false }).report;
   assert.equal(strict.conclusive, false);
   assert.match(strict.insufficient.join(" "), /T01 has 1 test; at least 5/);
+});
+
+// ---- two measures that could never be met ------------------------------------------------------------------------------
+
+test("consistency is about the outcome a test checks, not the wording of the free-form facts: reworded facts agree, a different outcome does not", () => {
+  const wording = (results: SopPilotResult[]) => results.map((r) => r.output && (r.output as { facts?: unknown }).facts ? { ...r, output: { ...r.output, facts: { [`key_${r.rep}`]: `worded differently ${r.rep}` } } } : r);
+  const reworded = reportOf(wording(certifyResults())).report;
+  assert.equal(reworded.findings.find((x) => x.measure === "consistency")?.value, 1, "same decision, different keys and wording each time: consistent");
+  // a different outcome in one repetition: the test passed twice and failed once
+  const flaky = reportOf(certifyResults(true)).report;
+  assert.ok((flaky.findings.find((x) => x.measure === "consistency")?.value ?? 1) < 1);
+  // the same pass, but one repetition escalated and the others did not
+  const escalated = certifyResults().map((r) => (r.id === "a1" && r.rep === 2 ? { ...r, output: { ...(r.output as object), escalate: "needs a person" } } : r));
+  assert.ok((reportOf(escalated).report.findings.find((x) => x.measure === "consistency")?.value ?? 1) < 1, "escalating in one repetition only is inconsistent");
+});
+
+test("client-facing compliance is not applicable to a profile with no client-facing task, but a client-facing profile that gave no result still fails", () => {
+  const none = reportOf(certifyResults()).report;
+  const f = none.findings.find((x) => x.measure === "client_facing_compliance")!;
+  assert.equal(f.ok, null, "not applicable, so not a failure");
+  assert.match(f.note ?? "", /not applicable/);
+  assert.equal(none.failed.includes("client_facing_compliance"), false);
+  // a client-facing profile: its runs are client-facing, and compliance was never measured (nothing set compliance_ok)
+  const results = certifyResults();
+  const cf = buildSopPilotReport({ job: jobFor(results), results, cases, params, ext: "UC09", facts: { client_facing: true, affects_rights: false, irreversible: false }, gov: EMPTY_GOV, risk: { client_facing: true }, clientFacingTask: () => true });
+  const g = cf.report.findings.find((x) => x.measure === "client_facing_compliance")!;
+  assert.notEqual(g.ok, null, "a client-facing profile is judged on it");
+});
+
+test("a report made before the count of client-facing runs was recorded is judged as before", () => {
+  const m = measure(toPilotRuns(jobFor(certifyResults()), certifyResults(), cases, { client_facing: false }, () => false));
+  const old = { ...m } as Record<string, unknown>;
+  delete old.client_facing_runs;
+  const j = judge(old as unknown as typeof m, params);
+  assert.equal(j.findings.find((x) => x.measure === "client_facing_compliance")!.ok, false, "no count recorded: a missing measure still fails, as it did");
+});
+
+// ---- guidance over the cap ---------------------------------------------------------------------------------------------
+
+test("the tuner's guidance is usable only when it is text, not empty and within the cap; an oversize one is given back to be condensed, never cut", () => {
+  assert.equal(MAX_GUIDANCE_CHARS, 3000);
+  assert.equal(usableGuidance("Check the grade table first."), true);
+  assert.equal(usableGuidance("x".repeat(3000)), true, "exactly at the cap is allowed");
+  assert.equal(usableGuidance("x".repeat(3001)), false);
+  assert.equal(usableGuidance("   "), false);
+  assert.equal(usableGuidance(undefined), false);
+  assert.equal(usableGuidance(42), false);
+  const long = "Rule one. ".repeat(400);
+  const p = condensePrompt(long);
+  assert.match(p.system, /Keep every distinct rule/);
+  assert.match(p.system, /Do not add anything new/);
+  assert.match(p.system, /at most 2800 characters/, "it asks for headroom under the cap");
+  const u = JSON.parse(p.user) as { guidance_to_shorten: string; characters_now: number; limit: number };
+  assert.equal(u.guidance_to_shorten, long, "the whole guidance goes back, uncut");
+  assert.equal(u.characters_now, long.length);
+  assert.equal(u.limit, 3000);
+});
+
+test("oversize guidance does not fail the run: it is condensed once, and if that still fails tuning ends with the best round kept", () => {
+  const route = readFileSync(new URL("../src/app/api/admin/un/use-cases/[id]/pilot/sop/route.ts", import.meta.url), "utf8");
+  assert.match(route, /ask\(condensePrompt\(proposed\.instructions\), /);
+  assert.match(route, /usage = spend = addSnapshots\(usage, again\.usage\)/, "the second call is metered too, and kept in what the step spent even if the step fails");
+  assert.match(route, /status: "round_limit", message: `The tuning agent could not write guidance within/);
+  assert.doesNotMatch(route, /throw new Error\("Invalid tuning guidance"\)/, "no terminal error for guidance that is too long");
 });

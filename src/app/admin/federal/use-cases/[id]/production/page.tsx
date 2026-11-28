@@ -151,7 +151,7 @@ export default async function ProductionPage({ params }: { params: Promise<{ id:
                       <tr key={p.profile} className="border-t border-line align-top">
                         <th scope="row" className="px-3 py-2 text-start font-normal">{p.profile}</th>
                         <td className="px-3 py-2">{p.sop_version}</td>
-                        <td className="px-3 py-2 font-mono text-xs">{p.skill_sha256.slice(0, 12)}</td>
+                        <td className="px-3 py-2 font-mono text-xs">{p.skill_sha256.slice(0, 12)}{p.skill_version ? ` (v${p.skill_version})` : ""}</td>
                         <td className="px-3 py-2 text-xs">{p.guidance.trim() ? <details><summary className="cursor-pointer underline">{p.guidance.trim().length} characters · <span className="font-mono">{p.guidance_sha256.slice(0, 12)}</span></summary><p className="mt-1 max-w-[60ch] whitespace-pre-wrap break-words">{p.guidance}</p></details> : "None: the skill alone met the bar."}</td>
                       </tr>
                     ))}

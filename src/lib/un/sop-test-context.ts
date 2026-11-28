@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { searchChunks } from "@/lib/un/kb";
-import { chunkSop, loadSop, searchSopRequired, skillFromChunks, type SkillFile, type SopChunk } from "@/lib/un/sop-kb";
+import { chunkSop, loadSop, searchSopRequired, skillFromChunks, type ContractMap, type SkillFile, type SopChunk } from "@/lib/un/sop-kb";
+import { contractOf, type OutputContract } from "./output-contract";
 import type { UnUseCaseState } from "@/lib/un/model";
 import type { SopVersion } from "./sop/versions";
 import type { JobProfile, ProfileTask } from "./sop/profiles";
@@ -11,19 +12,26 @@ export function usesLicensingReference(useCaseId: string, sopId: string | null) 
   return useCaseId === "UC02" && sopId === "SOP-LIC-014";
 }
 
-export function sopTestContext(version: SopVersion, useCase: Pick<UnUseCaseState, "ext_id" | "entity" | "client_facing" | "affects_rights" | "irreversible">, profile: JobProfile) {
-  const chunks = chunkSop(version.body, {
+/** The passages of an attached SOP version, as the skill builder and the tests see them. */
+export function chunksOfVersion(version: SopVersion, useCase: Pick<UnUseCaseState, "ext_id" | "entity">): SopChunk[] {
+  return chunkSop(version.body, {
     sopId: version.sop_id, version: String(version.version), useCaseId: useCase.ext_id,
     entity: useCase.entity, jurisdiction: useCase.entity, sourcePath: `sop://${version.sop_id}/v${version.version}`,
   });
+}
+
+export function sopTestContext(version: SopVersion, useCase: Pick<UnUseCaseState, "ext_id" | "entity" | "client_facing" | "affects_rights" | "irreversible">, profile: JobProfile, contracts?: ContractMap) {
+  const chunks = chunksOfVersion(version, useCase);
   const risk = { client_facing: useCase.client_facing, affects_rights: !!useCase.affects_rights, irreversible: !!useCase.irreversible };
   let skill: (SkillFile & { sha256: string }) | null = null;
   try {
-    const rendered = skillFromChunks(version.sop_id, profile.name, chunks);
+    const rendered = skillFromChunks(version.sop_id, profile.name, chunks, contracts);
     skill = { ...rendered, sha256: createHash("sha256").update(rendered.markdown).digest("hex") };
   } catch { /* The profile needs an available skill before tests can run. */ }
   const hash = createHash("sha256").update(JSON.stringify([version.sop_id, version.version, version.body, profile, risk, skill?.sha256])).digest("hex");
-  return { profile, chunks, hash, risk, skill };
+  // what a task returns: the contract a person approved, else the one read off the SOP's own text for the task
+  const contractFor = (taskId: string): OutputContract => contracts?.get(taskId) ?? contractOf(taskId, (chunks.find((c) => c.chunk_id.endsWith(`#${taskId}`))?.text ?? "").split("\n").slice(1).join("\n"));
+  return { profile, chunks, hash, risk, skill, contractFor };
 }
 
 export type SopTestContext = ReturnType<typeof sopTestContext>;
