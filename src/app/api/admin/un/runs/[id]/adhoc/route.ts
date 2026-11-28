@@ -7,7 +7,7 @@ import { loadChunks } from "@/lib/un/kb";
 import { headOf, loadRun, storeTraceRows, verifyRun, verifyStoredRows } from "@/lib/un/runs";
 import { adhocError, adhocStep, type AdhocInput } from "@/lib/un/scenario";
 import { loadHitlConfig, loadUnUseCases } from "@/lib/un/store";
-import { SCENARIOS } from "@/lib/un/scenarios";
+import { scenarioFor } from "@/lib/un/evidence-scenario";
 
 /** POST { summary, gate?, status?, recipients, expected?, llm? } → runs one
  * operator-written step on a gate run: same agents, same policy engine, and
@@ -22,7 +22,7 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
   if (!row) return NextResponse.json({ error: "Run not found" }, { status: 404 });
   const invalid = adhocError(b, row.state.state?.customGates);
   if (invalid) return bad(invalid);
-  const sc = SCENARIOS[row.scenario_id];
+  const sc = scenarioFor(row.scenario_id);
   if (!sc || sc.kind !== "gate") return bad("Ad-hoc steps are only for use-case scenarios");
   if (row.state.log[row.state.log.length - 1]?.signature) return bad("This run is already signed");
   const v = verifyRun(row);

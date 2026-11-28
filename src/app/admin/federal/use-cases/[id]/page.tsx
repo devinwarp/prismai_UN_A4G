@@ -17,7 +17,10 @@ import { effectiveGates } from "@/lib/un/gates";
 import { approversForUseCase } from "@/lib/un/approvers-store";
 import { factsOf, loadGov } from "@/lib/un/gates-store";
 import { sijilIntegrated, withAlignment } from "@/lib/un/alignment";
-import { loadRun } from "@/lib/un/runs";
+import { loadRun, signatureOf } from "@/lib/un/runs";
+import { evidenceEffective, latestEvidenceRun } from "@/lib/un/evidence-store";
+import { currentVerdict, evidenceLines, missingEvidence } from "@/lib/un/evidence-scenario";
+import EvidencePanel from "./EvidencePanel";
 import { loadReleaseCached } from "@/lib/un/release-cached";
 
 const DUBAI = { timeZone: "Asia/Dubai" } as const;
@@ -83,6 +86,9 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
   const eff = effectiveGates({ ext: uc.ext_id, facts: factsOf(uc), gov: await loadGov(profile.org_id) });
   const verdictRun = uc.verdict_run_id ? await loadRun(profile.org_id, uc.verdict_run_id) : null;
   const perms = await permissionsFor(profile, user.id);
+  const evidence = await evidenceEffective(profile.org_id, uc);
+  const evidenceRun = await latestEvidenceRun(profile.org_id, uc.ext_id);
+  const evidenceSignature = evidenceRun ? signatureOf(evidenceRun.state) : null;
   const release = await loadReleaseCached(profile.org_id, id);
   let liveMode = false;
   try { liveMode = liveConfigFromEnv() !== null; } catch { liveMode = true; /* misconfigured: the pull reports the error */ }
@@ -114,6 +120,8 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
       </main>
       <div>
         <div className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
+          <EvidencePanel useCaseId={id} lines={evidenceLines(evidence.effective, evidenceRun?.state ?? null)} missing={missingEvidence(evidenceLines(evidence.effective, evidenceRun?.state ?? null))} ruleset={evidence.effective.ruleset} canEdit={isOrgAdmin(profile.role)}
+            run={evidenceRun ? { id: evidenceRun.id, requested: evidenceRun.state.state?.requested ?? null, steps: evidenceRun.state.steps.length, verdict: currentVerdict(evidenceRun.state), signed: evidenceSignature ? { decision: evidenceSignature.signature!.decision, by: evidenceSignature.signature!.signer_id, at: evidenceSignature.timestamp, comment: evidenceSignature.signature!.comment } : null } : null} />
           <UseCaseGates useCaseId={id} ext={uc.ext_id} eff={eff} runGates={verdictRun?.state.state?.gates ?? {}} canEdit={perms.can("gate.add", id) || perms.can("gate.waive", id)} approvers={await approversForUseCase(profile.org_id, id)} />
         </div>
       </div>

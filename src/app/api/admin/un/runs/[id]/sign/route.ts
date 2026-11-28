@@ -3,7 +3,9 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { bad, notFound, requireAdmin } from "@/lib/api-auth";
 import { isUuid } from "@/lib/un/model";
 import { headOf, loadRun, signatureOf, signRun, storeTraceRows, verifyRun, verifyStoredRows, writeSignedVerdict } from "@/lib/un/runs";
-import { SCENARIOS } from "@/lib/un/scenarios";
+import { evidenceLines, isEvidenceScenario, missingEvidence, scenarioFor } from "@/lib/un/evidence-scenario";
+import { evidenceEffective } from "@/lib/un/evidence-store";
+import { loadUnUseCases } from "@/lib/un/store";
 
 /** POST { decision: "SIGN" | "WITHHOLD", comment } → the human final approval of a
  * finished use-case run (I-4). It appends a hash-chained HUMAN_SIGNATURE record as the
@@ -23,10 +25,17 @@ export async function POST(request: Request, { params }: { params: Promise<{ id:
 
   const row = await loadRun(who.org_id!, id);
   if (!row) return NextResponse.json({ error: "Run not found" }, { status: 404 });
-  const sc = SCENARIOS[row.scenario_id];
+  const sc = scenarioFor(row.scenario_id);
   if (!sc) return bad("Unknown scenario");
   if (sc.kind !== "gate") return bad("Only a use-case scenario has a verdict to sign");
   if (!row.state.done) return bad("Release every step before signing");
+  // an evidence run is signed only when every gate a person has to give evidence for has some: a verdict on a part of the evidence would be a guess
+  if (isEvidenceScenario(row.scenario_id) && !signatureOf(row.state)) {
+    const uc = (await loadUnUseCases(who.org_id!)).find((u) => u.ext_id === sc.ext_id);
+    if (!uc) return bad(`use case ${sc.ext_id} is not imported`);
+    const missing = missingEvidence(evidenceLines((await evidenceEffective(who.org_id!, uc)).effective, row.state));
+    if (missing.length) return bad(`Evidence is still missing for: ${missing.join(", ")}`);
+  }
 
   const v = verifyRun(row);
   if (!v.ok) return NextResponse.json({ error: `Trace log failed verification: ${v.reason}` }, { status: 409 });

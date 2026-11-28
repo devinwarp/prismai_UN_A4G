@@ -2,15 +2,13 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { journeyStatus, type JourneyInput } from "../src/lib/un/journey.ts";
 import { EMPTY_GOV } from "../src/lib/un/gates.ts";
-import { appendEntry, type LogEntry } from "../src/lib/un/tuning.ts";
 import { DEFAULT_PARAMS } from "../src/lib/un/verdict-params.ts";
 import { bestSopRound, failureSummary, finishBatch, roundScore, tuningPrompt, type SopPilotCase, type SopPilotJob, type SopPilotResult, type SopPilotRound } from "../src/lib/un/sop-pilot.ts";
 import { checkBudget, DEFAULT_DAY_CALLS, DEFAULT_RUN_CALLS, limitsFromEnv, plannedRunCalls } from "../src/lib/un/sop-pilot-budget.ts";
-import { EXEMPT_NO_VERDICT_PATH, hasVerdictPath, pilotOrder } from "../src/lib/un/sop-pilot-order.ts";
+import { pilotOrder } from "../src/lib/un/sop-pilot-order.ts";
 import { buildSopPilotReport, toPilotRuns } from "../src/lib/un/sop-pilot-report.ts";
 
-// The SOP pilot wired into the lifecycle: spend limits, the stage-order check with its one labelled exemption, the journey rule for a use case with no
-// verdict path, and the pilot report the certify pass records for the journey, the release gate and the goal judge.
+// The SOP pilot wired into the lifecycle: spend limits, the stage-order check, the journey order, and the pilot report the certify pass records for the journey, the release gate and the goal judge.
 
 // ---- spend limits --------------------------------------------------------------------------------------------------------
 
@@ -44,67 +42,35 @@ test("a whole run is refused at the start when it cannot finish inside its limit
 const stage = (id: string, state: string) => ({ id, n: 1, group: "define", state, reason: null });
 const journey = (states: Record<string, string>) => ({ stages: Object.entries(states).map(([id, state]) => stage(id, state)), done: 0, waiting: 0, next: null }) as never;
 
-test("which use cases have a verdict path: only those with a staged scenario", () => {
-  assert.equal(hasVerdictPath("UC02"), true);
-  assert.equal(hasVerdictPath("UC01"), true);
-  assert.equal(hasVerdictPath("UC13"), true);
-  assert.equal(hasVerdictPath("UC09"), false);
-});
-
-test("a pilot needs the SOP stage done, and for a use case with a verdict path also gates accepted and the verdict signed", () => {
+test("a pilot needs the SOP stage done, gates accepted and the verdict signed: every use case has a verdict path, so there is no exemption", () => {
   const done = journey({ sop: "done", gates: "done", verdict: "done" });
-  assert.deepEqual(pilotOrder(done, true), { ok: true });
-  const sopOpen = pilotOrder(journey({ sop: "needs_you", gates: "not_yet", verdict: "not_yet" }), true);
+  assert.deepEqual(pilotOrder(done), { ok: true });
+  const sopOpen = pilotOrder(journey({ sop: "needs_you", gates: "not_yet", verdict: "not_yet" }));
   assert.equal(sopOpen.ok, false);
   if (!sopOpen.ok) assert.match(sopOpen.reason, /SOP intake is not complete/);
-  const gates = pilotOrder(journey({ sop: "done", gates: "needs_you", verdict: "not_yet" }), true);
+  const gates = pilotOrder(journey({ sop: "done", gates: "needs_you", verdict: "not_yet" }));
   assert.equal(gates.ok, false);
   if (!gates.ok) assert.match(gates.reason, /Gates are not accepted/);
-  const verdict = pilotOrder(journey({ sop: "done", gates: "done", verdict: "needs_you" }), true);
+  const verdict = pilotOrder(journey({ sop: "done", gates: "done", verdict: "needs_you" }));
   assert.equal(verdict.ok, false);
   if (!verdict.ok) assert.match(verdict.reason, /verdict is not signed/);
-  assert.equal(pilotOrder(null, true).ok, false, "an unreadable journey is refused, not waved through");
+  assert.equal(pilotOrder(null).ok, false, "an unreadable journey is refused, not waved through");
 });
 
-test("the ONE exemption: no verdict path means gates and verdict cannot be done, so the pilot may run, labelled; the SOP stage is still required", () => {
-  const exempt = pilotOrder(journey({ sop: "done", gates: "not_yet", verdict: "not_yet" }), false);
-  assert.deepEqual(exempt, { ok: true, exempt: EXEMPT_NO_VERDICT_PATH });
-  assert.match(EXEMPT_NO_VERDICT_PATH, /Approval still needs them/);
-  assert.equal(pilotOrder(journey({ sop: "needs_you", gates: "not_yet", verdict: "not_yet" }), false).ok, false, "the exemption never skips SOP intake");
-});
-
-// ---- the journey for a use case with no verdict path ---------------------------------------------------------------------
+// ---- the journey order ---------------------------------------------------------------------------------------------------
 
 const sopDone = { attached: true, profiles: 2, ticked: 1, kbOk: true, skills: 1 };
 const input = (o: Partial<JourneyInput> = {}): JourneyInput => ({
   sop: sopDone, gates: null, verdict: null, tests: { ticked: 1, ready: 1 }, pilot: { ticked: 1, run: 1, met: 1 }, evalSet: false, evalRuns: 0, evalMet: null, tuning: [], watch: [], ...o,
 });
 const state = (i: JourneyInput, id: string) => { const s = journeyStatus(i).stages.find((x) => x.id === id)!; return [s.state, s.reason]; };
-const T = (n: number) => new Date(Date.UTC(2026, 10, 27, 9, 0, n)).toISOString();
 
-test("with no verdict path gates and verdict say so, and the later work is not held back by them", () => {
-  const j = input({ noVerdictPath: true });
-  assert.deepEqual(state(j, "gates"), ["not_yet", "no_verdict_path"]);
-  assert.deepEqual(state(j, "verdict"), ["not_yet", "no_verdict_path"]);
-  assert.deepEqual(state(j, "tests"), ["done", null], "tests are judged on their own records");
-  assert.deepEqual(state(j, "pilot"), ["done", null], "a recorded, met pilot counts");
-  assert.deepEqual(state(input({ noVerdictPath: true, tests: { ticked: 1, ready: 0 } }), "tests"), ["needs_you", "approve_tests"]);
-});
-
-test("the same inputs WITHOUT the flag still hold the road in order: a verdict path is required to get past gates", () => {
+test("the road is held in order: until the gates are accepted and the verdict signed, tests and the pilot do not count", () => {
   const j = input({ gates: { accepted: false } });
   assert.deepEqual(state(j, "gates"), ["needs_you", "accept_gates"]);
+  assert.deepEqual(state(j, "verdict"), ["not_yet", "after_previous"]);
   assert.deepEqual(state(j, "tests"), ["not_yet", "after_previous"]);
   assert.deepEqual(state(j, "pilot"), ["not_yet", "after_previous"]);
-});
-
-test("approval and production still need every earlier stage done, including gates and verdict, so the exemption never lets a release through", () => {
-  const certification: LogEntry[] = [appendEntry(null, "certification", "p", { met: true, version: 1 }, T(1))];
-  const signed: LogEntry[] = [...certification, appendEntry(certification[0], "approval", "p", { decision: "SIGN", version: 1, signer: "p" }, T(2))];
-  const j = input({ noVerdictPath: true, evalSet: true, evalRuns: 1, evalMet: true, tuning: signed });
-  assert.deepEqual(state(j, "tuning"), ["done", null]);
-  assert.deepEqual(state(j, "approval"), ["not_yet", "after_previous"], "approval waits for gates and verdict, which cannot be done");
-  assert.deepEqual(state(j, "production"), ["not_yet", "after_previous"]);
 });
 
 // ---- the loop helpers ----------------------------------------------------------------------------------------------------

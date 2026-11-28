@@ -26,10 +26,9 @@ export const REASON_EN = {
   skill_missing: "A ticked profile has no skill file yet.",
   after_sop: "Comes after SOP intake.",
   after_previous: "Comes after the stage before it is done.",
-  no_verdict_path: "No verdict is possible for this use case yet (verdicts come from staged scenarios). Later work can start; approval still needs this stage.",
   gates_unbuilt: "Per-use-case gates are not available yet.",
-  accept_gates: "A person accepts the flags and gates.",
-  run_scenario: "Run a scenario and have a person sign the verdict.",
+  accept_gates: "A person records the evidence of each gate, and accepts the flags and gates.",
+  run_scenario: "Record the evidence of each gate and have a person sign the verdict.",
   no_go: "The verdict is NO_GO, so the use case stops here.",
   no_eval_set: "This use case has no eval set yet.",
   run_evals: "Run the pilot evals.",
@@ -72,8 +71,6 @@ export interface JourneyInput {
   watch: WatchEntry[];
   /** The release gate's answer (release-gate.ts), when it was worked out: only for a single use case. Absent: not gated here. */
   release?: { ready: boolean; blockers: number };
-  /** No staged scenario exists for this use case, so gates can never be accepted and a verdict never signed. Those two stages then say so and do not hold the later work back; approval still needs them. */
-  noVerdictPath?: boolean;
   /** The use case is run by the SOP pilot (it has no hand-written eval set): its evals and tuning stages are read from the pilot and its certifications. */
   sopPilot?: boolean;
   /** SOP pilot: how many ticked job profiles have a met certification on the SOP version and skill the use case is on now. */
@@ -95,8 +92,8 @@ export function stageRules(i: JourneyInput): Record<StageId, R> {
     : !i.sop.kbOk ? ["needs_you", "kb_missing"]
     : i.sop.skills < i.sop.ticked ? ["needs_you", "skill_missing"]
     : ["done", null];
-  const gates: R = !sopDone ? ["not_yet", "after_sop"] : i.noVerdictPath ? ["not_yet", "no_verdict_path"] : !i.gates ? ["not_yet", "gates_unbuilt"] : i.gates.accepted ? ["done", null] : ["needs_you", "accept_gates"];
-  const verdict: R = i.noVerdictPath ? ["not_yet", "no_verdict_path"] : i.verdict === null ? ["needs_you", "run_scenario"] : i.verdict === "NO_GO" ? ["stopped", "no_go"] : ["done", null];
+  const gates: R = !sopDone ? ["not_yet", "after_sop"] : !i.gates ? ["not_yet", "gates_unbuilt"] : i.gates.accepted ? ["done", null] : ["needs_you", "accept_gates"];
+  const verdict: R = i.verdict === null ? ["needs_you", "run_scenario"] : i.verdict === "NO_GO" ? ["stopped", "no_go"] : ["done", null];
   const testsDone = i.tests.ticked > 0 && i.tests.ready >= i.tests.ticked;
   const tests: R = !sopDone ? ["not_yet", "after_sop"] : testsDone ? ["done", null] : ["needs_you", "approve_tests"];
   const pilot: R = !testsDone ? ["not_yet", "tests_first"] : i.pilot.run === 0 ? ["needs_you", "run_pilot"] : i.pilot.met >= i.pilot.ticked ? ["done", null] : ["needs_you", "pilot_not_met"];
@@ -127,8 +124,8 @@ export function journeyStatus(i: JourneyInput): Journey {
   const stages: JourneyStage[] = [];
   const APPROVAL = STAGE_IDS.indexOf("approval");
   STAGE_IDS.forEach((id, k) => {
-    // a stage held at "no_verdict_path" does not hold the stages after it back, up to tuning; approval and production still need every earlier stage done
-    const open = k > 0 && (k >= APPROVAL ? stages.slice(0, k).some((s) => s.state !== "done") : stages[k - 1].state !== "done" && stages[k - 1].reason !== "no_verdict_path");
+    // approval and production need every earlier stage done; the others only the stage before them
+    const open = k > 0 && (k >= APPROVAL ? stages.slice(0, k).some((s) => s.state !== "done") : stages[k - 1].state !== "done");
     // a deployed agent that is being moved to a newer SOP version keeps showing as deployed work: the older stages restarting must not hide it
     const [state, reason] = open && rows[id][0] !== "not_yet" && !(id === "production" && rows[id][1] === "redeploy") ? (["not_yet", "after_previous"] as R) : rows[id];
     stages.push({ id, n: k + 1, group: GROUP_OF[id], state, reason });
