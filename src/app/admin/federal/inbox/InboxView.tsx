@@ -5,13 +5,15 @@ import { useCallback, useEffect, useState } from "react";
 import { tr } from "@/lib/un/i18n/dict";
 import { DEFAULT_RACI, POSITIONS, STEPS, STEP_LABELS, type Letter } from "@/lib/un/raci";
 import type { InboxItem } from "@/lib/un/inbox";
+import { REASON_EN, type ReasonCode } from "@/lib/un/journey";
 import { useLang } from "../_components/Lang";
 import WorkIcon from "../_components/WorkIcon";
 
 interface Settings { enabled: boolean; daily_cap: number }
 interface LogEntry { seq: number; at: string; action: string; outcome: "done" | "blocked" | "skipped" }
-interface Waiting { name: string; job_title: string | null; letter: Letter; mode: string; handler: string }
-interface Data { waiting?: Record<string, Waiting[]>; items: InboxItem[]; counts: { todo: number; info: number; agent: number }; settings: Settings; log: LogEntry[]; log_ok: boolean }
+interface Waiting { name: string; job_title: string | null; letter: Letter; mode: string; handler: string; subject: string; you: boolean }
+interface NextWith { reason: ReasonCode | null; stopped: boolean; who: { name: string; job_title: string | null; letter: Letter; you: boolean; covering: string | null }[] }
+interface Data { waiting?: Record<string, Waiting[]>; next?: Record<string, NextWith>; items: InboxItem[]; counts: { todo: number; info: number; agent: number }; settings: Settings; log: LogEntry[]; log_ok: boolean }
 interface Staged { job_title: string | null; role: string | null; entity: string | null; use_case_id: string | null; ext_id: string | null; suggested_email: string }
 
 const field = "mt-1 block w-full rounded-lg border border-line bg-card px-3 py-2 text-sm text-ink outline-none focus:border-lit focus:ring-1 focus:ring-lit";
@@ -62,7 +64,41 @@ function StagedUser({ item, onDone }: { item: InboxItem; onDone: (msg: string) =
   );
 }
 
-function Card({ item, act, onMsg, waiting }: { item: InboxItem; act: (a: string, id: string, extra?: Record<string, unknown>) => Promise<void>; onMsg: (m: string) => void; waiting?: Waiting[] }) {
+/** On information: who in the organisation the work is with now, by name. */
+function PendingWith({ waiting, next }: { waiting?: Waiting[]; next?: NextWith }) {
+  const lang = useLang();
+  const box = "mt-2 rounded-lg border border-line bg-paper-deep/50 px-3 py-2 text-xs";
+  const person = (name: string, job: string | null, what: string, you: boolean, k: number) => (
+    <li key={k}><span className="font-medium text-ink">{name}{you ? ` (${tr(lang, "ib.w.you", "you")})` : ""}</span><span className="text-ink-soft">{job ? `, ${job}` : ""} · {what}</span></li>
+  );
+  if (waiting?.length) {
+    const bySubject = new Map<string, Waiting[]>();
+    for (const w of waiting) bySubject.set(w.subject, [...(bySubject.get(w.subject) ?? []), w]);
+    const what = (w: Waiting) => `${w.mode === "approval" ? tr(lang, "ib.w.decide", "to decide") : w.mode === "consult" ? tr(lang, "ib.w.input", "asked for input") : tr(lang, "ib.w.act", "to act")}, ${w.handler === "agent" ? tr(lang, "ib.w.agent", "their agent is on it") : tr(lang, "ib.w.human", "a person")}`;
+    return (
+      <div className={box} data-testid="ib-pending">
+        {[...bySubject].map(([subject, ws]) => (
+          <div key={subject} className="[&+&]:mt-2">
+            <p className="text-ink-soft"><span className="font-semibold text-ink">{tr(lang, "ib.waiting", "Pending with")}</span> · {subject}</p>
+            <ul className="mt-1">{ws.map((w, k) => person(w.name, w.job_title, what(w), w.you, k))}</ul>
+          </div>
+        ))}
+      </div>
+    );
+  }
+  if (!next) return <p className="mt-2 text-xs text-ink-soft" data-testid="ib-pending">{tr(lang, "ib.w.none", "Nothing is pending on anyone for this.")}</p>;
+  const why = next.reason ? tr(lang, `jb.r.${next.reason}`, REASON_EN[next.reason]) : "";
+  return (
+    <div className={box} data-testid="ib-pending">
+      <p className="text-ink-soft"><span className="font-semibold text-ink">{next.stopped ? tr(lang, "ib.w.stopped", "Stopped") : tr(lang, "ib.waiting", "Pending with")}</span> · {tr(lang, "ib.w.next", "No request is open. Next step of the use case:")} {why}</p>
+      {next.stopped ? null : next.who.length > 0
+        ? <ul className="mt-1">{next.who.map((w, k) => person(w.name, w.job_title, `${w.covering ? tr(lang, "ib.w.covering", "covering: nobody holds {p}").replace("{p}", tr(lang, `ib.pos.${w.covering}`, w.covering === "owner" ? "process owner" : w.covering.replaceAll("_", " "))) : w.letter === "R" ? tr(lang, "ib.w.act", "to act") : w.letter === "A" ? tr(lang, "ib.w.decide", "to decide") : tr(lang, "ib.w.both", "to act and decide")}`, w.you, k))}</ul>
+        : <p className="mt-1 font-medium text-ember">{tr(lang, "ib.w.nobody", "Nobody holds the position that does this. Appoint someone on the People page.")}</p>}
+    </div>
+  );
+}
+
+function Card({ item, act, onMsg, waiting, next }: { item: InboxItem; act: (a: string, id: string, extra?: Record<string, unknown>) => Promise<void>; onMsg: (m: string) => void; waiting?: Waiting[]; next?: NextWith }) {
   const lang = useLang();
   const staged = item.payload.staged as Staged | undefined;
   const draft = item.payload.draft as string | undefined;
@@ -79,12 +115,7 @@ function Card({ item, act, onMsg, waiting }: { item: InboxItem; act: (a: string,
         {item.escalated_from && <> · {tr(lang, "ib.escalated", "Escalated to you: nobody dealt with it in two working days.")}</>}
       </p>
       <p className="mt-2 text-sm whitespace-pre-line text-ink-soft">{item.body}</p>
-      {item.mode === "inform" && waiting && waiting.length > 0 && (
-        <p className="mt-1 text-xs text-ink-soft">
-          <span className="font-medium">{tr(lang, "ib.waiting", "Waiting on")}:</span>{" "}
-          {waiting.map((w, k) => <span key={k}>{k > 0 && "; "}{w.name}{w.job_title ? `, ${w.job_title}` : ""} ({w.mode === "approval" ? tr(lang, "ib.w.decide", "to decide") : w.mode === "consult" ? tr(lang, "ib.w.input", "asked for input") : tr(lang, "ib.w.act", "to act")}, {w.handler === "agent" ? tr(lang, "ib.w.agent", "their agent is on it") : tr(lang, "ib.w.human", "a person")})</span>)}
-        </p>
-      )}
+      {item.mode === "inform" && item.status !== "done" && item.status !== "dismissed" && <PendingWith waiting={waiting} next={next} />}
       {item.mode !== "inform" && item.status !== "done" && item.status !== "dismissed" && <p className="mt-1 text-xs text-ink-soft">{tr(lang, "ib.pending.you", "Pending on: you")}</p>}
       {item.blocked_reason && <p className="mt-2 rounded-lg border border-ember/40 bg-ember/10 px-3 py-2 text-sm text-ember">{tr(lang, "ib.blocked", "Your agent was stopped: {why}").replace("{why}", item.blocked_reason)}</p>}
       {item.mode === "approval" && <p className="mt-2 text-xs font-medium text-ink-soft">{tr(lang, "ib.decision.note", "A decision for a person. An agent does not take it.")}</p>}
@@ -107,13 +138,13 @@ function Card({ item, act, onMsg, waiting }: { item: InboxItem; act: (a: string,
   );
 }
 
-function Section({ id, title, items, act, onMsg, waiting, extra }: { id: string; title: string; items: InboxItem[]; act: (a: string, id: string, extra?: Record<string, unknown>) => Promise<void>; onMsg: (m: string) => void; waiting?: Record<string, Waiting[]>; extra?: React.ReactNode }) {
+function Section({ id, title, items, act, onMsg, waiting, next, extra }: { id: string; title: string; items: InboxItem[]; act: (a: string, id: string, extra?: Record<string, unknown>) => Promise<void>; onMsg: (m: string) => void; waiting?: Record<string, Waiting[]>; next?: Record<string, NextWith>; extra?: React.ReactNode }) {
   const lang = useLang();
   return (
     <section aria-labelledby={id} className="rounded-2xl border border-line bg-card p-5">
       <h2 id={id} className="font-display text-xl font-medium">{title} <span className="font-mono text-sm text-ink-soft">({items.length})</span></h2>
       {items.length > 1 && extra}
-      {items.length === 0 ? <p className="mt-2 text-sm text-ink-soft">{tr(lang, "ib.empty", "Nothing here.")}</p> : <ul className="mt-3">{items.map((i) => <Card key={i.id} item={i} act={act} onMsg={onMsg} waiting={waiting?.[i.id]} />)}</ul>}
+      {items.length === 0 ? <p className="mt-2 text-sm text-ink-soft">{tr(lang, "ib.empty", "Nothing here.")}</p> : <ul className="mt-3">{items.map((i) => <Card key={i.id} item={i} act={act} onMsg={onMsg} waiting={waiting?.[i.id]} next={next?.[i.id]} />)}</ul>}
     </section>
   );
 }
@@ -163,7 +194,7 @@ export default function InboxView() {
           <Section id="ib-todo" title={tr(lang, "ib.todo", "To do")} items={by("action")} act={act} onMsg={onMsg} />
           <Section id="ib-decisions" title={tr(lang, "ib.decisions", "Decisions for you")} items={by("approval")} act={act} onMsg={onMsg} />
           <Section id="ib-consult" title={tr(lang, "ib.consult", "Your input is asked")} items={by("consult")} act={act} onMsg={onMsg} />
-          <Section id="ib-info" title={tr(lang, "ib.info", "For your information")} items={by("inform")} act={act} onMsg={onMsg} waiting={data.waiting} extra={<div className="mt-2 flex flex-wrap gap-3"><button type="button" className={btn} onClick={() => void act("dismiss_all", "")}>{tr(lang, "ib.dismissall", "Put all away")}</button><p className="self-center text-xs text-ink-soft">{tr(lang, "ib.archive.note", "Put away is an archive: nothing is deleted. Information is also put away after 14 days.")}</p></div>} />
+          <Section id="ib-info" title={tr(lang, "ib.info", "For your information")} items={by("inform")} act={act} onMsg={onMsg} waiting={data.waiting} next={data.next} extra={<div className="mt-2 flex flex-wrap gap-3"><button type="button" className={btn} onClick={() => void act("dismiss_all", "")}>{tr(lang, "ib.dismissall", "Put all away")}</button><p className="self-center text-xs text-ink-soft">{tr(lang, "ib.archive.note", "Put away is an archive: nothing is deleted. Information is also put away after 14 days.")}</p></div>} />
           {closed.length > 0 && (
             <details className="rounded-2xl border border-line bg-card p-5">
               <summary className="cursor-pointer font-display text-xl font-medium">{tr(lang, "ib.archive", "Archive")} <span className="font-mono text-sm text-ink-soft">({closed.length})</span></summary>

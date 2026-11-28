@@ -88,7 +88,7 @@ export function RejectBars({ rejects }: { rejects: Record<Criterion, number> }) 
               </span>
               <span className={`font-mono tabular-nums ${bad ? "font-medium text-ember" : ""}`}>{bad && <span aria-hidden>✕ </span>}{n}</span>
             </div>
-            <div className="mt-1.5 h-2.5 rounded-full bg-paper-deep" role="img" aria-label={tr(lang, "uc.sj.n_rejects", "{n} rejects").replace("{n}", String(n))}>
+            <div className="mt-1.5 h-2.5 rounded-full bg-track" role="img" aria-label={tr(lang, "uc.sj.n_rejects", "{n} rejects").replace("{n}", String(n))}>
               <div className="bar-grow h-full rounded-full" style={{ width: `${(n / max) * 100}%`, background: bad ? "var(--color-ember)" : "var(--color-v-sup)" }} />
             </div>
           </li>

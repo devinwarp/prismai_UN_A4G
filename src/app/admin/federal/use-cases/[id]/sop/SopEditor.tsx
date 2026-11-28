@@ -151,7 +151,7 @@ export function SopEditor({ ucId, attached, version, latest, frozen, changes, op
             <textarea id="sp-text" className={`${field} h-44 font-mono text-xs`} value={text} onChange={(e) => setText(e.target.value)} />
           </div>
           <button type="button" className={`${btnPrimary} mt-3`} disabled={!!busy || text.trim().length < 50} onClick={() => void run("paste", profilesUrl, { action: "attach_custom", title, text }, (j) => { setTitle(""); setText(""); if (j.needs_structuring) return j.drafted ? "This SOP needs structuring, so it is not attached yet. A draft is ready: review it in the Structure the SOP section below." : "Attached as it is. It needs structuring and a draft could not be made: use the Structure the SOP section below."; })}>{busy === "paste" ? "Analysing the SOP…" : tr(lang, "sp.paste.btn", "Use this SOP")}</button>
-          {busy === "paste" && <div className="mt-2"><div role="progressbar" aria-label="Analysing the SOP" className="h-2 w-64 overflow-hidden rounded-full bg-paper-deep"><div className="h-full w-1/3 animate-pulse rounded-full bg-lit motion-reduce:animate-none" /></div><p className="mt-1 text-xs text-ink-soft">The SOP is analysed first. If it needs structuring, a model drafts it, which can take a minute.</p></div>}
+          {busy === "paste" && <div className="mt-2"><div role="progressbar" aria-label="Analysing the SOP" className="h-2 w-64 overflow-hidden rounded-full bg-track"><div className="h-full w-1/3 animate-pulse rounded-full bg-lit motion-reduce:animate-none" /></div><p className="mt-1 text-xs text-ink-soft">The SOP is analysed first. If it needs structuring, a model drafts it, which can take a minute.</p></div>}
         </details>
       )}
 

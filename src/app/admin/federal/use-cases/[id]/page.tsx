@@ -1,4 +1,5 @@
 import { isOrgAdmin } from "@/lib/roles";
+import { loadPeople } from "@/lib/un/roles-store";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -68,6 +69,9 @@ async function ChangeHistory({ ext_id }: { ext_id: string }) {
   );
 }
 
+/** The person behind a signature, by name: an id tells a reader nothing. The id itself stays on the trace. */
+const signerName = async (orgId: string, id: string) => { const p = (await loadPeople(orgId)).find((x) => x.id === id); return p?.full_name ?? p?.email ?? id; };
+
 export const metadata: Metadata = { title: "Pilot and Sijil", robots: { index: false, follow: false } };
 
 export default async function UseCasePage({ params }: { params: Promise<{ id: string }> }) {
@@ -121,7 +125,7 @@ export default async function UseCasePage({ params }: { params: Promise<{ id: st
       <div>
         <div className="mx-auto max-w-6xl px-4 pb-4 sm:px-6">
           <EvidencePanel useCaseId={id} lines={evidenceLines(evidence.effective, evidenceRun?.state ?? null)} missing={missingEvidence(evidenceLines(evidence.effective, evidenceRun?.state ?? null))} ruleset={evidence.effective.ruleset} canEdit={isOrgAdmin(profile.role)}
-            run={evidenceRun ? { id: evidenceRun.id, requested: evidenceRun.state.state?.requested ?? null, steps: evidenceRun.state.steps.length, verdict: currentVerdict(evidenceRun.state), signed: evidenceSignature ? { decision: evidenceSignature.signature!.decision, by: evidenceSignature.signature!.signer_id, at: evidenceSignature.timestamp, comment: evidenceSignature.signature!.comment } : null } : null} />
+            run={evidenceRun ? { id: evidenceRun.id, requested: evidenceRun.state.state?.requested ?? null, steps: evidenceRun.state.steps.length, verdict: currentVerdict(evidenceRun.state), signed: evidenceSignature ? { decision: evidenceSignature.signature!.decision, by: await signerName(profile.org_id, evidenceSignature.signature!.signer_id), at: evidenceSignature.timestamp, comment: evidenceSignature.signature!.comment } : null } : null} />
           <UseCaseGates useCaseId={id} ext={uc.ext_id} eff={eff} runGates={verdictRun?.state.state?.gates ?? {}} canEdit={perms.can("gate.add", id) || perms.can("gate.waive", id)} approvers={await approversForUseCase(profile.org_id, id)} />
         </div>
       </div>

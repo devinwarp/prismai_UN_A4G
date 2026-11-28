@@ -112,7 +112,7 @@ export default function SopStructure({ ucId, canEdit, frozen, attached }: { ucId
           <button type="button" className={btnPrimary} disabled={busy !== null || (!attached && !text.trim())} onClick={() => void run("draft", { action: "draft", ...(text.trim() ? { text } : {}) }, "The draft is ready: review it below.")}>
             {busy === "draft" ? "The model is reading the SOP…" : attached ? "Draft the structure from the attached SOP" : "Draft the structure"}
           </button>
-          {busy === "draft" && <div role="progressbar" aria-label="The model is drafting the structure" className="h-2 w-64 overflow-hidden rounded-full bg-paper-deep"><div className="h-full w-1/3 animate-pulse rounded-full bg-lit motion-reduce:animate-none" /></div>}
+          {busy === "draft" && <div role="progressbar" aria-label="The model is drafting the structure" className="h-2 w-64 overflow-hidden rounded-full bg-track"><div className="h-full w-1/3 animate-pulse rounded-full bg-lit motion-reduce:animate-none" /></div>}
           {busy === "draft" && <p className="text-xs text-ink-soft">This takes up to a minute or two for a long SOP.</p>}
         </div>
       )}
@@ -200,7 +200,7 @@ export default function SopStructure({ ucId, canEdit, frozen, attached }: { ucId
               onClick={() => void run("approve", { action: "approve", model, reviewed: true }, "Approved and published.").then((j) => { if (j) { setDone(j as unknown as Published); router.refresh(); void load(); } })}>
               {busy === "approve" ? "Publishing and building skills…" : "Approve and publish"}
             </button>
-            {busy === "approve" && <div><div role="progressbar" aria-label="Publishing the SOP and building its skills" className="h-2 w-64 overflow-hidden rounded-full bg-paper-deep"><div className="h-full w-1/3 animate-pulse rounded-full bg-lit motion-reduce:animate-none" /></div><p className="mt-1 text-xs text-ink-soft">Publishing the version, building its knowledge base, compiling each skill and having the model review it. This can take a minute.</p></div>}
+            {busy === "approve" && <div><div role="progressbar" aria-label="Publishing the SOP and building its skills" className="h-2 w-64 overflow-hidden rounded-full bg-track"><div className="h-full w-1/3 animate-pulse rounded-full bg-lit motion-reduce:animate-none" /></div><p className="mt-1 text-xs text-ink-soft">Publishing the version, building its knowledge base, compiling each skill and having the model review it. This can take a minute.</p></div>}
             {checks.errors.length > 0 && <p className="text-sm font-medium text-ember">✕ Fix the errors above first.</p>}
           </div>
         </div>

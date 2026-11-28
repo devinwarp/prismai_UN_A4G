@@ -135,6 +135,8 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
   const pickGoals = pick ? await loadGoalsResolved(orgId, pick.entity) : null;
   const pickApprovers = pick ? withGovernance(await approversForUseCase(orgId, pick.id)).map((a) => ({ title: a.title, source: a.source })) : [];
   const perms = await permissionsFor(profile, user.id);
+  // SOP intake and automation choices follow the profiles route (entity.setup), so the entity's own administrator can do them
+  const canSetupSops = !!entity && perms.can("entity.setup", undefined, entity.name);
   const open = (id: SetupStepId) => q.step === id;
 
   const linkEntity = (name: string) => countryHref("/admin/federal/setup", country.id, name);
@@ -165,7 +167,7 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
               countryOptions={{ en: knownCountries("en"), ar: knownCountries("ar") }}
               countries={infos.map(({ c, info }) => ({ id: c.id, name: c.name, ruleset: c.ruleset, currency: c.currency, ready: !!info, onDemand: c.built === "on_demand", custom: !!c.custom, hidden: !!c.hidden }))}
               rulesets={RULESETS.map((r) => ({ id: r.id, name: r.name }))} staged={euStaged} euBuilt={!!state.policies.EU} />
-            {countryPolicy && <CountryPolicy key={country.id} policy={countryPolicy} noTarget={country.id !== "UAE" && !countryTarget} countryId={country.id} />}
+            {countryPolicy && <CountryPolicy key={`policy-${country.id}`} policy={countryPolicy} noTarget={country.id !== "UAE" && !countryTarget} countryId={country.id} />}
             <GovernanceAdmin country={country.id} countryName={country.name} canEdit={canEdit} appointed={governanceAppointed}
               people={people.map((p) => ({ id: p.id, label: [p.full_name ?? p.email ?? p.id, p.job_title].filter(Boolean).join(" · ") }))} />
             <p className="text-sm text-ink-soft"><Link className="underline" href={countryHref("/admin/federal/country", country.id)}><T k="su.country.more" en="Run results, comparison and the country log" /></Link></p>
@@ -231,11 +233,11 @@ export default async function SetupPage({ searchParams }: { searchParams: Promis
           summary={<TV k="su.sop.sum" en="{r} of {n} use cases ready: SOP attached, knowledge base built, job profiles chosen. {a} SOPs attached." v={{ r: stateOf("sop").count?.done ?? 0, n: cases.length, a: cases.filter((c) => intake[c.id]).length }} />}
           openWhenDone={open("sop")}>
           <div className="flex flex-wrap items-center gap-3">
-            <SopIntake key={entity?.name} country={country.id} entity={entity?.name} canEdit={canEdit}
+            <SopIntake key={entity?.name} country={country.id} entity={entity?.name} canEdit={canSetupSops}
               rows={cases.map((uc) => ({ id: uc.id, code: uc.ext_id, title: uc.title, frozen: uc.stage === "deployed", sop: intake[uc.id], draft: structureDrafts.has(uc.id) }))} />
             <Link className="text-sm underline" href={countryHref("/admin/federal", country.id, entity?.name)}><T k="su.done.go" en="Go to the dashboard" /></Link>
           </div>
-          <AutomationConfirm rows={automation} canEdit={canEdit} />
+          <AutomationConfirm rows={automation} canEdit={canSetupSops} />
         </SetupSection>
         {entity && (
           <section aria-labelledby="coverage-h" className="rounded-xl border border-line bg-card p-4">

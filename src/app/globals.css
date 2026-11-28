@@ -11,6 +11,7 @@
   /* Default: warm paper + deep pine ("field notes" editorial). */
   --color-paper: #f6f4ec;
   --color-paper-deep: #eceade;
+  --color-track: #eceade; /* the empty part of a progress bar */
   --color-ink: #1c211c;
   --color-ink-soft: #5e685c;
   --color-line: #dcd8c6;
@@ -43,6 +44,7 @@ html[data-theme="ink"] {
   color-scheme: dark;
   --color-paper: #151311;
   --color-paper-deep: #1e1b17;
+  --color-track: #514a3e; /* paper-deep is invisible on a dark card */
   --color-ink: #efeae0;
   --color-ink-soft: #a49c8e;
   --color-line: #332e26;
@@ -354,6 +356,7 @@ html[data-theme="ink"] .paper-bg::after {
   color-scheme: light;
   --color-paper: #f6f4ec;
   --color-paper-deep: #eceade;
+  --color-track: #eceade; /* the empty part of a progress bar */
   --color-ink: #1c211c;
   --color-ink-soft: #5e685c;
   --color-line: #dcd8c6;

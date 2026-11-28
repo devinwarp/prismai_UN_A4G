@@ -106,15 +106,18 @@ export function staleInfo(items: InboxItem[], now: Date): InboxItem[] {
   return items.filter((i) => isOpen(i) && i.mode === "inform" && new Date(i.created_at).getTime() < cutoff);
 }
 
-export interface PendingOn { name: string; job_title: string | null; letter: Letter; mode: Mode; handler: Handler }
+export interface PendingOn { name: string; job_title: string | null; letter: Letter; mode: Mode; handler: Handler; subject: string; you: boolean }
 
-/** Who the thing is waiting on. An information item tells its reader nothing is needed from them; this names the people who were asked for the same event
- * (an action, a decision or an input) and have not dealt with it. `open` is every open item of the organisation; `person` names a user. */
+/** Who the thing is waiting on. An information item tells its reader nothing is needed from them; this names the people asked (for an action, a decision or an
+ * input) who have not dealt with it: for the same event, or else anywhere on the same use case, because a notice that something finished has its own key.
+ * `open` is every open item of the organisation; `person` names a user. */
 export function pendingOn(item: InboxItem, open: InboxItem[], person: (id: string) => { name: string; job_title: string | null } | undefined): PendingOn[] {
   if (item.mode !== "inform") return [];
-  return open
-    .filter((o) => o.dedupe_key === item.dedupe_key && o.user_id !== item.user_id && o.mode !== "inform")
-    .flatMap((o) => { const p = person(o.user_id); return p ? [{ name: p.name, job_title: p.job_title, letter: o.letter, mode: o.mode, handler: o.handler }] : []; });
+  const asks = open.filter((o) => o.mode !== "inform");
+  let related = asks.filter((o) => o.dedupe_key === item.dedupe_key);
+  // an unfilled position is its own notice, not the use case's pending work
+  if (!related.length && item.use_case_id) related = asks.filter((o) => o.use_case_id === item.use_case_id && o.kind !== "people.position_missing");
+  return related.flatMap((o) => { const p = person(o.user_id); return p ? [{ name: p.name, job_title: p.job_title, letter: o.letter, mode: o.mode, handler: o.handler, subject: o.subject, you: o.user_id === item.user_id }] : []; });
 }
 
 export function countsOf(items: InboxItem[]) {

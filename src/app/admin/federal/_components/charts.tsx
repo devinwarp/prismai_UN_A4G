@@ -37,7 +37,7 @@ export function TargetTrack({
           "aria-valuenow": value,
           "aria-valuetext": target === null ? note : fmt(tr(lang, "ua.tp.vt", "{v} of {t} use cases; target {g}"), { v: value, t: total, g: target }),
         } : { "aria-hidden": true })}
-        className="relative mt-2 h-4 overflow-visible rounded-full bg-paper-deep desk:mt-1.5 desk:h-3"
+        className="relative mt-2 h-4 overflow-visible rounded-full bg-track desk:mt-1.5 desk:h-3"
       >
         <div className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${w}%`, background: fill }} />
         {t !== null && <div aria-hidden className="absolute -top-1.5 -bottom-1.5 w-0.5 bg-ink" style={{ insetInlineStart: `calc(${t}% - 1px)` }} />}
@@ -218,7 +218,7 @@ export function TallyList({
                     {fmt(tr(lang, "ua.tally.row", "{d}/{t} deployed · {c} aligned"), { d: r.deployed, t: r.total, c: r.aligned })}
                   </span>
                 </span>
-                <span className="relative mt-1.5 block h-2.5 rounded-full bg-paper-deep" style={{ width: `${(r.total / maxTotal) * 100}%`, minWidth: "3rem" }}>
+                <span className="relative mt-1.5 block h-2.5 rounded-full bg-track" style={{ width: `${(r.total / maxTotal) * 100}%`, minWidth: "3rem" }}>
                   <span className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.deployed, r.total)}%`, background: "var(--color-lit)" }} />
                   <span className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.aligned, r.total)}%`, background: "var(--color-v-sup)" }} />
                 </span>
@@ -318,7 +318,7 @@ function EntityChip({ r, active, onSelect }: { r: Tally; active: string; onSelec
     >
       <span dir="auto" className="block truncate text-xs font-medium">{r.key}</span>
       <span className="mt-1 block font-mono text-[10px] text-ink-soft tabular-nums"><bdi dir="ltr">{r.deployed}/{r.total}</bdi> · <bdi dir="ltr">{r.aligned}</bdi> ✓</span>
-      <span className="relative mt-1 block h-1.5 rounded-full bg-paper-deep" aria-hidden>
+      <span className="relative mt-1 block h-1.5 rounded-full bg-track" aria-hidden>
         <span className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.deployed, r.total)}%`, background: "var(--color-lit)" }} />
         <span className="bar-grow absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.aligned, r.total)}%`, background: "var(--color-v-sup)" }} />
       </span>
@@ -352,7 +352,7 @@ function EntityDirectory({ rows, active, onSelect }: { rows: Tally[]; active: st
                 <span dir="auto" className="min-w-0 truncate text-sm">{active === r.key && <span aria-hidden>● </span>}{r.key}</span>
                 <span className="shrink-0 font-mono text-[11px] text-ink-soft tabular-nums"><bdi dir="ltr">{r.deployed}/{r.total}</bdi> · <bdi dir="ltr">{r.aligned}</bdi> ✓</span>
               </span>
-              <span className="relative mt-1.5 block h-1.5 rounded-full bg-paper-deep" aria-hidden>
+              <span className="relative mt-1.5 block h-1.5 rounded-full bg-track" aria-hidden>
                 <span className="absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.deployed, r.total)}%`, background: "var(--color-lit)" }} />
                 <span className="absolute inset-y-0 start-0 rounded-full" style={{ width: `${pct(r.aligned, r.total)}%`, background: "var(--color-v-sup)" }} />
               </span>

@@ -1,4 +1,3 @@
-import { isOrgAdmin } from "@/lib/roles";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
@@ -37,7 +36,6 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
   if (!(await mayReadUseCase(profile.org_id, user.id, profile.role, id))) notFound();
   const uc = await loadUseCase(profile.org_id, id);
   if (!uc) notFound();
-  const canEdit = isOrgAdmin(profile.role);
   const sopId = await loadAttachedSop(profile.org_id, id);
   // the SOP is read by version: this use case is on one, a deployed one is frozen on it, and a newer one may be waiting
   const att = await loadAttachment(profile.org_id, id).catch(() => null);
@@ -55,6 +53,8 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
   const frozen = uc.stage === "deployed";
   const open = (await loadChangeRequests(profile.org_id).catch(() => [])).filter((r) => r.use_case_id === id && r.status === "open").at(-1) ?? null;
   const perms = await permissionsFor(profile, user.id);
+  // the permission the profiles and sop-structure routes check, so a button shows exactly when the route would accept it
+  const canEdit = perms.can("entity.setup", id);
   const rows = sopId ? await loadProfileRows(profile.org_id, id, sopId) : [];
   const ticked = new Set(rows.filter((r) => r.automate).map((r) => r.profile));
   const rs = RULESETS.find((r) => KEY[r.id] === j) ?? RULESETS[0];
@@ -95,7 +95,7 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
           <p className="mt-3 flex flex-wrap gap-2">
             {SAMPLES.filter((s) => s.sop_id !== sopId).map((s) => <AttachButton key={s.sop_id} ucId={id} sopId={s.sop_id} canEdit={canEdit && !frozen} className={btnGhost} />)}
           </p>
-          {!canEdit && <p className="mt-2 text-xs text-ink-soft"><T k="pf.attach.admin" en="Attaching a SOP needs an admin." /></p>}
+          {!canEdit && <p className="mt-2 text-xs text-ink-soft"><T k="pf.attach.admin" en="Attaching a SOP needs this entity’s administrator." /></p>}
           {(canEdit || sopId) && (
             <SopEditor
               ucId={id} attached={sopId} version={version} latest={latest?.version ?? null} frozen={frozen} changes={latest?.changes ?? null}

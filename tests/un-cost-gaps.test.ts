@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 import { metered, parsePrices, recordModelCall, type UsageSnapshot } from "../src/lib/un/cost.ts";
 import { buildLedger } from "../src/lib/un/cost-ledger.ts";
-import { replayGen } from "../src/lib/un/testgen.ts";
+import { blueprintOf, replayGen } from "../src/lib/un/testgen.ts";
 
 const none = { generation: [], pilots: [], reviews: [], tuning: [], watch: [] };
 
@@ -34,4 +34,11 @@ test("a proposal keeps the time it was created after a person rejects it", () =>
   ], []);
   assert.equal(s.proposals[0].generated_at, "2026-01-01T00:00:00Z");
   assert.equal(s.proposals[0].at, "2026-01-02T00:00:00Z");
+});
+
+test("an accepted SOP happy-path case shows as in the test set, and its sibling of the same task and family does not", () => {
+  const mk = (id: string) => ({ id, title: id, family: "happy_path", model: "m", input: { kind: "sop", task: "T03" }, expect: { summary: "s", assertions: [] }, gates: [], citations: [] }) as never;
+  const log = [{ seq: 1, kind: "generated", at: "2026-11-28T00:00:00Z", actor: "a", payload: { cases: [mk("one"), mk("two")] }, prev_hash: "", hash: "" }] as never;
+  const state = replayGen(log, [blueprintOf(mk("one")) as never]);
+  assert.deepEqual(state.proposals.map((p) => p.status), ["accepted", "proposed"]);
 });

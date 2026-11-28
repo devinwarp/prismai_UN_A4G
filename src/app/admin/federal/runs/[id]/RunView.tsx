@@ -37,7 +37,7 @@ function PortfolioBars({ outcome, lang }: { outcome: string; lang: Lang }) {
     <div className="mt-3">
       <p className="mb-1 inline-block rounded-md border border-ember/60 px-2 py-0.5 font-mono text-[11px] font-medium text-ember">{tr(lang, SANDBOX_KEY, SANDBOX_EN)}</p>
       <div role="img" aria-label={`${tr(lang, SANDBOX_KEY, SANDBOX_EN)}. ${tr(lang, "uc.run.pf_aria", "Deployed {d} of {n}, aligned {c}, target {t}").replace("{d}", String(d.deployed)).replace("{n}", String(d.total)).replace("{c}", String(d.aligned)).replace("{t}", String(d.target))}`}>
-        <div className="relative h-3 rounded-full bg-paper-deep">
+        <div className="relative h-3 rounded-full bg-track">
           <div className="absolute inset-y-0 start-0 rounded-full bg-lit" style={{ width: w(d.deployed) }} />
           <div className="absolute inset-y-0 start-0 rounded-full" style={{ width: w(d.aligned), background: "var(--color-v-sup)" }} />
           <div aria-hidden className="absolute -top-1 -bottom-1 w-0.5 bg-ink" style={{ insetInlineStart: `calc(${w(d.target)} - 1px)` }} />
