@@ -67,6 +67,7 @@ export const JOURNEY_AR: Record<string, string> = {
   "cost.calls": "استدعاءات النموذج",
   "cost.tools": "استدعاءات الأدوات",
   "cost.usd": "الكلفة",
+  "cost.stage.setup": "خطوات الإعداد",
   "cost.stage.generation": "توليد الاختبارات",
   "cost.stage.pilot": "تشغيلات التجربة",
   "cost.stage.judging": "تقييم الأهداف",

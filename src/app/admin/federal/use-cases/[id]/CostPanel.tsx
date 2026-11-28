@@ -5,7 +5,7 @@ import { card } from "../../_components/ui";
 
 const usd = (v: number | null) => (v === null ? "—" : `$${v.toFixed(v < 1 ? 4 : 2)}`);
 const secs = (ms: number) => (ms < 1000 ? "0s" : ms < 60_000 ? `${Math.round(ms / 1000)}s` : `${Math.floor(ms / 60_000)}m ${Math.round((ms % 60_000) / 1000)}s`);
-const STAGE_EN: Record<(typeof STAGES)[number], string> = { generation: "Test generation", pilot: "Pilot runs", judging: "Goal judging", tuning: "Tuning", production: "Production monitoring" };
+const STAGE_EN: Record<(typeof STAGES)[number], string> = { setup: "Setup steps", generation: "Test generation", pilot: "Pilot runs", judging: "Goal judging", tuning: "Tuning", production: "Production monitoring" };
 
 /** What the whole process has cost so far: every model call and tool call recorded for test generation, pilots, judging, tuning and production, with
  * the gross total. Dollars come from the price table (data/model-prices.json); a model without a price is listed and the total says it is partial. */
