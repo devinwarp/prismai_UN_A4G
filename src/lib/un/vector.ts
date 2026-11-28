@@ -104,6 +104,15 @@ type Embedder = (text: string, opts: { pooling: string; normalize: boolean }) =>
 export type EmbeddingFailure = "runtime" | "model" | "timeout" | "inference";
 type EmbeddingResult<T> = { value: T } | { failure: EmbeddingFailure };
 let embedder: Promise<EmbeddingResult<Embedder>> | undefined;
+let loading = false;
+
+/** The embedding model is being loaded or downloaded right now (a cold start). A caller that gave up waiting should try again, not fail for good. */
+export const embedderLoading = () => loading;
+
+/** Thrown when a query that must be embedded could not be, only because the model is still loading. It is a "try again shortly", never a failure of the work. */
+export class EmbedderLoadingError extends Error {
+  constructor() { super("The search model is still loading (the first use after a cold start takes a minute). Try again shortly."); this.name = "EmbedderLoadingError"; }
+}
 
 async function loadEmbedder(): Promise<EmbeddingResult<Embedder>> {
   const pkg = "@huggingface/transformers"; // resolved at runtime
@@ -128,10 +137,14 @@ async function loadEmbedder(): Promise<EmbeddingResult<Embedder>> {
 
 /** Share a model load across callers. A failed load can be retried, while a timed-out caller leaves the load in progress. */
 async function getEmbedder(limitMs: number): Promise<EmbeddingResult<Embedder>> {
-  embedder ??= loadEmbedder().then((result) => {
-    if ("failure" in result) embedder = undefined;
-    return result;
-  });
+  if (!embedder) {
+    loading = true;
+    embedder = loadEmbedder().then((result) => {
+      loading = false;
+      if ("failure" in result) embedder = undefined;
+      return result;
+    });
+  }
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
@@ -143,6 +156,17 @@ async function getEmbedder(limitMs: number): Promise<EmbeddingResult<Embedder>> 
   } finally {
     clearTimeout(timer);
   }
+}
+
+/** Start loading the model now without waiting for it, so a later query does not pay the whole cold start. Never throws. */
+export function warmEmbedder(): void {
+  void getEmbedder(1).catch(() => {});
+}
+
+/** Wait up to `limitMs` for the model: "ready", "loading" (still going: try again), or "unavailable" (it failed to load: retrying will not help soon). */
+export async function ensureEmbedder(limitMs: number): Promise<"ready" | "loading" | "unavailable"> {
+  const r = await getEmbedder(limitMs);
+  return "value" in r ? "ready" : r.failure === "timeout" ? "loading" : "unavailable";
 }
 
 /** Embed a query with transformers.js, or null if vectors are switched off
@@ -158,7 +182,8 @@ export async function embedQuery(query: string, opts: { force?: boolean } = {}):
   try {
     const out = await model.value(`search_query: ${query}`, { pooling: "mean", normalize: true });
     return Array.from(out.data);
-  } catch {
+  } catch (error) {
+    console.warn("Embedding a query failed.", error);
     return null;
   }
 }

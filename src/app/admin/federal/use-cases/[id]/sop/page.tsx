@@ -12,12 +12,15 @@ import { permissionsFor } from "@/lib/un/permissions-server";
 import { RULESETS } from "@/lib/un/rulesets";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { checkSopKbFor } from "@/lib/un/sop-kb-app";
+import { chunksOfVersion, usesLicensingReference } from "@/lib/un/sop-test-context";
+import { profileProblems } from "@/lib/un/sop/profile-health";
 import { sampleInput, sampleSopIdForUseCase, SAMPLES } from "@/lib/un/sop/data";
 import { assessProfiles, EVIDENCE_KEYS } from "@/lib/un/sop/profiles";
 import LangShell, { T, TV } from "../../../_components/Lang";
 import { btnGhost, card, scrollRegion, VerdictBadge } from "../../../_components/ui";
 import { AttachButton, AutomateBox } from "./ProfileControls";
 import { SopEditor } from "./SopEditor";
+import ContractPanel from "./ContractPanel";
 import SopStructure from "./SopStructure";
 
 export const metadata: Metadata = { title: "SOP and job profiles", robots: { index: false, follow: false } };
@@ -52,6 +55,8 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
   const sampleId = sopId ? null : sampleSopIdForUseCase(uc);
   const sampleDoc = sampleId ? sampleInput(sampleId) : null;
   const document = attachedDoc ? { title: attachedDoc.title, text: attachedDoc.body } : sampleDoc;
+  // a job profile that cannot have a skill (the SOP gives it no section, or no task) is shown with the reason and cannot be ticked: never found out at tick time
+  const cannotHaveSkill = attachedDoc && sopId && !usesLicensingReference(uc.ext_id, sopId) ? profileProblems(sopId, profiles ?? [], chunksOfVersion(attachedDoc, uc)) : {};
   const frozen = uc.stage === "deployed";
   const open = (await loadChangeRequests(profile.org_id).catch(() => [])).filter((r) => r.use_case_id === id && r.status === "open").at(-1) ?? null;
   const perms = await permissionsFor(profile, user.id);
@@ -108,6 +113,14 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
 
         {(canEdit || sopId) && <SopStructure ucId={id} canEdit={canEdit} frozen={frozen} attached={sopId} />}
 
+        {sopId && !usesLicensingReference(uc.ext_id, sopId) && ticked.size > 0 && (
+          <section id="output-format" className={`${card} mt-8 scroll-mt-4`} aria-labelledby="of-h">
+            <h2 id="of-h" className="font-display text-xl font-medium">Output format of each automated job profile</h2>
+            <p className="mt-1 max-w-[68ch] text-sm text-ink-soft">What each task returns is read off the SOP&apos;s own text. The job position holder checks it, changes it if it is wrong and approves it. The skill carries what is approved, the tests are written against it and the pilot checks it. The SOP itself is not changed. A skill built before this step is rebuilt with &quot;Re-extract the skill&quot;.</p>
+            {[...ticked].map((name) => <ContractPanel key={name} ucId={id} profile={name} canEdit={perms.can("contract.edit", id)} canApprove={perms.can("contract.approve", id)} frozen={frozen} />)}
+          </section>
+        )}
+
         {sopId && (
           <section id="risk" className="mt-8 scroll-mt-4" aria-label="Job profiles">
             <nav aria-label="Rule set">
@@ -137,7 +150,7 @@ export default async function UseCaseSopPage({ params, searchParams }: { params:
                   {a.rows.map((r) => (
                     <tr key={r.name} className="border-t border-line align-top">
                       <td className="px-3 py-2.5">
-                        <AutomateBox ucId={id} profile={r.name} checked={r.automate} canEdit={canEdit} />
+                        <AutomateBox ucId={id} profile={r.name} checked={r.automate} canEdit={canEdit} blocked={cannotHaveSkill[r.name]} />
                         {r.automate && (
                           <p className="mt-1 max-w-48 text-xs text-ink-soft">
                             {skill.get(r.name) ? <T k="pf.prep.ok" en="Vectors are current and the skill file was extracted." /> : <TV k="pf.prep.no" en="Not ready: {reason}" v={{ reason: kb?.ok ? "skill file" : kb?.reason ?? "" }} />}

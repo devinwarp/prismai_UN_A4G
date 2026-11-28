@@ -24,7 +24,8 @@ export const governanceApprovers = (): Approver[] => GOVERNANCE_APPROVERS.map((t
 export function processOwnerOf(sopText: string): string | null {
   const m = /^\|\s*Owner\s*\|\s*(.+?)\s*\|\s*$/m.exec(sopText.replace(/\r\n/g, "\n"));
   const title = m?.[1].split(",")[0].trim();
-  return title ? title : null;
+  // a document control table that says "Not stated in the source." (an SOP the structuring step wrote from text with no owner) names nobody
+  return title && !/^not stated/i.test(title) ? title : null;
 }
 
 /** The approvers for a use case's gate changes: process owner first (the default), then the SOP's job titles,

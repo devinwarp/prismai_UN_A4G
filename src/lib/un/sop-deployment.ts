@@ -18,6 +18,8 @@ export interface CertifiedProfile {
   sop_id: string;
   sop_version: number;
   skill_sha256: string;
+  /** Which version of the skill that is (skill-versions.ts); null when versions were not kept. What was certified, and then deployed, is that version. */
+  skill_version?: number | null;
   /** The skill as it was certified, so what runs is exactly what was tested whatever happens to the SOP later. */
   skill_markdown: string;
   /** The tuned task guidance the best round used ("" when the skill alone met the bar). */

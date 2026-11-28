@@ -3,7 +3,9 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
 import path from "node:path";
 import type { Chunk } from "./kb.ts";
-import { embedQuery, hybridSearch, parseVectors, type HybridResult, type VectorFile } from "./vector.ts";
+import { contractLines, contractOf, type OutputContract } from "./output-contract.ts";
+import { ownedBy } from "./sop/owners.ts";
+import { embedderLoading, embedQuery, EmbedderLoadingError, hybridSearch, parseVectors, type HybridResult, type VectorFile } from "./vector.ts";
 
 // A separate, per-use-case knowledge base built from an entity's own SOP. It is kept apart
 // from kb/chunks.json on purpose: that file is regulatory text with its own eval, and
@@ -243,7 +245,8 @@ export async function searchSopRequired(sopId: string, query: string, opts: { k?
   requireVectorised(sopId);
   const { chunks, vectors } = loadSop(sopId);
   const qv = await embedQuery(query, { force: true });
-  if (!qv) throw new Error("Vector retrieval is required for an automated agent, but the query could not be embedded: the embedding model did not load. Nothing was answered from keyword search.");
+  // a model that is only still loading (a cold start) is "try again shortly", not a failure; one that failed to load stays an error. Either way nothing is answered from keyword search.
+  if (!qv) throw embedderLoading() ? new EmbedderLoadingError() : new Error("Vector retrieval is required for an automated agent, but the query could not be embedded: the embedding model did not load. Nothing was answered from keyword search.");
   const r = await hybridSearch(chunks, vectors, qv, query, { k: opts.k ?? 5 });
   if (r.mode !== "hybrid") throw new Error("Vector retrieval is required for an automated agent but the search ran without vectors.");
   return r;
@@ -257,22 +260,26 @@ export interface SkillFile { name: string; path: string; markdown: string; chunk
 /** The agent's instructions for one job profile, assembled verbatim from the SOP chunks:
  * the profile's role and authority, each of its tasks, the controls and escalation table,
  * and the rule to retrieve and cite before acting. Throws if the SOP is not vectorised. */
-export function extractSkill(sopId: string, profile: string): SkillFile {
+export function extractSkill(sopId: string, profile: string, contracts?: ContractMap): SkillFile {
   requireVectorised(sopId);
-  return skillFromChunks(sopId, profile, loadSop(sopId).chunks);
+  return skillFromChunks(sopId, profile, loadSop(sopId).chunks, contracts);
 }
 
 /** Render the same skill from an explicitly selected SOP version. */
-export function skillFromChunks(sopId: string, profile: string, chunks: SopChunk[]): SkillFile {
+/** The output contract a person approved for each task of a job profile (output-contract-log.ts). Without it the skill carries the contract read off the SOP's text. */
+export type ContractMap = ReadonlyMap<string, OutputContract>;
+
+export function skillFromChunks(sopId: string, profile: string, chunks: SopChunk[], contracts?: ContractMap): SkillFile {
   // an SOP that went through the structuring step is read as data and its skill is compiled (skill-compile.ts); every other SOP keeps the skill below unchanged
   if (isStructuredSop(chunks)) {
-    const compiled = compileSkill(sopId, profile, chunks);
+    const compiled = compileSkill(sopId, profile, chunks, [], contracts);
     if (!compiled.report.ok) throw new Error(`The skill for "${profile}" cannot be compiled: ${compiled.report.errors.join(" ")}`);
     return compiled;
   }
   const roleChunk = chunks.find((c) => c.topics.includes("role") && c.title.toLowerCase().includes(profile.toLowerCase()));
   if (!roleChunk) throw new Error(`no job profile named "${profile}" in ${sopId}`);
-  const tasks = chunks.filter((c) => c.topics.includes("task") && c.job_profile?.toLowerCase() === profile.toLowerCase());
+  const owners = chunks.map((c) => c.job_profile ?? "").filter(Boolean);
+  const tasks = chunks.filter((c) => c.topics.includes("task") && ownedBy(c.job_profile, profile, owners));
   if (!tasks.length) throw new Error(`job profile "${profile}" has no tasks in ${sopId}`);
   const pick = (t: string) => chunks.filter((c) => c.topics.includes(t));
   const first = chunks[0];
@@ -305,7 +312,8 @@ export function skillFromChunks(sopId: string, profile: string, chunks: SopChunk
     body(roleChunk),
     "",
     "## Your tasks",
-    ...tasks.flatMap((t) => [`### ${t.chunk_id.split("#")[1]}`, body(t).replace(/^- \*\*Job profile:\*\*[^\n]*\n?/, ""), ""]),
+    // when a person has approved the output contract of this profile, each task carries it (output-contract-log.ts); the SOP itself is not changed, and a skill with no approved contract is exactly what it was
+    ...tasks.flatMap((t) => { const id = t.chunk_id.split("#")[1]; const text = body(t).replace(/^- \*\*Job profile:\*\*[^\n]*\n?/, ""); return [`### ${id}`, text, ...(contracts ? contractLines(contracts.get(id) ?? contractOf(id, text)) : []), ""]; }),
     "## Controls that apply to every action",
     ...pick("controls").map(body),
     "",

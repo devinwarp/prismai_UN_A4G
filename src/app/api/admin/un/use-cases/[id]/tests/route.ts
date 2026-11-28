@@ -4,6 +4,7 @@ import { bad, forbidden, notFound, requirePermission } from "@/lib/api-auth";
 import { resolveApprover, type Approver } from "@/lib/un/approvers";
 import { withGovernance } from "@/lib/un/approvers";
 import { approversForUseCase } from "@/lib/un/approvers-store";
+import { skillVersionOf } from "@/lib/un/skill-version-store";
 import { isUuid } from "@/lib/un/model";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import { appendTestLog, loadTestLog, requiredFor } from "@/lib/un/test-set-store";
@@ -91,7 +92,9 @@ export async function POST(request: Request, { params }: Ctx) {
 
   const p = plan(state, need.required, action, who.id);
   if (!p.ok) return bad(p.error);
-  const entry = appendTest(log[log.length - 1] ?? null, p.kind, who.email ?? who.id, p.payload, new Date().toISOString());
+  // an approval records the skill the tests were written against: its hash, and which version of the skill that is
+  const payload = p.kind === "approved" && need.sop?.skill ? { ...p.payload, skill_sha256: need.sop.skill.sha256, skill_version: await skillVersionOf(who.org_id!, id, profile, need.sop.skill.sha256) } : p.payload;
+  const entry = appendTest(log[log.length - 1] ?? null, p.kind, who.email ?? who.id, payload, new Date().toISOString());
   const err = await appendTestLog(who.org_id!, id, profile, entry);
   if (err) return NextResponse.json({ error: /duplicate|unique/i.test(err) ? "Someone else changed the test set just now; reload and try again" : err }, { status: /duplicate|unique/i.test(err) ? 409 : 500 });
   const next = replayTestSet([...log, entry]);

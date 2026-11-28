@@ -43,6 +43,7 @@ export const REASON_EN = {
   suspended: "The agent was taken down.",
   warned: "The agent has a warning.",
   probation: "The agent is on probation.",
+  approve_contract: "A person approves what each task of the ticked job profiles returns (the SOP page): the skill, the tests and the pilot are built on it.",
   approve_tests: "Approve the test set and the verdict parameters of each ticked profile.",
   tests_first: "Comes after the tests and parameters are approved.",
   run_pilot: "Run the pilot on the real agent.",
@@ -61,6 +62,8 @@ export interface JourneyInput {
   verdict: Verdict | null;
   /** Ticked profiles whose test set is approved and unchanged AND whose verdict parameters are approved. */
   tests: { ticked: number; ready: number };
+  /** How many ticked profiles have an approved output contract (what each task returns). Absent for a use case that runs on the licensing reference, which has its own. */
+  contracts?: { ticked: number; approved: number };
   /** Ticked profiles: how many have a pilot, and how many have a latest pilot that is conclusive with nothing failing. */
   pilot: { ticked: number; run: number; met: number };
   evalSet: boolean;
@@ -94,8 +97,10 @@ export function stageRules(i: JourneyInput): Record<StageId, R> {
     : ["done", null];
   const gates: R = !sopDone ? ["not_yet", "after_sop"] : !i.gates ? ["not_yet", "gates_unbuilt"] : i.gates.accepted ? ["done", null] : ["needs_you", "accept_gates"];
   const verdict: R = i.verdict === null ? ["needs_you", "run_scenario"] : i.verdict === "NO_GO" ? ["stopped", "no_go"] : ["done", null];
-  const testsDone = i.tests.ticked > 0 && i.tests.ready >= i.tests.ticked;
-  const tests: R = !sopDone ? ["not_yet", "after_sop"] : testsDone ? ["done", null] : ["needs_you", "approve_tests"];
+  // the tests are written against what each task returns, so that is approved first
+  const contractsDone = !i.contracts || i.contracts.ticked === 0 || i.contracts.approved >= i.contracts.ticked;
+  const testsDone = contractsDone && i.tests.ticked > 0 && i.tests.ready >= i.tests.ticked;
+  const tests: R = !sopDone ? ["not_yet", "after_sop"] : !contractsDone ? ["needs_you", "approve_contract"] : testsDone ? ["done", null] : ["needs_you", "approve_tests"];
   const pilot: R = !testsDone ? ["not_yet", "tests_first"] : i.pilot.run === 0 ? ["needs_you", "run_pilot"] : i.pilot.met >= i.pilot.ticked ? ["done", null] : ["needs_you", "pilot_not_met"];
   const pilotMet = i.pilot.ticked > 0 && i.pilot.met >= i.pilot.ticked;
   const evals: R = i.sopPilot ? (pilotMet ? ["done", null] : ["not_yet", "pilot_first"]) : !i.evalSet ? ["not_yet", "no_eval_set"] : i.evalRuns === 0 ? ["needs_you", "run_evals"] : i.evalMet ? ["done", null] : ["needs_you", "evals_not_met"];

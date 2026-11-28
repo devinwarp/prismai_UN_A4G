@@ -8,7 +8,8 @@ import { isUuid } from "@/lib/un/model";
 import { attachSop, loadAttachedSop, loadProfileRows, saveTick } from "@/lib/un/profiles-store";
 import { loadUseCase } from "@/lib/un/sijil-store";
 import type { KbCheck } from "@/lib/un/skill-extract";
-import { buildSopKb, checkSopKbFor, ensureSopKb, writeSkillFor } from "@/lib/un/sop-kb-app";
+import { buildSopKb, checkSopKbFor, ensureSopKb } from "@/lib/un/sop-kb-app";
+import { rebuildSkill } from "@/lib/un/skill-engine";
 import { assessSop } from "@/lib/un/sop-assess";
 import { draftStructureFor, structuringAvailable } from "@/lib/un/sop-structure-service";
 import type { LiveBuildResult } from "@/lib/un/sop-kb-live";
@@ -150,8 +151,9 @@ export async function POST(request: Request, { params }: Ctx) {
     if (!(await profilesForUseCase(orgId, id, sopId))?.some((p) => p.name === b.profile)) return bad("Unknown job profile");
     const version = (await loadAttachment(orgId, id))?.version ?? 1;
     const kb = b.automate ? await readyKb(sopId, version) : null;
-    const skill = b.automate && kb?.ok ? await writeSkillFor(orgId, sopId, b.profile, version) : null;
-    const err = await saveTick(orgId, id, sopId, b.profile, b.automate, who.id, skill?.ok ? { path: skill.path, sha256: skill.sha256 } : null);
+    // the skill comes from the one engine (skill-engine.ts): with the output contract a person approved, and kept as a version when it is a different skill
+    const skill = b.automate && kb?.ok ? await rebuildSkill(orgId, uc, b.profile, { id: who.id, label: who.email ?? who.id }, "ticked", { ensureKb: async () => kb }) : null;
+    const err = skill?.ok ? null : await saveTick(orgId, id, sopId, b.profile, b.automate, who.id, null);
     if (err) return fail(err);
     await sweepPeople(orgId).catch(() => {}); // the job profiles changed: the People agent looks for positions nobody holds
     return NextResponse.json({ ok: true, kb, skill });
@@ -164,8 +166,7 @@ export async function POST(request: Request, { params }: Ctx) {
     const skills: { profile: string; ok: boolean; reason?: string }[] = [];
     if (kb.ok) {
       for (const row of (await loadProfileRows(orgId, id, att.sop_id)).filter((r) => r.automate)) {
-        const sk = await writeSkillFor(orgId, att.sop_id, row.profile, att.version);
-        if (sk.ok) await saveTick(orgId, id, att.sop_id, row.profile, true, who.id, { path: sk.path, sha256: sk.sha256 });
+        const sk = await rebuildSkill(orgId, uc, row.profile, { id: who.id, label: who.email ?? who.id }, "kb_rebuilt", { ensureKb: async () => kb });
         skills.push(sk.ok ? { profile: row.profile, ok: true } : { profile: row.profile, ok: false, reason: sk.reason });
       }
     }

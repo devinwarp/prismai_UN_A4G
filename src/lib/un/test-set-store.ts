@@ -1,3 +1,5 @@
+import { approvedContractMap } from "./output-contract-log";
+import { readContractState } from "./output-contract-store";
 import { createAdminClient } from "@/lib/supabase/admin";
 import { loadAttachedSop, loadProfileRows } from "./profiles-store";
 import { loadSop } from "./sop-kb";
@@ -43,7 +45,14 @@ export async function requiredFor(orgId: string, useCaseId: string, profile: str
     const attached = document?.attached;
     const job = attached?.profiles.find((p) => p.name === profile);
     if (!attached || attached.sop_id !== sopId || !job?.tasks.length) return { ok: false, error: "The attached SOP and its job tasks must be available before writing tests", status: 409 };
-    const sop = sopTestContext(attached, uc, job);
+    // what each task returns has to be approved by a person first (the SOP page): the skill carries it, the tests are written against it, the pilot checks it
+    const read = await readContractState(orgId, useCaseId, profile);
+    if (!read.ok) return { ok: false, error: read.error, status: 503 };
+    const contract = read.state;
+    if (!contract.approved) return { ok: false, error: "The output format of this job profile has to be approved first: open the SOP page, check what each task returns, and approve it. The skill, the tests and the pilot are built on it.", status: 409 };
+    const approvedTasks = new Set(contract.approved.tasks.map((t) => t.task));
+    if (job.tasks.some((t) => !approvedTasks.has(t.id))) return { ok: false, error: "The job profile has tasks the approved output format does not cover (the SOP changed). Review and approve its output format again on the SOP page.", status: 409 };
+    const sop = sopTestContext(attached, uc, job, approvedContractMap(contract));
     if (!sop.chunks.length) return { ok: false, error: "The attached SOP has no readable passages", status: 409 };
     if (!sop.skill || sop.skill.sha256 !== automated.skill_sha256) {
       return { ok: false, error: "This profile needs a skill for the attached SOP version. Build the knowledge base and refresh the profile skill on the SOP page.", status: 409 };

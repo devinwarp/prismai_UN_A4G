@@ -58,6 +58,9 @@ export const ACTIONS = {
   "scenario.propose": def("Propose a scenario", true, ["test_author", "entity_admin", "process_owner"], true),
   "scenario.edit": def("Add, edit or retire a scenario, a test set, its verdict parameters and the process targets (the business owner proposes)", true, ["process_owner", "entity_admin"], true),
   // The governance admin of the country approves; the process owner who proposes cannot (a legacy admin still holds every role).
+  // what each task of a job profile RETURNS (output-contract-log.ts) is checked by the person who does the job: the job profile operator, or the process owner
+  "contract.edit": def("Re-extract a job profile's skill from the SOP and change what each of its tasks returns", true, ["operator", "process_owner", "entity_admin"], true),
+  "contract.approve": def("Approve what each task of a job profile returns (the skill, the tests and the pilot are built on it), or withdraw that approval", true, ["operator", "process_owner", "governance_admin"], true),
   "scenario.approve": def("Approve and lock a test set, its verdict parameters and the process targets", true, ["governance_admin"], true),
   // people
   "users.manage": def("Assign roles to people", false, ["platform_admin"], true),

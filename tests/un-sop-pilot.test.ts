@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
 import { test } from "node:test";
 import { SijilBlockedError } from "../src/lib/llm.ts";
 import { approvedSopCases, bestSopRound, finishBatch, roundScore, runSopCase, tuningPrompt, type SopPilotCase, type SopPilotJob } from "../src/lib/un/sop-pilot.ts";
@@ -132,4 +133,33 @@ test("an agent that asks for a tool outside the allow-list fails the test and th
   assert.ok(denied.failedChecks.includes("tool_allowlist"));
   assert.match(denied.differences.join(" "), /post_to_payroll.*allow-list/);
   assert.deepEqual((denied.output?.denied_tool_calls as { tool: string }[]).map((d) => d.tool), ["post_to_payroll"]);
+});
+
+test("a case that gets no answer is tried once more before it counts as an error, and a wrong answer is never retried", async () => {
+  const cs = { id: "c1", title: "c1", family: "happy_path", input: { kind: "sop", task: "T04", requested_task: "T04", request: "r", context_hash: "h" }, expect: { outcome: "produce", summary: "", assertions: [] } } as unknown as SopPilotCase;
+  const ctx = { profile: "P", task: "Check", passages: [{ chunk_id: "S#T04", text: "t" }], humanRelease: false, skill: "# skill", instructions: "", allowedTasks: new Set(["T04"]) };
+  const good = JSON.stringify({ ok: true, refused: null, escalate: null, needs_human: false, output: { answer: "meets", facts: {} }, citations: ["S#T04"] });
+  let calls = 0;
+  const flaky = await runSopCase(cs, ctx, async () => { calls++; if (calls === 1) throw new Error("timeout after 55000ms"); return good; });
+  assert.equal(calls, 2);
+  assert.equal(flaky.status, "passed", "the retry answered");
+  assert.equal(flaky.retried, true, "and the record says it was retried");
+  calls = 0;
+  const dead = await runSopCase(cs, ctx, async () => { calls++; throw new Error("the endpoint is down"); });
+  assert.equal(calls, 2, "only one retry");
+  assert.equal(dead.status, "error", "two failures in a row are an error, as before");
+  calls = 0;
+  const wrong = await runSopCase(cs, ctx, async () => { calls++; return JSON.stringify({ ok: false, refused: null, escalate: null, needs_human: false, output: {}, citations: [] }); });
+  assert.equal(calls, 1, "a reply that arrives and is wrong is a result, not an error");
+  assert.equal(wrong.retried, undefined);
+  const ok = await runSopCase(cs, ctx, async () => { calls++; return good; });
+  assert.equal(ok.retried, undefined);
+});
+
+test("one attempt is short enough that the retry fits inside the step's limit", () => {
+  const route = readFileSync(new URL("../src/app/api/admin/un/use-cases/[id]/pilot/sop/route.ts", import.meta.url), "utf8");
+  const timeout = Number(/CASE_TIMEOUT_MS = ([\d_]+)/.exec(route)![1].replaceAll("_", ""));
+  const max = Number(/export const maxDuration = (\d+)/.exec(route)![1]) * 1000;
+  assert.ok(2 * timeout < max, `${2 * timeout} ms for two attempts must be under ${max} ms`);
+  assert.match(route, /timeoutMs: CASE_TIMEOUT_MS/);
 });

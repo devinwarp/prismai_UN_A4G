@@ -35,6 +35,8 @@ export function buildSopScenario(sopId: string, sop: SopTestContext, task: strin
   const scenario: GenScenario = {
     context_hash: sop.hash, id: `${sopId}/${job.name}/${task}`, title: t.title, sop_id: sopId,
     profile: job.name, task, skill_id: `${sop.skill.name}@${sop.skill.sha256.slice(0, 12)}`, risk, gates,
+    // what the task's result looks like, read from the SOP's own text for the task: tests assert only on it
+    contract: sop.contractFor(task),
   };
   return { ok: true, scenario, skill: sop.skill.markdown,
     lines, ctx: { scenario, chunkIds: new Set(lines.map((line) => line.chunk_id)), profileTasks: job.tasks.map((item) => item.id),

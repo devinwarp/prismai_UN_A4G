@@ -15,7 +15,7 @@ import { loadUseCase } from "@/lib/un/sijil-store";
 import { loadSop } from "@/lib/un/sop-kb";
 import { checkSopKbFor } from "@/lib/un/sop-kb-app";
 import {
-  approvedSopCases, bestSopRound, failureSummary, finishBatch, MAX_CERTIFY_REPS, MAX_SOP_ROUNDS, roundScore, runSopCase, SOP_BATCH_SIZE, SOP_PILOT_TARGET, tuningPrompt,
+  approvedSopCases, bestSopRound, condensePrompt, failureSummary, finishBatch, MAX_CERTIFY_REPS, MAX_GUIDANCE_CHARS, MAX_SOP_ROUNDS, roundScore, runSopCase, SOP_BATCH_SIZE, SOP_PILOT_TARGET, tuningPrompt, usableGuidance,
   type SopPilotCase, type SopPilotJob,
 } from "@/lib/un/sop-pilot";
 import { checkBudget, limitsFromEnv, plannedRunCalls } from "@/lib/un/sop-pilot-budget";
@@ -29,8 +29,14 @@ import { inForce, replayTestSet, verifyTest } from "@/lib/un/test-sets";
 import { coverage } from "@/lib/un/test-derive";
 import { loadParamLog } from "@/lib/un/verdict-param-store";
 import { replayParams, verifyParams } from "@/lib/un/verdict-params";
+import { skillVersionOf } from "@/lib/un/skill-version-store";
+import { EmbedderLoadingError, ensureEmbedder, warmEmbedder } from "@/lib/un/vector";
 
 export const maxDuration = 90;
+/** How long one step waits for the embedding model before it answers "busy" (a cold start loads or downloads it). Well inside maxDuration, so the rest of the step still fits. */
+const EMBEDDER_WAIT_MS = 25_000;
+/** One attempt at one test. A case that gets no answer is tried once more (runSopCase), so two attempts must fit inside maxDuration: 2 x 40 s = 80 s of the 90 s. */
+const CASE_TIMEOUT_MS = 40_000;
 type Ctx = { params: Promise<{ id: string }> };
 const conflict = (error: string) => NextResponse.json({ error }, { status: 409 });
 const unavailable = (error: unknown) => NextResponse.json({ error: error instanceof Error ? error.message : "Pilot is unavailable." }, { status: 503 });
@@ -83,7 +89,7 @@ const asJob = (row: { job: SopPilotJob }) => row.job;
 
 /** One step of a running Pilot: a batch of tests, or the tuning agent's call. Everything that makes a model call goes through here, whoever drives the run
  * (the browser, the server loop or a chained invocation): the order was checked at the start, the limits are checked before the call, the cost is recorded. */
-async function advance(scope: PilotScope, who: Authorised, jobId: string): Promise<{ job: SopPilotJob | null; busy?: boolean }> {
+async function advance(scope: PilotScope, who: Authorised, jobId: string): Promise<{ job: SopPilotJob | null; busy?: boolean; warming?: boolean }> {
   const row = await readSopPilot(scope, jobId);
   if (!row) return { job: null };
   const job = asJob(row);
@@ -112,6 +118,10 @@ async function advance(scope: PilotScope, who: Authorised, jobId: string): Promi
   const batch = tunerStep ? [] : list.slice(round.results.length, round.results.length + SOP_BATCH_SIZE);
   const planned = tunerStep ? 1 : batch.length;
 
+  // a batch retrieves by vectors, which is required. The embedding model loads slowly on a cold start (a hosted instance downloads it): wait a bounded time, and if it is
+  // still loading say "busy" so the loop or the page asks again, instead of letting the first cold case fail the whole run. A model that cannot load stays an error.
+  if (!tunerStep && (await ensureEmbedder(EMBEDDER_WAIT_MS)) === "loading") return { job, busy: true, warming: true };
+
   // the spend limits are checked before anything is called
   const limits = job.limits ?? limitsFromEnv();
   const spent = await daySpentCalls(scope.orgId, scope.useCaseId);
@@ -121,21 +131,35 @@ async function advance(scope: PilotScope, who: Authorised, jobId: string): Promi
   if (!(await save(row, job, new Date(Date.now() + LEASE_MS).toISOString()))) return { job, busy: true };
   const locked = { ...row, revision: row.revision + 1 };
   let next: SopPilotJob;
+  let warming = false;
   try {
     const allowedTasks = new Set(tasks.keys());
+    // each task's output contract, read from the SOP's own text for it (the same one the skill states and the tests assert on)
+    const contractFor = suite.context.contractFor;
     const humanRelease = (task: { flags: { client_facing: boolean; affects_rights: boolean; irreversible: boolean } }) => !!(suite.context.risk.client_facing || suite.context.risk.affects_rights || suite.context.risk.irreversible ||
       task.flags.client_facing || task.flags.affects_rights || task.flags.irreversible);
     let usage: Awaited<ReturnType<typeof metered>>["usage"];
     if (tunerStep) {
       const reference = [...new Map([...tasks.values()].flatMap((task) => suite.context.chunks.filter((c) => c.chunk_id.endsWith(`#${task.id}`)).map((c) => ({ chunk_id: c.chunk_id, text: c.text.slice(0, 2400) }))).map((passage) => [passage.chunk_id, passage])).values()].slice(0, 24);
       const prompt = tuningPrompt(round, bestSopRound(job) ?? round, tasks, suite.cases, suite.skill.markdown, reference);
-      const m = await metered(async () => parseLlmJson(await chatCompletion({ system: prompt.system, messages: [{ role: "user", content: prompt.user }], timeoutMs: 55_000, json: true, model: tunerModel, maxTokens: 2400 })));
+      const ask = (p: typeof prompt) => metered(async () => parseLlmJson(await chatCompletion({ system: p.system, messages: [{ role: "user", content: p.user }], timeoutMs: 55_000, json: true, model: tunerModel, maxTokens: 2400 })));
+      const m = await ask(prompt);
       usage = m.usage;
-      const proposed = m.result as { instructions?: unknown; reason?: unknown } | null;
+      let proposed = m.result as { instructions?: unknown; reason?: unknown } | null;
+      // guidance that came back over the cap is given back to the tuner to condense, once; nothing is cut for it
+      if (typeof proposed?.instructions === "string" && proposed.instructions.trim() && proposed.instructions.length > MAX_GUIDANCE_CHARS) {
+        const again = await ask(condensePrompt(proposed.instructions));
+        usage = addSnapshots(usage, again.usage);
+        proposed = again.result as typeof proposed;
+      }
       const instructions = proposed?.instructions;
-      if (typeof instructions !== "string" || !instructions.trim() || instructions.length > 3000) throw new Error("Invalid tuning guidance");
-      const reason = typeof proposed?.reason === "string" && proposed.reason.trim() ? proposed.reason.trim().slice(0, 600) : null;
-      next = { ...job, rounds: [...job.rounds, { instructions: instructions.trim(), results: [], tuning: { saw: failureSummary(round, suite.cases, tasks), reason, at: new Date().toISOString() } }] };
+      if (!usableGuidance(instructions)) {
+        // the tuner could not write usable guidance: the run ends here with the best round so far kept, it does not fail
+        next = { ...job, status: "round_limit", message: `The tuning agent could not write guidance within ${MAX_GUIDANCE_CHARS.toLocaleString("en-GB")} characters, so tuning stopped with the best round so far. Certify it, or start another tuning run.` };
+      } else {
+        const reason = typeof proposed?.reason === "string" && proposed.reason.trim() ? proposed.reason.trim().slice(0, 600) : null;
+        next = { ...job, rounds: [...job.rounds, { instructions: instructions.trim(), results: [], tuning: { saw: failureSummary(round, suite.cases, tasks), reason, at: new Date().toISOString() } }] };
+      }
     } else {
       const m = await metered(() => Promise.all(batch.map(async ({ test, rep }) => {
         const task = tasks.get(test.input.task);
@@ -143,8 +167,8 @@ async function advance(scope: PilotScope, who: Authorised, jobId: string): Promi
         // an authority test is blocked before inference (runSopCase) and needs no passages; every other case retrieves by vectors, which is required
         const blocked = !allowedTasks.has(test.input.requested_task) || test.input.requested_task !== test.input.task;
         const passages = blocked ? [] : await taskPassagesRequired(suite.sopId, task, test.input.request);
-        return runSopCase(test, { profile: scope.profile, task: task.title, passages, skill: suite.skill.markdown, instructions: round.instructions, allowedTasks, humanRelease: humanRelease(task) },
-          ({ system, user }) => chatCompletion({ system, messages: [{ role: "user", content: user }], model, json: true, timeoutMs: 55_000, maxTokens: 4096, seed: 11, ...(endpoint ?? {}) }), rep);
+        return runSopCase(test, { profile: scope.profile, task: task.title, passages, skill: suite.skill.markdown, instructions: round.instructions, allowedTasks, humanRelease: humanRelease(task), contract: contractFor(task.id) },
+          ({ system, user }) => chatCompletion({ system, messages: [{ role: "user", content: user }], model, json: true, timeoutMs: CASE_TIMEOUT_MS, maxTokens: 4096, seed: 11, ...(endpoint ?? {}) }), rep);
       })));
       usage = m.usage;
       next = finishBatch({ ...job, rounds: [...job.rounds.slice(0, -1), { ...round, results: [...round.results, ...m.result] }] });
@@ -160,9 +184,16 @@ async function advance(scope: PilotScope, who: Authorised, jobId: string): Promi
     // the certify pass ends by recording a pilot report: what the journey's pilot stage, the release gate and the goal judge read
     if (next.mode === "certify" && next.status === "certified") next = await recordReport(scope, who, next, suite, tasks);
   } catch (error) {
-    next = { ...job, status: "error", message: error instanceof Error && /vector retrieval/i.test(error.message) ? error.message : "This Pilot step could not complete. Check the configured agent and tuner models before trying again." };
+    warming = error instanceof EmbedderLoadingError;
+    if (!warming) console.warn("A Pilot step failed.", error instanceof Error ? `${error.name}: ${error.message}` : error);
+    // a reason a person can act on, never the raw error of a provider (it can carry request details)
+    const reason = !(error instanceof Error) ? null
+      : /vector retrieval/i.test(error.message) ? error.message
+      : /^Invalid tuning guidance/.test(error.message) ? "The tuning agent's new guidance was empty or longer than 3,000 characters, so it was not used. Start the run again: the tuner works from the best guidance so far."
+      : null;
+    next = warming ? job : { ...job, status: "error", message: reason ?? "This Pilot step could not complete. Check the configured agent and tuner models before trying again." };
   }
-  if (await save(locked, next)) return { job: next };
+  if (await save(locked, next)) return warming ? { job: next, busy: true, warming: true } : { job: next };
   return { job: asJob((await readSopPilot(scope, jobId)) ?? row) };
 }
 
@@ -173,7 +204,7 @@ async function recordReport(scope: PilotScope, who: Authorised, job: SopPilotJob
     job, results: job.rounds[0].results, cases: suite.cases as SopPilotCase[], params: suite.params, ext: uc.ext_id, facts: factsOf(uc), gov: await loadGov(scope.orgId),
     risk: { client_facing: suite.context.risk.client_facing }, clientFacingTask: (task) => !!tasks.get(task)?.flags.client_facing,
     // what this report is about, kept in its plan: the certification (skill + tuned guidance) is written once the final report, with the goal review approved, is met
-    certified: { profile: scope.profile, sop_id: suite.sopId, sop_version: (await loadAttachment(scope.orgId, scope.useCaseId))?.version ?? 1, skill_sha256: suite.skill.sha256, skill_markdown: suite.skill.markdown, guidance: (job.rounds[0].instructions ?? "").trim(), test_hash: suite.testHash, params_hash: suite.paramsHash },
+    certified: { profile: scope.profile, sop_id: suite.sopId, sop_version: (await loadAttachment(scope.orgId, scope.useCaseId))?.version ?? 1, skill_sha256: suite.skill.sha256, skill_version: await skillVersionOf(scope.orgId, scope.useCaseId, scope.profile, suite.skill.sha256), skill_markdown: suite.skill.markdown, guidance: (job.rounds[0].instructions ?? "").trim(), test_hash: suite.testHash, params_hash: suite.paramsHash },
   });
   const saved = await savePilot(scope.orgId, scope.useCaseId, { at: new Date().toISOString(), actor: who.email ?? who.id, profile: scope.profile, reps: job.reps ?? 1, runs: built.runs.length, plan: built.plan, report: built.report, run_records: built.runs, basis: null });
   if ("error" in saved) return { ...job, status: "error", message: `The pilot ran but its report could not be saved: ${saved.error}` };
@@ -238,7 +269,7 @@ export async function POST(request: Request, { params }: Ctx) {
     }
     if (body.action === "step") {
       const r = await advance(scope, who, body.job_id);
-      return delivery(scope, r.job, r.busy ? { busy: true } : {});
+      return delivery(scope, r.job, r.busy ? { busy: true, ...(r.warming ? { warming: true } : {}) } : {});
     }
     if (body.action === "drive") {
       if (row!.job.status !== "running") return delivery(scope, row!.job);
@@ -247,7 +278,8 @@ export async function POST(request: Request, { params }: Ctx) {
       return delivery(scope, row!.job, { driving: true });
     }
 
-    // start
+    // start: begin loading the embedding model now (a cold start takes a minute), so the first batch does not wait for all of it
+    warmEmbedder();
     if (row?.lease_until && Date.parse(row.lease_until) > Date.now()) return delivery(scope, row.job, { busy: true });
     if (row?.job.status === "running") return conflict("A Pilot is already running for this profile. Resume or stop it first.");
     const suite = await approved(scope);
@@ -274,7 +306,7 @@ export async function POST(request: Request, { params }: Ctx) {
     const best = reusable && previous.mode !== "certify" ? bestSopRound(previous) : undefined;
     const job: SopPilotJob = {
       id: randomUUID(), status: "running", mode, limit, rounds: [{ instructions: best?.instructions ?? "", results: [] }],
-      caseCount: suite.cases.length * (reps ?? 1), contextHash: suite.context.hash, skillHash: suite.skill.sha256, testHash: suite.testHash, paramsHash: suite.paramsHash,
+      caseCount: suite.cases.length * (reps ?? 1), contextHash: suite.context.hash, skillHash: suite.skill.sha256, skillVersion: await skillVersionOf(scope.orgId, scope.useCaseId, scope.profile, suite.skill.sha256), testHash: suite.testHash, paramsHash: suite.paramsHash,
       model, tunerModel, screening, target: SOP_PILOT_TARGET, startedAt: new Date().toISOString(), actor: who.email ?? who.id, message: null,
       cases: suite.cases.map((test) => ({ id: test.id, title: test.title, task: test.input.task, family: test.family })), ...(reps ? { reps } : {}),
       calls: 0, limits, updatedAt: new Date().toISOString(), driver: "server",
