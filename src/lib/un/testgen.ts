@@ -501,7 +501,8 @@ export function replayGen(entries: GenEntry[], blueprints: Blueprint[]): GenStat
       if (x) { x.status = "rejected"; x.reject_reason = typeof p.reason === "string" ? p.reason : ""; x.by = e.actor; x.at = e.at; }
     }
   }
-  for (const x of s.proposals) if (x.status === "proposed" && blueprints.some((b) => b.slot === slotOf(x.case.id))) x.status = "accepted";
+  // by the case the blueprint was made from: an SOP happy-path or authority case takes its task's slot, not its own. The slot match covers blueprints without `gen`.
+  for (const x of s.proposals) if (x.status === "proposed" && blueprints.some((b) => b.gen?.case_id === x.case.id || b.slot === slotOf(x.case.id))) x.status = "accepted";
   return s;
 }
 

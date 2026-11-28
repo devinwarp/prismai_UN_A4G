@@ -106,7 +106,8 @@ export function approvedSopCases(blueprints: Blueprint[], contextHash: string) {
 
 export function evaluateSopResult(test: SopPilotCase, result: Parameters<typeof checkExpectation>[1]) {
   const differences = checkExpectation(test.expect, result);
-  const failedChecks = test.expect.assertions.filter((assertion) => differences.some((difference) => difference.startsWith(`${assertion.path} ${assertion.op}`))).map((assertion) => assertion.path);
+  // a field with two failed assertions is one failed check
+  const failedChecks = [...new Set(test.expect.assertions.filter((assertion) => differences.some((difference) => difference.startsWith(`${assertion.path} ${assertion.op}`))).map((assertion) => assertion.path))];
   return { differences, failedChecks };
 }
 

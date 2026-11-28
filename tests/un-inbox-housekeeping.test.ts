@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
+import { nextActors } from "../src/lib/un/inbox-next.ts";
 import { INFO_KEEP_DAYS, pendingOn, staleInfo, type InboxItem } from "../src/lib/un/inbox.ts";
 
 const item = (o: Partial<InboxItem>): InboxItem => ({
@@ -17,7 +18,7 @@ test("an information item names the people asked to act on the same event, and o
   const elsewhere = item({ id: "d", user_id: "admin", mode: "action", letter: "AR", dedupe_key: "pos:UC07" });
   const open = [info, action, elsewhere].filter((i) => i.status === "open");
   const w = pendingOn(info, [...open, closed].filter((i) => i.status !== "done"), (id) => people[id]);
-  assert.deepEqual(w, [{ name: "Latifa Al Mansoori", job_title: "AI Programme Director", letter: "AR", mode: "action", handler: "human" }]);
+  assert.deepEqual(w, [{ name: "Latifa Al Mansoori", job_title: "AI Programme Director", letter: "AR", mode: "action", handler: "human", subject: "s", you: false }]);
 });
 
 test("information about something nobody is asked to do names nobody, and an action names nobody but its owner", () => {
@@ -51,4 +52,25 @@ test("the inbox offers put-all-away, restore, an archive, and who an item waits 
 test("information that was put away is not raised again by the next sweep", () => {
   const src = readFileSync("src/lib/un/inbox-store.ts", "utf8");
   assert.match(src, /i\.mode === "inform" && i\.status === "dismissed"/);
+});
+
+test("a notice that something finished names who holds the open requests of its use case, including the reader, but not position gaps", () => {
+  const info = item({ id: "a", user_id: "me", kind: "targets.approved", use_case_id: "u1", dedupe_key: "targets:u1:3:approved" });
+  const ask = item({ id: "b", user_id: "admin", kind: "tests.approve", mode: "approval", letter: "A", use_case_id: "u1", dedupe_key: "tests:u1:open", subject: "Tests: approval needed" });
+  const mine = item({ id: "c", user_id: "me", kind: "tests.proposed", mode: "consult", letter: "C", use_case_id: "u1", dedupe_key: "tests:u1:open" });
+  const gap = item({ id: "d", user_id: "platform", mode: "action", letter: "AR", use_case_id: "u1", dedupe_key: "pos:u1" });
+  const other = item({ id: "e", user_id: "admin", mode: "action", letter: "AR", use_case_id: "u2", dedupe_key: "tests:u2:open" });
+  const w = pendingOn(info, [info, ask, mine, gap, other], (id) => (id === "me" ? { name: "Noor", job_title: null } : people[id]));
+  assert.deepEqual(w.map((x) => [x.name, x.subject, x.you]), [["Latifa Al Mansoori", "Tests: approval needed", false], ["Noor", "s", true]]);
+});
+
+test("with no open request, the next step of the use case names who does it and who decides, by the RACI table", () => {
+  const holders = [{ user_id: "ea", positions: ["entity_admin" as const] }, { user_id: "own", positions: ["owner" as const] }, { user_id: "op", positions: ["operator" as const] }, { user_id: "gov", positions: ["governance_admin" as const] }, { user_id: "plat", positions: ["platform" as const] }];
+  const ids = (s: Parameters<typeof nextActors>[0]) => nextActors(s, holders).map((r) => `${r.user_id}:${r.letter}`).sort();
+  assert.deepEqual(ids("sop"), ["ea:AR"]);
+  assert.deepEqual(ids("tests"), ["gov:A", "own:R"]);
+  assert.deepEqual(ids("pilot"), ["op:R", "own:A"]);
+  // only a process owner signs a verdict, so nobody else is named for it
+  assert.deepEqual(ids("verdict"), ["own:A"]);
+  assert.deepEqual(nextActors("verdict", holders.filter((h) => h.user_id !== "own")), []);
 });

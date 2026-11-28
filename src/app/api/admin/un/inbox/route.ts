@@ -4,6 +4,7 @@ import { isHumanDecision } from "@/lib/un/raci";
 import { refresh, runAgent, sweepPeople } from "@/lib/un/inbox-service";
 import { countsOf as counts, isOpen, pendingOn } from "@/lib/un/inbox";
 import { loadAgentLog, loadAgentSettings, loadItem, loadItemsOf, loadOpenItems, updateItem, verifyAgentLog } from "@/lib/un/inbox-store";
+import { nextStepsFor } from "@/lib/un/inbox-next-service";
 import { loadPeople } from "@/lib/un/roles-store";
 
 const text = (v: unknown, max: number) => (typeof v === "string" ? v.trim().slice(0, max) : "");
@@ -23,12 +24,15 @@ export async function GET(request: Request) {
   // who an information item is waiting on: the people asked for the same event who have not dealt with it
   const mine = items.filter((i) => i.mode === "inform" && isOpen(i));
   const waiting: Record<string, ReturnType<typeof pendingOn>> = {};
+  let next: Awaited<ReturnType<typeof nextStepsFor>> = {};
   if (mine.length) {
     const [open, people] = await Promise.all([loadOpenItems(orgId), loadPeople(orgId)]);
     const nameOf = (id: string) => { const p = people.find((x) => x.id === id); return p ? { name: p.full_name ?? p.email ?? "Someone", job_title: p.job_title } : undefined; };
     for (const i of mine) { const w = pendingOn(i, open, nameOf); if (w.length) waiting[i.id] = w; }
+    // nothing asked of anyone: name who the use case's next step is with. A failure here costs the line, not the inbox.
+    next = await nextStepsFor(orgId, mine.filter((i) => !waiting[i.id]), people).catch(() => ({}));
   }
-  return NextResponse.json({ items, counts: counts(items), settings, log: log.slice(-30).reverse(), log_ok: verifyAgentLog(log).ok, ran, waiting });
+  return NextResponse.json({ items, counts: counts(items), settings, log: log.slice(-30).reverse(), log_ok: verifyAgentLog(log).ok, ran, waiting, next });
 }
 
 /**

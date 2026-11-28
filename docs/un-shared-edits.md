@@ -265,3 +265,7 @@ Design: `docs/superpowers/specs/2026-11-25-sijil-pre-inference-screening-design.
 ## Sijil loop check + pull verification fix (25 Nov)
 
 `scripts/sijil_loop_check.ts` runs a small pilot with model calls screened on the node's `/v1` AND every run sealed through `/api/agent/*`, then verifies the chain and pulls the runs back — the whole loop in one check (PASS against a local node). `src/lib/un/sijil-live.ts` `pullLive` now asks `/api/verify?allow_orphan_tool_calls=1` (same as `verifyChain`): the node supports it, and without it the pull reported "chain NOT verified" on our own orphan tool calls. `tests/un-sijil-live.test.ts` updated for the query parameter.
+
+## Progress-bar track colour in the dark theme (28 Nov)
+
+`src/app/globals.css`: one new token, `--color-track` (light `#eceade`, same as `paper-deep`; ink `#514a3e`). Progress-bar tracks use `bg-track` instead of `bg-paper-deep`, which was nearly the card colour in the dark theme. No other style changed.

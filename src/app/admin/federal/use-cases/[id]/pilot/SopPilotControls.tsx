@@ -31,7 +31,7 @@ type Delivery = { job: SopPilotJob | null; jobs?: SopPilotJob[]; limits?: { run:
 
 function Bar({ value, max, label }: { value: number; max: number; label: string }) {
   return (
-    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={Math.min(value, max)} className="h-2.5 w-full overflow-hidden rounded-full bg-paper-deep">
+    <div role="progressbar" aria-label={label} aria-valuemin={0} aria-valuemax={max} aria-valuenow={Math.min(value, max)} className="h-2.5 w-full overflow-hidden rounded-full bg-track">
       <div className="h-full rounded-full bg-lit transition-[width] duration-300 motion-reduce:transition-none" style={{ width: max ? `${Math.min(100, (100 * value) / max)}%` : "0%" }} />
     </div>
   );
@@ -80,7 +80,7 @@ function Results({ round, job, label }: { round: SopPilotRound; job: SopPilotJob
                 <td className="max-w-[56ch] py-2 break-words">
                   {t.passed && !t.sijil && t.status !== "blocked_by_sijil" ? <span className="text-ink-soft">All checks held{t.ms ? ` · ${duration(t.ms)}` : ""}</span> : null}
                   {t.status === "blocked_by_sijil" && <p className="text-ink-soft">{t.sijil?.source === "node" ? "Sijil node" : "Authority check (simulated)"}{t.sijil?.seq ? ` · record ${t.sijil.seq}` : ""}{t.sijil?.rules.length ? ` · ${t.sijil.rules.join(", ")}` : ""}</p>}
-                  {!t.passed && t.failedChecks.length > 0 && <ul className="list-disc ps-4">{t.failedChecks.map((c) => <li key={c}>{checkWord(c)}</li>)}</ul>}
+                  {!t.passed && t.failedChecks.length > 0 && <ul className="list-disc ps-4">{[...new Set(t.failedChecks)].map((c) => <li key={c}>{checkWord(c)}</li>)}</ul>}
                   {!t.passed && t.differences.length > 0 && <ul className="list-disc ps-4 text-xs text-ink-soft">{t.differences.map((d, k) => <li key={k}>{d}</li>)}</ul>}
                   {t.output && <details className="mt-1"><summary className="cursor-pointer text-xs underline">Actual output</summary><pre className="mt-1 whitespace-pre-wrap break-all text-xs">{JSON.stringify(t.output, null, 2)}</pre></details>}
                 </td>

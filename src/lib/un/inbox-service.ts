@@ -103,7 +103,7 @@ export async function noticeApproval(orgId: string, useCaseId: string, o: { step
       return;
     }
     await resolveItems(orgId, key, o.by);
-    await notifyUseCase(orgId, useCaseId, { step: o.step, kind: `${o.step}.${o.event}`, subject: `${o.what} ${o.event} for ${o.ext}`, body: `${o.what} for ${o.ext} were ${o.event}.`, link: o.link,
+    await notifyUseCase(orgId, useCaseId, { step: o.step, kind: `${o.step}.${o.event}`, subject: `${o.what} ${o.event} for ${o.ext}`, body: `${o.what} for ${o.ext} ${/s$/.test(o.what) ? "were" : "was"} ${o.event}.`, link: o.link,
       dedupe: `${o.step}:${useCaseId}:${o.ref}:${o.event}`, exclude: [o.by], inform: true, created_by: "system" });
   } catch { /* the inbox is not there yet (its SQL is not applied) or failed: the action itself stands */ }
 }

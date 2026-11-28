@@ -98,7 +98,7 @@ export default function SopIntake({ country, entity, rows, canEdit }: { country:
           </div>
           {batch.length > 0 && (busy || finished < batch.length) && (
             <div className="mt-2" aria-live="polite">
-              <div role="progressbar" aria-label={fill(t("intake.progress", "Analysing SOPs: {a} of {n} done"), { a: finished, n: batch.length })} aria-valuemin={0} aria-valuemax={batch.length} aria-valuenow={finished} className="h-2.5 w-full overflow-hidden rounded-full bg-paper-deep">
+              <div role="progressbar" aria-label={fill(t("intake.progress", "Analysing SOPs: {a} of {n} done"), { a: finished, n: batch.length })} aria-valuemin={0} aria-valuemax={batch.length} aria-valuenow={finished} className="h-2.5 w-full overflow-hidden rounded-full bg-track">
                 <div className="h-full rounded-full bg-lit transition-[width] duration-300 motion-reduce:transition-none" style={{ width: `${(100 * finished) / batch.length}%` }} />
               </div>
               <p className="mt-1 text-xs text-ink-soft">{fill(t("intake.progress", "Analysing SOPs: {a} of {n} done"), { a: finished, n: batch.length })}. {t("intake.progress.note", "An SOP that needs structuring is drafted by a model, which can take a minute.")}</p>
@@ -144,7 +144,7 @@ export default function SopIntake({ country, entity, rows, canEdit }: { country:
                             disabled={busy} className="w-full min-w-0 rounded-md border border-line bg-paper p-1.5 text-xs file:me-2 file:rounded file:border-0 file:bg-paper-deep file:px-2 file:py-1"
                             onChange={(event) => { choose(row.id, event.target.files?.[0]); event.target.value = ""; }} />
                           {upload?.file && <p className="mt-1 break-words text-xs text-ink-soft">{upload.file.name}{upload.status === "running" ? ` · ${t("intake.analyzing", "Analyzing files…")}` : ""}</p>}
-                          {upload?.status === "running" && <div role="progressbar" aria-label={fill(t("intake.analyzing.a", "Analysing {id}"), { id: row.code })} className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-paper-deep"><div className="h-full w-1/3 animate-pulse rounded-full bg-lit motion-reduce:animate-none" /></div>}
+                          {upload?.status === "running" && <div role="progressbar" aria-label={fill(t("intake.analyzing.a", "Analysing {id}"), { id: row.code })} className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-track"><div className="h-full w-1/3 animate-pulse rounded-full bg-lit motion-reduce:animate-none" /></div>}
                           {upload?.error && <p role="alert" className="mt-1 text-xs text-ember">{upload.error}</p>}
                         </> : <p className="text-ink-soft">{t("intake.pending", "Awaiting an SOP")}</p>}
                   </div>
